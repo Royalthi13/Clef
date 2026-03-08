@@ -1,0 +1,33 @@
+# ==========================================
+# 1. ENTORNO DE DESARROLLO (Basura del IDE)
+# ==========================================
+*.iml
+.gradle/
+/.idea/
+.DS_Store
+
+# ==========================================
+# 2. ARCHIVOS DE COMPILACIÓN (Pesados y temporales)
+# ==========================================
+/build/
+*/build/
+/captures/
+.externalNativeBuild/
+.cxx/
+
+# ==========================================
+# 3. 🚨 SEGURIDAD Y SECRETOS LOCALES (VITAL) 🚨
+# ==========================================
+# Oculta la ruta local de tu ordenador (SDK) para no romperle el proyecto a tus compañeros
+local.properties
+
+# Oculta las llaves criptográficas de firma de la app (Play Store)
+*.jks
+*.keystore
+keystore.properties
+
+# ==========================================
+# 4. FIREBASE (Nota de Arquitectura)
+# ==========================================
+# El archivo google-services.json SÍ se sube al repositorio.
+# (Explicación de defensa abajo)
