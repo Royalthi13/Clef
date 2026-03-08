@@ -101,7 +101,7 @@ Cuando Clef pasa a segundo plano, `ClefApp` (clase `Application`) inicia un cron
 ## 📁 Estructura del Proyecto
 
 ```
-com.tuempresa.clef/
+com.clef/
 │
 ├── ClefApp.java                       # Application global. Gestiona el Auto-Lock de 60s.
 │
