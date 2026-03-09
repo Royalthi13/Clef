@@ -1,25 +1,48 @@
-<div align="center">
-
 # 🗝️ Clef
 ### Gestor de Contraseñas Zero-Knowledge para Android
 
-*"El servidor guarda un baúl sellado. Solo tú tienes la llave."*
+> *"El servidor guarda un baúl sellado. Solo tú tienes la llave."*
 
-![Android](https://img.shields.io/badge/Platform-Android-3DDC84?style=flat-square&logo=android&logoColor=white)
-![Java](https://img.shields.io/badge/Language-Java-ED8B00?style=flat-square&logo=openjdk&logoColor=white)
-![Firebase](https://img.shields.io/badge/Backend-Firebase-FFCA28?style=flat-square&logo=firebase&logoColor=black)
-![AES-256](https://img.shields.io/badge/Encryption-AES--256--GCM-1A56DB?style=flat-square)
-![TFG](https://img.shields.io/badge/Proyecto-TFG%202%C2%BA%20DAM-8B5CF6?style=flat-square)
-
-</div>
+![Android](https://img.shields.io/badge/Android-Java-3DDC84?style=for-the-badge&logo=android&logoColor=white)
+![Firebase](https://img.shields.io/badge/Firebase-Firestore-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)
+![AES-256](https://img.shields.io/badge/Cifrado-AES--256--GCM-00E5FF?style=for-the-badge&logo=letsencrypt&logoColor=white)
+![TFG](https://img.shields.io/badge/Proyecto-TFG%202ºDAM-6C63FF?style=for-the-badge)
 
 ---
 
 ## ¿Qué es Clef?
 
-Clef es un gestor de contraseñas nativo para Android construido sobre un principio fundamental: **el servidor nunca sabe nada**.
+Clef es un gestor de contraseñas nativo para Android construido sobre un principio fundamental: **el servidor nunca sabe nada.**
 
 A diferencia de los gestores tradicionales donde el proveedor podría (en teoría) acceder a tus datos, Clef implementa una arquitectura **Zero-Knowledge (ZK)** con **Cifrado del Lado del Cliente**. Todo el cifrado y descifrado ocurre exclusivamente en la memoria RAM del teléfono del usuario. Firebase actúa como un disco duro ciego que almacena archivos incomprensibles sin tu Contraseña Maestra.
+
+---
+
+## ✨ Funcionalidades
+
+| Feature | Descripción |
+|---|---|
+| 🔐 **Bóveda cifrada** | AES-256-GCM. Tus contraseñas son ilegibles para cualquiera excepto tú |
+| 🔑 **Generador de contraseñas** | Genera contraseñas fuertes con sliders configurables (longitud, símbolos, números) |
+| 🆘 **Recuperación con PUK** | Código de emergencia de un solo uso para recuperar el acceso |
+| 📋 **Portapapeles seguro** | Auto-borrado del portapapeles a los 45 segundos |
+| ⏱️ **Auto-Lock** | Bloqueo automático configurable al pasar a segundo plano |
+| 🔍 **Buscador integrado** | Filtra credenciales en tiempo real desde el dashboard |
+| 🗂️ **Vista de detalle** | Consulta, copia y edita cada credencial sin salir de la app |
+| 🔄 **Sincronización cloud** | Tus credenciales cifradas siempre disponibles vía Firestore |
+
+---
+
+## 🧭 Navegación
+
+Clef organiza sus funciones en **4 secciones** accesibles desde la barra de navegación inferior:
+
+| Sección | Icono | Función |
+|---|---|---|
+| **Vault** | 🔐 | Lista de todas tus credenciales guardadas |
+| **Generator** | ⚡ | Generador de contraseñas seguras |
+| **Security** | 🛡️ | Estado de seguridad de tu bóveda |
+| **Settings** | ⚙️ |  Auto-Lock, sincronización y más |
 
 ---
 
@@ -29,12 +52,13 @@ A diferencia de los gestores tradicionales donde el proveedor podría (en teorí
 |---|---|---|
 | Plataforma | Android (Java Nativo) | Control total sobre gestión de memoria |
 | UI | Material Design 3 + XML | Estándar moderno de Google |
+| Animaciones | Lottie | Animación fluida en Splash screen |
 | Auth | Firebase Authentication (Google Sign-In) | Delega 2FA y verificación de email en Google |
 | Base de datos | Firebase Cloud Firestore | Solo almacena blobs cifrados |
-| Cifrado | AES-256-GCM (`javax.crypto`) | AEAD: confidencialidad + integridad sin librerías externas |
+| Cifrado | AES-256-GCM (javax.crypto) | AEAD: confidencialidad + integridad sin librerías externas |
 | KDF | PBKDF2WithHmacSHA256 (230.000 iter.) | Frena ataques de fuerza bruta. Nativo en JCA |
-| Entropía | `SecureRandom` | IVs y Salts criptográficamente seguros |
-| Serialización | GSON | Convierte `Vault` → JSON → bytes antes de cifrar |
+| Entropía | SecureRandom | IVs y Salts criptográficamente seguros |
+| Serialización | GSON | Convierte Vault → JSON → bytes antes de cifrar |
 
 ---
 
@@ -42,7 +66,7 @@ A diferencia de los gestores tradicionales donde el proveedor podría (en teorí
 
 ### El modelo de las tres piezas
 
-La arquitectura ZK de Clef separa la **llave** de la **cerradura** en tres elementos independientes que viven en Firestore:
+La arquitectura ZK de Clef separa la llave de la cerradura en tres elementos independientes que viven en Firestore:
 
 ```
                     ┌─────────────────────────────────────────────┐
@@ -63,7 +87,7 @@ La arquitectura ZK de Clef separa la **llave** de la **cerradura** en tres eleme
               Firebase ve 4 blobs cifrados.  Firebase sabe: nada. ┘
 ```
 
-> **Distinción clave:** Las Cajas A y B solo contienen **la llave (DEK)**. La Bóveda contiene **los datos reales**. Nadie puede abrir la Bóveda sin pasar primero por una de las dos cajas.
+> **Distinción clave:** Las Cajas A y B solo contienen la llave (DEK). La Bóveda contiene los datos reales. Nadie puede abrir la Bóveda sin pasar primero por una de las dos cajas.
 
 ### Cómo encajan las piezas
 
@@ -86,15 +110,13 @@ DEK ──► [ CAJA B ]  ◄── solo si olvidas la contraseña
 Vault JSON ──► [ BÓVEDA CIFRADA ]  ◄── vault.enc · tus contraseñas
 ```
 
----
-
 ### Código PUK — recuperación de emergencia
 
-Al crear la Contraseña Maestra, Clef genera un **código PUK de un solo uso** (similar al PUK de una SIM). Este código deriva su propia `KEK-PUK` que se usa para cifrar la DEK en la **Caja B**, una segunda copia de seguridad de la llave. Se muestra **una única vez** en pantalla (`ShowPukActivity`) y nunca se almacena en texto plano en ningún servidor.
+Al crear la Contraseña Maestra, Clef genera un **código PUK de un solo uso** (similar al PUK de una SIM). Este código deriva su propia KEK-PUK que se usa para cifrar la DEK en la Caja B, una segunda copia de seguridad de la llave. Se muestra una única vez en pantalla (`ShowPukActivity`) y nunca se almacena en texto plano en ningún servidor.
 
 ### Auto-Lock de 60 segundos
 
-Cuando Clef pasa a segundo plano, `ClefApp` (clase `Application`) inicia un cronómetro. Si el usuario no regresa en 60 segundos, la DEK es sobrescrita en memoria y la bóveda se bloquea automáticamente. Al volver, se solicita la Contraseña Maestra o huella dactilar.
+Cuando Clef pasa a segundo plano, `ClefApp` (clase Application) inicia un cronómetro. Si el usuario no regresa en 60 segundos, la DEK es sobrescrita en memoria y la bóveda se bloquea automáticamente. Al volver, se solicita la Contraseña Maestra .
 
 ---
 
@@ -107,7 +129,7 @@ com.clef/
 │
 ├── ui/
 │   ├── auth/
-│   │   ├── SplashActivity.java        # Pantalla de carga. Router: ¿a qué pantalla ir?
+│   │   ├── SplashActivity.java        # Pantalla de carga con animación Lottie. Router inicial.
 │   │   └── LoginActivity.java         # Google Sign-In + solicitud de Contraseña Maestra
 │   │
 │   ├── setup/                         # Flujo de primer uso
@@ -118,12 +140,12 @@ com.clef/
 │   │   └── RecoverVaultActivity.java  # El usuario introduce el PUK para recuperar acceso
 │   │
 │   ├── dashboard/                     # Pantalla principal (día a día)
-│   │   ├── MainActivity.java          # Lista de credenciales con RecyclerView
+│   │   ├── MainActivity.java          # Lista de credenciales con RecyclerView + buscador
 │   │   ├── VaultAdapter.java          # Adapter que pinta cada credencial en la lista
 │   │   └── AddItemDialog.java         # Diálogo para añadir/editar una credencial
 │   │
 │   └── settings/
-│       └── SettingsActivity.java      # Cerrar sesión, cambiar tiempo de bloqueo, etc.
+│       └── SettingsActivity.java      #  cambiar tiempo de bloqueo, borrar bóveda
 │
 ├── crypto/
 │   ├── CryptoUtils.java               # Motor: AES-256-GCM, PBKDF2, generación de Salt/IV
@@ -141,7 +163,7 @@ com.clef/
 │       └── FirebaseManager.java       # Sube y baja Caja A, Caja B, Salt y Bóveda a Firestore
 │
 └── utils/
-    ├── SessionManager.java            # Cronómetro de sesión para el Auto-Lock de 60s
+    ├── SessionManager.java            # Cronómetro de sesión para el Auto-Lock
     ├── PasswordGenerator.java         # Genera contraseñas fuertes aleatorias
     └── ClipboardHelper.java           # Copia al portapapeles y programa su borrado a los 45s
 ```
@@ -176,7 +198,7 @@ com.clef/
 6. KEK-Master sobrescrita en RAM. DEK permanece en SessionManager hasta Auto-Lock.
 ```
 
-> ℹ️ **La Caja B no interviene en el login diario.** Solo se descarga en el flujo de recuperación con PUK.
+> ℹ️ La Caja B no interviene en el login diario. Solo se descarga en el flujo de recuperación con PUK.
 
 ### Recuperación con PUK
 
@@ -200,7 +222,7 @@ onStop() → ClefApp inicia Handler(60s)
         ¿Vuelve el usuario?
          ├── SÍ (< 60s) → Handler cancelado. Sesión continúa.
          └── NO (≥ 60s) → SessionManager.clearDek()  [sobrescribe byte[] con ceros]
-                              └── Al abrir: solicita Contraseña Maestra / huella
+                              └── Al abrir: solicita Contraseña Maestra
 ```
 
 ---
@@ -217,8 +239,8 @@ onStop() → ClefApp inicia Handler(60s)
 
 ```bash
 # 1. Clonar
-git clone https://github.com/tu-usuario/clef.git
-cd clef
+git clone https://github.com/Royalthi13/Clef.git
+cd Clef
 ```
 
 2. Abre el proyecto en **Android Studio**
@@ -237,7 +259,7 @@ cd clef
 
 ### Reglas de Firestore
 
-```javascript
+```
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -255,13 +277,11 @@ service cloud.firestore {
 
 > **La Contraseña Maestra no es recuperable por la aplicación.** Esto es una característica de diseño, no un fallo. El código PUK es el único mecanismo de recuperación y también es de un solo uso.
 
-- Los IVs son únicos por cada operación de cifrado y nunca se reutilizan.
-- El portapapeles se limpia automáticamente a los **45 segundos** tras copiar una contraseña.
-- Las claves en memoria (`byte[]`, `char[]`) se sobrescriben con ceros (`Arrays.fill(key, (byte) 0x00)`) inmediatamente tras su uso.
+- Los **IVs son únicos** por cada operación de cifrado y nunca se reutilizan.
+- El **portapapeles se limpia automáticamente** a los 45 segundos tras copiar una contraseña.
+- Las **claves en memoria** (`byte[]`, `char[]`) se sobrescriben con ceros (`Arrays.fill(key, (byte) 0x00)`) inmediatamente tras su uso.
 - `allowBackup="false"` en el Manifest impide que Android Backup exponga datos cifrados.
-- El tráfico HTTP en claro está deshabilitado mediante `network_security_config.xml`.
-
----
+- El **tráfico HTTP en claro está deshabilitado** mediante `network_security_config.xml`.
 
 ---
 
@@ -273,5 +293,5 @@ Desarrollado con fines académicos.
 ---
 
 <div align="center">
-  <sub>Construido con 🔐 y mucho café · La llave siempre estuvo contigo</sub>
+  Construido con 🔐 y mucho café &nbsp;·&nbsp; <i>La llave siempre estuvo contigo</i>
 </div>
