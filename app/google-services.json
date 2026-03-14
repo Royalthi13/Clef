@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "790551888752",
+    "project_id": "clef-efe86",
+    "storage_bucket": "clef-efe86.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:790551888752:android:436aa61302913d3f5f45b5",
+        "android_client_info": {
+          "package_name": "com.example.clef"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAqct0D6VwQgz2E6KpVkzteqTb_TMSWe_0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
