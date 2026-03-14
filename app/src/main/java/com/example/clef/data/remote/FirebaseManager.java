@@ -150,6 +150,33 @@ public class FirebaseManager {
         return Base64.decode(value, Base64.NO_WRAP);
     }
 
+    // ── BORRADO ───────────────────────────────────────────────────────────────
+
+    /**
+     * Borra el documento del usuario en Firestore.
+     * Elimina todos sus datos de la nube: salt, cajaA, cajaB y vault.
+     * Se llama cuando el usuario quiere eliminar su cuenta.
+     *
+     * IMPORTANTE: Esta accion es irreversible. Si el usuario no tiene
+     * copia de sus contraseñas, las perdera para siempre.
+     *
+     * @return Task que avisa cuando Firebase confirma que se ha borrado.
+     */
+    public Task<Void> deleteUserData() {
+        return userDoc().delete();
+    }
+
+    /**
+     * Elimina la cuenta del usuario de Firebase Auth.
+     * Despues de esto el usuario no podra volver a iniciar sesion con esa cuenta.
+     * Se llama justo despues de borrar los datos de Firestore con deleteUserData().
+     *
+     * @return Task que avisa cuando Firebase confirma que la cuenta ha sido eliminada.
+     */
+    public Task<Void> deleteAuthAccount() {
+        return auth.getCurrentUser().delete();
+    }
+
     // ── PRIVADO ───────────────────────────────────────────────────────────────
 
     /**

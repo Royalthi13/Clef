@@ -208,6 +208,34 @@ public class VaultRepository {
         fileManager.deleteVault();
     }
 
+    // ── BORRADO ───────────────────────────────────────────────────────────────
+
+    /**
+     * Elimina completamente la cuenta del usuario.
+     * Borra en este orden:
+     *   1. El documento de Firestore con todos los blobs cifrados.
+     *   2. La cuenta de Firebase Auth.
+     *   3. El vault guardado en el movil.
+     *
+     * IMPORTANTE: Esta accion es irreversible. El usuario perdera todas
+     * sus contraseñas si no las ha anotado antes.
+     *
+     * @param callback onSuccess cuando todo se ha borrado, onError si algo fallo.
+     *                 Si falla el paso 1 o 2, el vault local no se borra para
+     *                 no dejar al usuario sin nada en caso de reintento.
+     */
+    public void deleteAccount(Callback<Void> callback) {
+        firebaseManager.deleteUserData()
+                .addOnSuccessListener(unused ->
+                        firebaseManager.deleteAuthAccount()
+                                .addOnSuccessListener(v -> {
+                                    clearLocalVault();
+                                    callback.onSuccess(null);
+                                })
+                                .addOnFailureListener(callback::onError))
+                .addOnFailureListener(callback::onError);
+    }
+
     // ── PRIVADO ───────────────────────────────────────────────────────────────
 
     /** Guarda el vault en el móvil ignorando el error si falla (es solo caché). */
