@@ -27,7 +27,7 @@ local.properties
 keystore.properties
 
 # ==========================================
-# 4. FIREBASE (Nota de Arquitectura)
+# 4. FIREBASE (Secretos)
 # ==========================================
-# El archivo google-services.json SÍ se sube al repositorio.
-# (Explicación de defensa abajo)
+# Contiene API keys y configuración sensible de Firebase
+google-services.json
