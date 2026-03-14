@@ -1,4 +1,10 @@
 # ==========================================
+# 0. HERRAMIENTAS LOCALES
+# ==========================================
+# Configuracion local de Claude Code, no es parte del proyecto
+.claude/
+
+# ==========================================
 # 1. ENTORNO DE DESARROLLO (Basura del IDE)
 # ==========================================
 *.iml
