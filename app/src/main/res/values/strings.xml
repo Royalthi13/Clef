@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Clef</string>
+    <string name="sign_in_google">Iniciar sesión con Google</string>
 </resources>

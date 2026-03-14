@@ -46,7 +46,7 @@ dependencies {
     androidTestImplementation(libs.espresso.core)
 
     // 1. Firebase y Google Login (BOM 33.1.2 - La versión más sólida)
-    implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
+    implementation(platform("com.google.firebase:firebase-bom:34.10.0"))
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-firestore")
     implementation("com.google.android.gms:play-services-auth:21.2.0")
