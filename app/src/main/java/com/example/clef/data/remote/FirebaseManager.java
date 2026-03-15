@@ -120,11 +120,10 @@ public class FirebaseManager {
      */
     public Task<Boolean> userExists() {
         return userDoc().get().continueWith(task -> {
-            if (task.isSuccessful()) {
-                DocumentSnapshot doc = task.getResult();
-                return doc != null && doc.exists();
-            }
-            return false;
+            // Si la tarea falló, task.getResult() lanza la excepción y llega a onFailureListener.
+            // Así distinguimos "usuario no existe" (false) de "error de red" (excepción).
+            DocumentSnapshot doc = task.getResult();
+            return doc != null && doc.exists();
         });
     }
 

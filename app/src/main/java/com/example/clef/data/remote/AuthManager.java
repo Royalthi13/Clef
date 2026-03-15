@@ -96,6 +96,32 @@ public class AuthManager {
     }
 
     /**
+     * Inicia sesión con correo y contraseña en Firebase.
+     *
+     * @param email    Correo del usuario.
+     * @param password Contraseña del usuario.
+     * @param callback Resultado con el FirebaseUser o el error.
+     */
+    public void signInWithEmail(String email, String password, AuthCallback callback) {
+        auth.signInWithEmailAndPassword(email, password)
+                .addOnSuccessListener(result -> callback.onResult(result.getUser(), null))
+                .addOnFailureListener(e -> callback.onResult(null, e));
+    }
+
+    /**
+     * Registra un nuevo usuario con correo y contraseña en Firebase.
+     *
+     * @param email    Correo del nuevo usuario.
+     * @param password Contraseña del nuevo usuario.
+     * @param callback Resultado con el FirebaseUser o el error.
+     */
+    public void registerWithEmail(String email, String password, AuthCallback callback) {
+        auth.createUserWithEmailAndPassword(email, password)
+                .addOnSuccessListener(result -> callback.onResult(result.getUser(), null))
+                .addOnFailureListener(e -> callback.onResult(null, e));
+    }
+
+    /**
      * Comprueba si hay algún usuario con sesión iniciada en Firebase.
      *
      * @return El FirebaseUser si hay sesión activa, o null si no hay nadie logueado.

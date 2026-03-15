@@ -1,4 +1,11 @@
 <resources>
     <string name="app_name">Clef</string>
-    <string name="sign_in_google">Iniciar sesión con Google</string>
+    <string name="sign_in_google">Continuar con Google</string>
+    <string name="sign_in_email">Iniciar sesión</string>
+    <string name="register_email">Crear cuenta</string>
+    <string name="hint_email">Correo electrónico</string>
+    <string name="hint_password">Contraseña</string>
+    <string name="divider_or">o</string>
+    <string name="nav_vault">Bóveda</string>
+    <string name="nav_settings">Ajustes</string>
 </resources>

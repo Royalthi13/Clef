@@ -16,11 +16,7 @@ import com.example.clef.data.remote.FirebaseManager;
 import com.example.clef.ui.dashboard.MainActivity;
 import com.example.clef.ui.setup.CreateMasterActivity;
 import com.google.android.material.button.MaterialButton;
-
-// LoginActivity muestra el botón de Google Sign-In.
-// Tras autenticarse, comprueba si el usuario ya existe en Firestore para decidir
-// si va a crear la bóveda por primera vez o a desbloquearla.
-//Losiento por tocarlo pero lo necesitaba para ver la BBDD de Firebase
+import com.google.android.material.textfield.TextInputEditText;
 
 public class LoginActivity extends AppCompatActivity {
 
@@ -28,6 +24,10 @@ public class LoginActivity extends AppCompatActivity {
     private FirebaseManager firebaseManager;
     private ProgressBar progressBar;
     private MaterialButton btnGoogleSignIn;
+    private MaterialButton btnEmailSignIn;
+    private MaterialButton btnEmailRegister;
+    private TextInputEditText etEmail;
+    private TextInputEditText etPassword;
 
     private final ActivityResultLauncher<Intent> signInLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
@@ -38,7 +38,7 @@ public class LoginActivity extends AppCompatActivity {
                             checkUserAndNavigate();
                         } else {
                             setLoading(false);
-                            Toast.makeText(this, "Error al iniciar sesión", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(this, "Error al iniciar sesión con Google", Toast.LENGTH_SHORT).show();
                         }
                     });
                 }
@@ -54,11 +54,66 @@ public class LoginActivity extends AppCompatActivity {
 
         progressBar = findViewById(R.id.progressBar);
         btnGoogleSignIn = findViewById(R.id.btnGoogleSignIn);
+        btnEmailSignIn = findViewById(R.id.btnEmailSignIn);
+        btnEmailRegister = findViewById(R.id.btnEmailRegister);
+        etEmail = findViewById(R.id.etEmail);
+        etPassword = findViewById(R.id.etPassword);
 
         btnGoogleSignIn.setOnClickListener(v -> {
             setLoading(true);
             signInLauncher.launch(authManager.getGoogleSignInIntent());
         });
+
+        btnEmailSignIn.setOnClickListener(v -> {
+            String email = getEmail();
+            String password = getPassword();
+            if (email == null || password == null) return;
+
+            setLoading(true);
+            authManager.signInWithEmail(email, password, (user, error) -> {
+                if (user != null) {
+                    checkUserAndNavigate();
+                } else {
+                    setLoading(false);
+                    Toast.makeText(this, "Correo o contraseña incorrectos", Toast.LENGTH_SHORT).show();
+                }
+            });
+        });
+
+        btnEmailRegister.setOnClickListener(v -> {
+            String email = getEmail();
+            String password = getPassword();
+            if (email == null || password == null) return;
+
+            setLoading(true);
+            authManager.registerWithEmail(email, password, (user, error) -> {
+                if (user != null) {
+                    checkUserAndNavigate();
+                } else {
+                    setLoading(false);
+                    String msg = error != null ? error.getMessage() : "Error al crear la cuenta";
+                    Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
+                }
+            });
+        });
+    }
+
+    private String getEmail() {
+        String email = etEmail.getText() != null ? etEmail.getText().toString().trim() : "";
+        if (email.isEmpty()) {
+            etEmail.setError("Introduce tu correo");
+            return null;
+        }
+        return email;
+    }
+
+    private String getPassword() {
+        String password = etPassword.getText() != null ? etPassword.getText().toString() : "";
+        if (password.length() < 6) {
+            etPassword.setError("Mínimo 6 caracteres");
+            return null;
+        }
+        return password;
     }
 
     private void checkUserAndNavigate() {
@@ -82,5 +137,7 @@ public class LoginActivity extends AppCompatActivity {
     private void setLoading(boolean loading) {
         progressBar.setVisibility(loading ? View.VISIBLE : View.GONE);
         btnGoogleSignIn.setEnabled(!loading);
+        btnEmailSignIn.setEnabled(!loading);
+        btnEmailRegister.setEnabled(!loading);
     }
 }

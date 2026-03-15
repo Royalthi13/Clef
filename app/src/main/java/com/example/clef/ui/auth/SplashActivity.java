@@ -2,6 +2,8 @@ package com.example.clef.ui.auth;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -11,14 +13,20 @@ import com.example.clef.data.remote.FirebaseManager;
 import com.example.clef.ui.dashboard.MainActivity;
 import com.example.clef.ui.setup.CreateMasterActivity;
 
-// SplashActivity es el punto de entrada real de la app.
-// Comprueba si hay sesión de Firebase activa y si el usuario ya existe en Firestore,
-// y redirige a la pantalla correcta sin que el usuario tenga que hacer nada.
-
 public class SplashActivity extends AppCompatActivity {
+
+    private static final int TIMEOUT_MS = 8000;
 
     private AuthManager authManager;
     private FirebaseManager firebaseManager;
+
+    private final Handler timeoutHandler = new Handler(Looper.getMainLooper());
+    private boolean navigated = false;
+
+    private final Runnable timeoutRunnable = () -> {
+        // Si Firebase no responde en 8 segundos, mandamos al Login
+        goTo(LoginActivity.class);
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -29,24 +37,32 @@ public class SplashActivity extends AppCompatActivity {
         firebaseManager = new FirebaseManager();
 
         if (authManager.getCurrentUser() == null) {
-            // Sin sesión → ir a Login
             goTo(LoginActivity.class);
         } else {
-            // Con sesión → comprobar si ya tiene bóveda en Firestore
-            firebaseManager.userExists().addOnSuccessListener(exists -> {
-                if (exists) {
-                    goTo(MainActivity.class); // usuario conocido → desbloquear bóveda
-                } else {
-                    goTo(CreateMasterActivity.class); // usuario nuevo → crear Master Password
-                }
-            }).addOnFailureListener(e -> {
-                // Sin conexión → ir a Login para que reintente
-                goTo(LoginActivity.class);
-            });
+            timeoutHandler.postDelayed(timeoutRunnable, TIMEOUT_MS);
+
+            firebaseManager.userExists()
+                    .addOnSuccessListener(exists -> {
+                        if (exists) {
+                            goTo(MainActivity.class);
+                        } else {
+                            goTo(CreateMasterActivity.class);
+                        }
+                    })
+                    .addOnFailureListener(e -> goTo(LoginActivity.class));
         }
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        timeoutHandler.removeCallbacks(timeoutRunnable);
+    }
+
     private void goTo(Class<?> destination) {
+        if (navigated) return;
+        navigated = true;
+        timeoutHandler.removeCallbacks(timeoutRunnable);
         startActivity(new Intent(this, destination));
         finish();
     }
