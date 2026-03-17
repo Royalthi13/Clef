@@ -122,6 +122,33 @@ public class AuthManager {
     }
 
     /**
+     * Envía un email de verificación al usuario recién registrado.
+     * Hay que llamarlo justo después de crear la cuenta.
+     *
+     * @param callback Se llama con null si el email se envió, o con el error si falló.
+     */
+    public void sendEmailVerification(AuthCallback callback) {
+        FirebaseUser user = auth.getCurrentUser();
+        if (user == null) {
+            callback.onResult(null, new Exception("No hay usuario autenticado"));
+            return;
+        }
+        user.sendEmailVerification()
+                .addOnSuccessListener(v -> callback.onResult(null, null))
+                .addOnFailureListener(e -> callback.onResult(null, e));
+    }
+
+    /**
+     * Comprueba si el usuario actual tiene el email verificado.
+     *
+     * @return true si el email está verificado, false si no.
+     */
+    public boolean isEmailVerified() {
+        FirebaseUser user = auth.getCurrentUser();
+        return user != null && user.isEmailVerified();
+    }
+
+    /**
      * Envía un email de recuperación de contraseña al correo indicado.
      *
      * @param email    Correo del usuario que quiere recuperar su contraseña.

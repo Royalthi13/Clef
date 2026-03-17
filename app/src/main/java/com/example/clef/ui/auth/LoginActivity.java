@@ -91,7 +91,27 @@ public class LoginActivity extends AppCompatActivity {
             setLoading(true);
             authManager.signInWithEmail(email, password, (user, error) -> {
                 if (user != null) {
-                    checkUserAndNavigate();
+                    if (!authManager.isEmailVerified()) {
+                        setLoading(false);
+                        authManager.signOut(this, () -> {});
+                        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                                .setTitle("Email no verificado")
+                                .setMessage("Debes verificar tu correo antes de acceder. Revisa tu bandeja de entrada y la carpeta de spam.")
+                                .setPositiveButton("Reenviar email", (dialog, which) ->
+                                        authManager.signInWithEmail(email, password, (u, e) -> {
+                                            if (u != null) {
+                                                authManager.sendEmailVerification((v2, e2) ->
+                                                        Toast.makeText(this, "Email de verificación reenviado", Toast.LENGTH_LONG).show()
+                                                );
+                                                authManager.signOut(this, () -> {});
+                                            }
+                                        })
+                                )
+                                .setNegativeButton("Cerrar", null)
+                                .show();
+                    } else {
+                        checkUserAndNavigate();
+                    }
                 } else {
                     setLoading(false);
                     Toast.makeText(this, "Correo o contraseña incorrectos", Toast.LENGTH_SHORT).show();
@@ -99,22 +119,8 @@ public class LoginActivity extends AppCompatActivity {
             });
         });
 
-        btnEmailRegister.setOnClickListener(v -> {
-            String email = getEmail();
-            String password = getPassword();
-            if (email == null || password == null) return;
-
-            setLoading(true);
-            authManager.registerWithEmail(email, password, (user, error) -> {
-                if (user != null) {
-                    checkUserAndNavigate();
-                } else {
-                    setLoading(false);
-                    String msg = error != null ? error.getMessage() : "Error al crear la cuenta";
-                    Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
-                }
-            });
-        });
+        btnEmailRegister.setOnClickListener(v ->
+                startActivity(new Intent(this, RegisterActivity.class)));
     }
 
     private String getEmail() {
