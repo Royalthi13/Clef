@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -58,6 +59,24 @@ public class LoginActivity extends AppCompatActivity {
         btnEmailRegister = findViewById(R.id.btnEmailRegister);
         etEmail = findViewById(R.id.etEmail);
         etPassword = findViewById(R.id.etPassword);
+
+        TextView tvForgotPassword = findViewById(R.id.tvForgotPassword);
+        tvForgotPassword.setOnClickListener(v -> {
+            String email = getEmail();
+            if (email == null) return;
+            new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                    .setTitle("Recuperar contraseña")
+                    .setMessage("¿Desea recuperar su contraseña? Se enviará un enlace a " + email)
+                    .setPositiveButton("Sí", (dialog, which) ->
+                            authManager.sendPasswordReset(email, (user, error) -> {
+                                Toast.makeText(this,
+                                        "Mensaje de recuperación enviado",
+                                        Toast.LENGTH_LONG).show();
+                            })
+                    )
+                    .setNegativeButton("Cancelar", null)
+                    .show();
+        });
 
         btnGoogleSignIn.setOnClickListener(v -> {
             setLoading(true);

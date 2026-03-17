@@ -109,8 +109,11 @@
 
                 <!-- ¿Olvidaste tu contraseña? -->
                 <TextView
+                    android:id="@+id/tvForgotPassword"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:clickable="true"
+                    android:focusable="true"
                     android:text="¿Olvidaste tu contraseña?"
                     android:textColor="@color/clef_primary"
                     android:textSize="12sp"

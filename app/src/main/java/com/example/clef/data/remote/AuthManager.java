@@ -122,6 +122,18 @@ public class AuthManager {
     }
 
     /**
+     * Envía un email de recuperación de contraseña al correo indicado.
+     *
+     * @param email    Correo del usuario que quiere recuperar su contraseña.
+     * @param callback Se llama con null si el email se envió, o con el error si falló.
+     */
+    public void sendPasswordReset(String email, AuthCallback callback) {
+        auth.sendPasswordResetEmail(email)
+                .addOnSuccessListener(v -> callback.onResult(null, null))
+                .addOnFailureListener(e -> callback.onResult(null, e));
+    }
+
+    /**
      * Comprueba si hay algún usuario con sesión iniciada en Firebase.
      *
      * @return El FirebaseUser si hay sesión activa, o null si no hay nadie logueado.
