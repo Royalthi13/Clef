@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -44,13 +45,17 @@ public class SettingsFragment extends Fragment {
                 })
         );
 
-        view.findViewById(R.id.btnChangeMaster).setOnClickListener(v -> {
-            // TODO: flujo cambio de contraseña maestra
-        });
+        View rowHelp = view.findViewById(R.id.rowHelp);
+        rowHelp.setOnClickListener(v ->
+                Toast.makeText(requireContext(), "Próximamente", Toast.LENGTH_SHORT).show());
 
-        view.findViewById(R.id.btnDeleteAccount).setOnClickListener(v -> {
-            // TODO: confirmar y borrar cuenta
-        });
+        View rowAutoLock = view.findViewById(R.id.rowAutoLock);
+        rowAutoLock.setOnClickListener(v ->
+                Toast.makeText(requireContext(), "Próximamente", Toast.LENGTH_SHORT).show());
+
+        View rowImportExport = view.findViewById(R.id.rowImportExport);
+        rowImportExport.setOnClickListener(v ->
+                Toast.makeText(requireContext(), "Próximamente", Toast.LENGTH_SHORT).show());
     }
 
     private void setupThemeToggle(View view) {

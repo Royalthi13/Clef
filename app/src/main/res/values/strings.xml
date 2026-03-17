@@ -32,4 +32,19 @@
     <string name="puk_continue">Continuar</string>
     <string name="puk_copied">PUK copiado</string>
     <string name="puk_missing">No se encontró el PUK. Continuando…</string>
+
+    <!-- Settings -->
+    <string name="settings_search">Buscar</string>
+    <string name="settings_security">Seguridad</string>
+    <string name="settings_preferences">Preferencias</string>
+    <string name="settings_biometrics">Biometría</string>
+    <string name="settings_auto_lock">Bloqueo automático</string>
+    <string name="settings_theme">Tema</string>
+    <string name="theme_light">Claro</string>
+    <string name="theme_system">Sistema</string>
+    <string name="theme_dark">Oscuro</string>
+    <string name="settings_import_export">Importar/Exportar Datos</string>
+    <string name="settings_help">Ayuda y Soporte</string>
+    <string name="settings_sign_out">Cerrar Sesión</string>
+    <string name="settings_version">Clef Password Manager v2.4.0</string>
 </resources>
