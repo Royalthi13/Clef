@@ -68,12 +68,16 @@ public class SettingsFragment extends Fragment {
 
         toggleTheme.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
             if (!isChecked) return;
+            int newMode;
             if (checkedId == R.id.btnThemeLight) {
-                ThemeManager.apply(requireContext(), ThemeManager.MODE_LIGHT);
+                newMode = ThemeManager.MODE_LIGHT;
             } else if (checkedId == R.id.btnThemeDark) {
-                ThemeManager.apply(requireContext(), ThemeManager.MODE_DARK);
+                newMode = ThemeManager.MODE_DARK;
             } else {
-                ThemeManager.apply(requireContext(), ThemeManager.MODE_SYSTEM);
+                newMode = ThemeManager.MODE_SYSTEM;
+            }
+            if (newMode != ThemeManager.load(requireContext())) {
+                ThemeManager.apply(requireContext(), newMode);
             }
         });
     }

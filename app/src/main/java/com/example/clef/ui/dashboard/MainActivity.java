@@ -12,8 +12,8 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 public class MainActivity extends AppCompatActivity {
 
-    private final VaultFragment vaultFragment = new VaultFragment();
-    private final SettingsFragment settingsFragment = new SettingsFragment();
+    private VaultFragment vaultFragment;
+    private SettingsFragment settingsFragment;
     private Fragment activeFragment;
 
     @Override
@@ -23,14 +23,23 @@ public class MainActivity extends AppCompatActivity {
 
         FragmentManager fm = getSupportFragmentManager();
 
-        // Registrar los dos fragments al inicio (evita recrearlos al cambiar de pestaña)
-        fm.beginTransaction()
-                .add(R.id.fragmentContainer, settingsFragment, "settings").hide(settingsFragment)
-                .add(R.id.fragmentContainer, vaultFragment, "vault")
-                .commit();
-        activeFragment = vaultFragment;
+        if (savedInstanceState == null) {
+            vaultFragment = new VaultFragment();
+            settingsFragment = new SettingsFragment();
+            fm.beginTransaction()
+                    .add(R.id.fragmentContainer, settingsFragment, "settings").hide(settingsFragment)
+                    .add(R.id.fragmentContainer, vaultFragment, "vault")
+                    .commit();
+            activeFragment = vaultFragment;
+        } else {
+            // Recuperar fragments existentes tras recreación (ej. cambio de tema)
+            vaultFragment = (VaultFragment) fm.findFragmentByTag("vault");
+            settingsFragment = (SettingsFragment) fm.findFragmentByTag("settings");
+            activeFragment = settingsFragment.isHidden() ? vaultFragment : settingsFragment;
+        }
 
         BottomNavigationView bottomNav = findViewById(R.id.bottomNav);
+        bottomNav.setSelectedItemId(activeFragment == settingsFragment ? R.id.nav_settings : R.id.nav_vault);
         bottomNav.setOnItemSelectedListener(item -> {
             int id = item.getItemId();
             if (id == R.id.nav_vault) {
@@ -42,6 +51,12 @@ public class MainActivity extends AppCompatActivity {
             }
             return false;
         });
+    }
+
+    @Override
+    public void recreate() {
+        super.recreate();
+        overridePendingTransition(0, 0);
     }
 
     private void switchTo(Fragment target) {
