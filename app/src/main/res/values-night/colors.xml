@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Paleta oscura -->
-    <color name="clef_primary">#9FA8DA</color>
-    <color name="clef_on_primary">#1A237E</color>
-    <color name="clef_primary_container">#283593</color>
-    <color name="clef_on_primary_container">#C5CAE9</color>
-    <color name="clef_secondary">#7986CB</color>
-    <color name="clef_surface">#1C1B1F</color>
-    <color name="clef_on_surface">#E6E1E5</color>
-    <color name="clef_background">#121212</color>
+    <!-- Paleta oscura (alineada con el mockup HTML) -->
+    <color name="clef_primary">#00BDD6</color>
+    <color name="clef_on_primary">#0F2123</color>
+    <color name="clef_primary_container">#004A54</color>
+    <color name="clef_on_primary_container">#CFF7FB</color>
+    <color name="clef_secondary">#0077B6</color>
+    <color name="clef_surface">#0F2123</color>
+    <color name="clef_on_surface">#E6EDF3</color>
+    <color name="clef_background">#0F2123</color>
 
     <!-- Avisos / warning (oscuro) -->
     <color name="warning_bg">#2D2008</color>

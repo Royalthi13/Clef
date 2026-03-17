@@ -3,15 +3,15 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 
-    <!-- Paleta clara -->
-    <color name="clef_primary">#1A237E</color>
+    <!-- Paleta clara (alineada con el mockup HTML) -->
+    <color name="clef_primary">#00BDD6</color>
     <color name="clef_on_primary">#FFFFFF</color>
-    <color name="clef_primary_container">#C5CAE9</color>
-    <color name="clef_on_primary_container">#000051</color>
-    <color name="clef_secondary">#303F9F</color>
-    <color name="clef_surface">#FAFAFA</color>
-    <color name="clef_on_surface">#1C1B1F</color>
-    <color name="clef_background">#F5F5F5</color>
+    <color name="clef_primary_container">#CFF7FB</color>
+    <color name="clef_on_primary_container">#00363D</color>
+    <color name="clef_secondary">#0077B6</color>
+    <color name="clef_surface">#F0F4F8</color>
+    <color name="clef_on_surface">#0F172A</color>
+    <color name="clef_background">#F0F4F8</color>
 
     <!-- Avisos / warning (claro) -->
     <color name="warning_bg">#FFFBEB</color>
