@@ -13,6 +13,10 @@
     <color name="clef_on_surface">#0F172A</color>
     <color name="clef_background">#F0F4F8</color>
 
+    <!-- Superficie de tarjetas y bordes -->
+    <color name="clef_card_surface">#FFFFFF</color>
+    <color name="clef_border">#E2E8F0</color>
+
     <!-- Avisos / warning (claro) -->
     <color name="warning_bg">#FFFBEB</color>
     <color name="warning_stroke">#FDE68A</color>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Shield -->
+    <path
+        android:fillColor="@color/clef_primary"
+        android:pathData="M12,2L4,5.5V11c0,4.25 3.18,8.22 8,9.5 4.82,-1.28 8,-5.25 8,-9.5V5.5L12,2z" />
+    <!-- Lock shackle -->
+    <path
+        android:fillColor="@color/clef_on_primary"
+        android:pathData="M14.5,10.5V9c0,-1.38 -1.12,-2.5 -2.5,-2.5S9.5,7.62 9.5,9v1.5H9v4.5h6v-4.5H14.5zM12,7.5c0.83,0 1.5,0.67 1.5,1.5v1.5h-3V9C10.5,8.17 11.17,7.5 12,7.5zM12.75,13.5h-1.5v-1.5h1.5V13.5z" />
+</vector>
