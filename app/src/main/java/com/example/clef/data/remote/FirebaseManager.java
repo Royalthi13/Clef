@@ -134,6 +134,18 @@ public class FirebaseManager {
         });
     }
 
+    /**
+     * Comprueba si el documento del usuario existe en Firestore.
+     * Útil para decidir si el usuario debe pasar por el setup inicial.
+     */
+    public Task<Boolean> userExists() {
+        return userDoc().get().continueWith(task -> {
+            if (!task.isSuccessful()) return false;
+            DocumentSnapshot doc = task.getResult();
+            return doc != null && doc.exists();
+        });
+    }
+
     // ── Borrado ───────────────────────────────────────────────────────────────
 
     /** Borra el documento del usuario en Firestore. */
