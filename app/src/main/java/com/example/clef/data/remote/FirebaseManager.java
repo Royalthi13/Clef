@@ -1,8 +1,7 @@
 package com.example.clef.data.remote;
 
-import android.util.Base64;
-
 import com.google.android.gms.tasks.Task;
+import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
@@ -12,23 +11,43 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Esta clase se comunica con la base de datos en la nube (Firebase Firestore).
+ * Comunicación con Firebase Firestore.
  *
- * Cada usuario tiene un documento en Firestore con 4 campos:
- *   - salt:  bytes aleatorios usados para derivar la clave con PBKDF2
- *   - cajaA: la DEK cifrada con la Contraseña Maestra (para el login diario)
- *   - cajaB: la DEK cifrada con el PUK (para recuperar la cuenta)
- *   - vault: el archivo con todas las contraseñas, cifrado con la DEK
+ * Cada usuario tiene un documento en /users/{uid} con 4 campos en Base64:
+ * salt, cajaA, cajaB, vault.
  *
- * Los 4 campos se guardan en Base64 (texto), porque Firestore trabaja con texto,
- * no con bytes en bruto.
- *
- * Arquitectura Zero-Knowledge: Firebase NUNCA ve datos en claro.
- * Solo recibe y devuelve blobs cifrados que no puede leer.
- *
- * No usar directamente desde UI ni Crypto. Usar a través de VaultRepository.
+ * Esta clase es la única que conoce los nombres de esos campos.
+ * El resto del proyecto trabaja con el DTO UserData, no con DocumentSnapshot.
+ * No usar directamente desde UI. Usar a través de VaultRepository.
  */
 public class FirebaseManager {
+
+    // ── DTO de datos del usuario ───────────────────────────────────────────────
+
+    /**
+     * Objeto tipado con los datos del usuario descargados de Firestore.
+     * Evita que las capas superiores dependan de los nombres de campo internos.
+     */
+    public static class UserData {
+        public final String salt;
+        public final String cajaA;
+        public final String cajaB;
+        public final String vault;
+
+        UserData(String salt, String cajaA, String cajaB, String vault) {
+            this.salt  = salt;
+            this.cajaA = cajaA;
+            this.cajaB = cajaB;
+            this.vault = vault;
+        }
+
+        /** true si el usuario tiene Contraseña Maestra configurada. */
+        public boolean hasMasterPassword() {
+            return cajaA != null && !cajaA.isEmpty();
+        }
+    }
+
+    // ── Constantes internas ────────────────────────────────────────────────────
 
     private static final String COLLECTION_USERS = "users";
     private static final String FIELD_SALT        = "salt";
@@ -39,161 +58,100 @@ public class FirebaseManager {
     private final FirebaseFirestore db;
     private final FirebaseAuth      auth;
 
-    /**
-     * Crea el FirebaseManager.
-     * Obtiene automáticamente las instancias de Firestore y FirebaseAuth.
-     */
     public FirebaseManager() {
         this.db   = FirebaseFirestore.getInstance();
         this.auth = FirebaseAuth.getInstance();
     }
 
-    // ── SUBIDA ────────────────────────────────────────────────────────────────
+    // ── Subida ────────────────────────────────────────────────────────────────
 
     /**
-     * Sube el salt y las dos cajas (A y B) a Firestore. Solo se llama UNA VEZ,
-     * cuando el usuario se registra por primera vez y crea su Contraseña Maestra.
-     * Crea el documento del usuario en Firestore desde cero.
-     *
-     * @param salt  Bytes del salt generados aleatoriamente por CryptoUtils.
-     * @param cajaA Bytes de la DEK cifrada con la Contraseña Maestra. Viene de CryptoUtils.
-     * @param cajaB Bytes de la DEK cifrada con el PUK de emergencia. Viene de CryptoUtils.
-     * @return      Task que avisa cuando Firebase confirma que se ha guardado.
+     * Crea el documento del usuario con todos los campos en una sola escritura.
+     * Solo se llama una vez, en el registro.
      */
-    public Task<Void> uploadKeys(byte[] salt, byte[] cajaA, byte[] cajaB) {
+    public Task<Void> uploadAll(String salt, String cajaA, String cajaB, String vault) {
         Map<String, Object> data = new HashMap<>();
-        data.put(FIELD_SALT,   Base64.encodeToString(salt,   Base64.NO_WRAP));
-        data.put(FIELD_CAJA_A, Base64.encodeToString(cajaA, Base64.NO_WRAP));
-        data.put(FIELD_CAJA_B, Base64.encodeToString(cajaB, Base64.NO_WRAP));
+        data.put(FIELD_SALT,   salt);
+        data.put(FIELD_CAJA_A, cajaA);
+        data.put(FIELD_CAJA_B, cajaB);
+        data.put(FIELD_VAULT,  vault);
         return userDoc().set(data);
     }
 
-    /**
-     * Sube el vault cifrado a Firestore. Se llama cada vez que el usuario
-     * añade, edita o borra una credencial.
-     * El documento del usuario ya debe existir (creado antes con uploadKeys).
-     *
-     * @param encryptedVault Bytes del vault cifrado con AES-256-GCM. Viene de CryptoUtils.
-     * @return               Task que avisa cuando Firebase confirma que se ha guardado.
-     */
-    public Task<Void> uploadVault(byte[] encryptedVault) {
+    /** Actualiza solo el vault. Se llama cada vez que cambian las credenciales. */
+    public Task<Void> uploadVault(String vault) {
         Map<String, Object> data = new HashMap<>();
-        data.put(FIELD_VAULT, Base64.encodeToString(encryptedVault, Base64.NO_WRAP));
+        data.put(FIELD_VAULT, vault);
         return userDoc().update(data);
     }
 
-    /**
-     * Actualiza solo la cajaA en Firestore. Se llama cuando el usuario
-     * cambia su Contraseña Maestra y hay que re-cifrar la DEK con la nueva clave.
-     * No toca los otros campos (salt, cajaB, vault).
-     *
-     * @param cajaA Bytes de la DEK cifrada con la NUEVA Contraseña Maestra. Viene de CryptoUtils.
-     * @return      Task que avisa cuando Firebase confirma que se ha actualizado.
-     */
-    public Task<Void> uploadCajaA(byte[] cajaA) {
+    /** Actualiza solo la cajaA. Se llama cuando el usuario cambia su Contraseña Maestra. */
+    public Task<Void> uploadCajaA(String cajaA) {
         Map<String, Object> data = new HashMap<>();
-        data.put(FIELD_CAJA_A, Base64.encodeToString(cajaA, Base64.NO_WRAP));
+        data.put(FIELD_CAJA_A, cajaA);
         return userDoc().update(data);
     }
 
-    // ── DESCARGA ──────────────────────────────────────────────────────────────
+    // ── Descarga ──────────────────────────────────────────────────────────────
 
     /**
-     * Descarga el documento completo del usuario desde Firestore.
-     * Contiene los 4 campos: salt, cajaA, cajaB y vault.
-     * Para leer cada campo como bytes, usar el método getBytes() de abajo.
-     *
-     * @return Task que devuelve el DocumentSnapshot con todos los campos del usuario.
+     * Descarga el documento del usuario y lo devuelve como UserData tipado.
+     * Si el documento no existe, devuelve null dentro del Task.
      */
-    public Task<DocumentSnapshot> downloadUserData() {
-        return userDoc().get();
-    }
-
-    // ── ESTADO ────────────────────────────────────────────────────────────────
-
-    /**
-     * Comprueba si el usuario ya tiene un documento en Firestore.
-     * Se usa al iniciar sesión para saber si es un usuario nuevo (ir a registro)
-     * o uno que ya existe (ir a desbloquear la bóveda).
-     *
-     * @return Task que devuelve true si el documento existe, false si es nuevo.
-     */
-    public Task<Boolean> userExists() {
+    public Task<UserData> downloadUserData() {
         return userDoc().get().continueWith(task -> {
-            // Si la tarea falló, task.getResult() lanza la excepción y llega a onFailureListener.
-            // Así distinguimos "usuario no existe" (false) de "error de red" (excepción).
+            if (!task.isSuccessful() || task.getResult() == null) {
+                throw task.getException() != null
+                        ? task.getException()
+                        : new Exception("Error desconocido al descargar datos.");
+            }
             DocumentSnapshot doc = task.getResult();
-            return doc != null && doc.exists();
+            if (!doc.exists()) return null;
+
+            return new UserData(
+                    doc.getString(FIELD_SALT),
+                    doc.getString(FIELD_CAJA_A),
+                    doc.getString(FIELD_CAJA_B),
+                    doc.getString(FIELD_VAULT)
+            );
         });
     }
 
-    // ── HELPERS ───────────────────────────────────────────────────────────────
+    // ── Estado ────────────────────────────────────────────────────────────────
 
     /**
-     * Método de ayuda para leer un campo del documento descargado de Firestore.
-     * Los campos están guardados en Base64 (texto). Este método los convierte
-     * de vuelta a bytes para que CryptoUtils pueda trabajar con ellos.
-     *
-     * Ejemplo de uso:
-     *   byte[] salt  = FirebaseManager.getBytes(doc, "salt");
-     *   byte[] cajaA = FirebaseManager.getBytes(doc, "cajaA");
-     *   byte[] vault = FirebaseManager.getBytes(doc, "vault");
-     *
-     * @param doc   El documento descargado con downloadUserData().
-     * @param field El nombre del campo que quieres leer: "salt", "cajaA", "cajaB" o "vault".
-     * @return      Los bytes del campo, o null si ese campo no existe en el documento.
+     * Comprueba si el usuario ya tiene Contraseña Maestra configurada.
+     * Verifica que cajaA existe y no está vacía — más fiable que solo
+     * comprobar si el documento existe.
      */
-    public static byte[] getBytes(DocumentSnapshot doc, String field) {
-        String value = doc.getString(field);
-        if (value == null) return null;
-        return Base64.decode(value, Base64.NO_WRAP);
+    public Task<Boolean> userHasMasterPassword() {
+        return userDoc().get().continueWith(task -> {
+            if (!task.isSuccessful()) return false;
+            DocumentSnapshot doc = task.getResult();
+            if (doc == null || !doc.exists()) return false;
+            String cajaA = doc.getString(FIELD_CAJA_A);
+            return cajaA != null && !cajaA.isEmpty();
+        });
     }
 
-    // ── BORRADO ───────────────────────────────────────────────────────────────
+    // ── Borrado ───────────────────────────────────────────────────────────────
 
-    /**
-     * Borra el documento del usuario en Firestore.
-     * Elimina todos sus datos de la nube: salt, cajaA, cajaB y vault.
-     * Se llama cuando el usuario quiere eliminar su cuenta.
-     *
-     * IMPORTANTE: Esta accion es irreversible. Si el usuario no tiene
-     * copia de sus contraseñas, las perdera para siempre.
-     *
-     * @return Task que avisa cuando Firebase confirma que se ha borrado.
-     */
+    /** Borra el documento del usuario en Firestore. */
     public Task<Void> deleteUserData() {
         return userDoc().delete();
     }
 
-    /**
-     * Elimina la cuenta del usuario de Firebase Auth.
-     * Despues de esto el usuario no podra volver a iniciar sesion con esa cuenta.
-     * Se llama justo despues de borrar los datos de Firestore con deleteUserData().
-     *
-     * @return Task que avisa cuando Firebase confirma que la cuenta ha sido eliminada.
-     */
+    /** Elimina la cuenta de Firebase Auth. Llamar después de deleteUserData(). */
     public Task<Void> deleteAuthAccount() {
         return auth.getCurrentUser().delete();
     }
 
-    // ── PRIVADO ───────────────────────────────────────────────────────────────
+    // ── Privado ───────────────────────────────────────────────────────────────
 
-    /**
-     * Devuelve el UID del usuario que tiene sesión iniciada en Firebase.
-     * El UID es un identificador único que Firebase asigna a cada cuenta.
-     *
-     * @return UID del usuario actual como String.
-     */
     private String getUid() {
         return auth.getCurrentUser().getUid();
     }
 
-    /**
-     * Devuelve la referencia al documento de este usuario en Firestore.
-     * La ruta del documento es: /users/{uid}
-     *
-     * @return Referencia al documento del usuario actual.
-     */
     private DocumentReference userDoc() {
         return db.collection(COLLECTION_USERS).document(getUid());
     }
