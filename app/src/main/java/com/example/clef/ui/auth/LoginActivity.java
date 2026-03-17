@@ -66,7 +66,7 @@ public class LoginActivity extends AppCompatActivity {
             if (email == null) return;
             new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
                     .setTitle("Recuperar contraseña")
-                    .setMessage("¿Desea recuperar su contraseña? Se enviará un enlace a " + email)
+                    .setMessage("¿Desea recuperar su contraseña? Se enviará un enlace a " + email + ".\n\nRevisa también la carpeta de spam.")
                     .setPositiveButton("Sí", (dialog, which) ->
                             authManager.sendPasswordReset(email, (user, error) -> {
                                 Toast.makeText(this,
