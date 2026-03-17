@@ -15,7 +15,10 @@
 
     <!-- Superficie de tarjetas y bordes -->
     <color name="clef_card_surface">#FFFFFF</color>
+    <color name="clef_input_surface">#FFFFFF</color>
     <color name="clef_border">#E2E8F0</color>
+    <color name="clef_text_muted">#64748B</color>
+    <color name="clef_nav_inactive">#94A3B8</color>
 
     <!-- Avisos / warning (claro) -->
     <color name="warning_bg">#FFFBEB</color>

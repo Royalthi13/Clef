@@ -5,14 +5,17 @@
     <color name="clef_on_primary">#0A0E14</color>
     <color name="clef_primary_container">#004A54</color>
     <color name="clef_on_primary_container">#CFF7FB</color>
-    <color name="clef_secondary">#00BDD6</color>
+    <color name="clef_secondary">#00E5FF</color>
     <color name="clef_surface">#0A0E14</color>
     <color name="clef_on_surface">#E6EDF3</color>
     <color name="clef_background">#0A0E14</color>
 
     <!-- Superficie de tarjetas y bordes -->
     <color name="clef_card_surface">#161B22</color>
+    <color name="clef_input_surface">#1C2128</color>
     <color name="clef_border">#2D333B</color>
+    <color name="clef_text_muted">#8B949E</color>
+    <color name="clef_nav_inactive">#484F58</color>
 
     <!-- Avisos / warning (oscuro) -->
     <color name="warning_bg">#2D2008</color>

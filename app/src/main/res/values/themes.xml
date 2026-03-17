@@ -7,6 +7,9 @@
         <item name="colorSecondary">@color/clef_secondary</item>
         <item name="colorSurface">@color/clef_surface</item>
         <item name="colorOnSurface">@color/clef_on_surface</item>
+        <item name="colorSurfaceVariant">@color/clef_input_surface</item>
+        <item name="colorOnSurfaceVariant">@color/clef_text_muted</item>
+        <item name="colorOutline">@color/clef_border</item>
         <item name="android:colorBackground">@color/clef_background</item>
     </style>
 
