@@ -8,4 +8,28 @@
     <string name="divider_or">o</string>
     <string name="nav_vault">Bóveda</string>
     <string name="nav_settings">Ajustes</string>
+
+    <!-- Setup: Contraseña maestra -->
+    <string name="master_title">Configurar Contraseña Maestra</string>
+    <string name="master_description">Esta contraseña es la única llave para acceder a tus datos guardados y cifrar tu bóveda personal.</string>
+    <string name="master_password_hint">Contraseña maestra</string>
+    <string name="master_confirm_hint">Confirmar contraseña</string>
+    <string name="master_warning">Esta contraseña no se sincroniza con ningún servidor. Si la olvidas, Clef no podrá ayudarte a recuperar el acceso a tus datos.</string>
+    <string name="master_cta">Crear bóveda</string>
+    <string name="master_strength_placeholder">Fortaleza</string>
+    <string name="master_strength_format">%1$s (%2$d%%)</string>
+    <string name="master_error_required">Introduce tu contraseña</string>
+    <string name="master_error_min_len">Mínimo 8 caracteres</string>
+    <string name="master_error_mismatch">Las contraseñas no coinciden</string>
+    <string name="master_error_crypto_failed">No se pudo crear la bóveda. Inténtalo de nuevo.</string>
+    <string name="master_error_register_failed">Error al guardar tu bóveda. Revisa tu conexión e inténtalo otra vez.</string>
+
+    <!-- Setup: PUK -->
+    <string name="puk_title">Tu código de emergencia (PUK)</string>
+    <string name="puk_description">Guárdalo en un lugar seguro. Lo necesitarás si olvidas tu contraseña maestra.</string>
+    <string name="puk_copy">Copiar PUK</string>
+    <string name="puk_warning">Este código se muestra una sola vez. Clef no puede recuperarlo por ti.</string>
+    <string name="puk_continue">Continuar</string>
+    <string name="puk_copied">PUK copiado</string>
+    <string name="puk_missing">No se encontró el PUK. Continuando…</string>
 </resources>

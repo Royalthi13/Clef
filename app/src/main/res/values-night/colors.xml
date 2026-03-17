@@ -9,4 +9,9 @@
     <color name="clef_surface">#1C1B1F</color>
     <color name="clef_on_surface">#E6E1E5</color>
     <color name="clef_background">#121212</color>
+
+    <!-- Avisos / warning (oscuro) -->
+    <color name="warning_bg">#2D2008</color>
+    <color name="warning_stroke">#F59E0B</color>
+    <color name="warning_text">#E3B341</color>
 </resources>
