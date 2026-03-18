@@ -8,6 +8,8 @@
     <string name="divider_or">o</string>
     <string name="nav_vault">Bóveda</string>
     <string name="nav_settings">Ajustes</string>
+    <string name="nav_generator">Generador</string>
+    <string name="nav_history">Historial</string>
 
     <!-- Setup: Contraseña maestra -->
     <string name="master_title">Configurar Contraseña Maestra</string>
