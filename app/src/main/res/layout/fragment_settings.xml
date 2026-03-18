@@ -304,7 +304,7 @@
                             android:layout_height="wrap_content"
                             android:saveEnabled="false"
                             app:singleSelection="true"
-                            app:selectionRequired="true">
+                            app:selectionRequired="false">
 
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/btnThemeLight"

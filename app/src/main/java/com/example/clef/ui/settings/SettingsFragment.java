@@ -63,24 +63,37 @@ public class SettingsFragment extends Fragment {
 
         // Marcar el botón que corresponde al tema guardado
         int savedMode = ThemeManager.load(requireContext());
-        if (savedMode == AppCompatDelegate.MODE_NIGHT_NO) {
+
+        // Primero limpiamos cualquier selección por defecto
+        toggleTheme.clearChecked();
+
+        // Si savedMode es MODE_SYSTEM, no entra en ningún 'if' y se quedan los dos sin marcar.
+        if (savedMode == ThemeManager.MODE_LIGHT) {
             toggleTheme.check(R.id.btnThemeLight);
-        } else if (savedMode == AppCompatDelegate.MODE_NIGHT_YES) {
+        } else if (savedMode == ThemeManager.MODE_DARK) {
             toggleTheme.check(R.id.btnThemeDark);
-        } else {
-            toggleTheme.check(R.id.btnThemeSystem);
         }
 
         toggleTheme.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
-            if (!isChecked) return;
+
             int newMode;
-            if (checkedId == R.id.btnThemeLight) {
-                newMode = ThemeManager.MODE_LIGHT;
-            } else if (checkedId == R.id.btnThemeDark) {
-                newMode = ThemeManager.MODE_DARK;
+            if (isChecked) {
+                // EL USUARIO HA PULSADO UN BOTÓN
+                if (checkedId == R.id.btnThemeLight) {
+                    newMode = ThemeManager.MODE_LIGHT;
+                } else {
+                    newMode = ThemeManager.MODE_DARK;
+                }
             } else {
-                newMode = ThemeManager.MODE_SYSTEM;
+                // EL USUARIO HA DESMARCADO UN BOTÓN
+                // Preguntamos: ¿Se ha quedado el grupo entero vacío?
+                if (group.getCheckedButtonId() == View.NO_ID) {
+                    newMode = ThemeManager.MODE_SYSTEM; // ¡Magia! Activamos el modo sistema
+                } else {
+                    return; // Ignoramos esto si se desmarcó porque pulsó el otro botón
+                }
             }
+
             if (newMode != ThemeManager.load(requireContext())) {
                 ThemeManager.apply(requireContext(), newMode);
             }
