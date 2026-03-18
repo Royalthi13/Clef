@@ -34,6 +34,18 @@
     <string name="puk_copied">PUK copiado</string>
     <string name="puk_missing">No se encontró el PUK. Continuando…</string>
 
+    <!-- Generator -->
+    <string name="generator_new_password">TU NUEVA CONTRASEÑA</string>
+    <string name="generator_copy_password">Copiar Contraseña</string>
+    <string name="generator_config">CONFIGURACIÓN</string>
+    <string name="generator_length">Longitud</string>
+    <string name="generador_tvlength">%1$d</string><!-- Comodín para insertar desde java -->
+    <string name="generator_capitalcase">Mayúsculas</string>
+    <string name="generator_lowercase">Minúsculas</string>
+    <string name="generator_numbers">Números</string>
+    <string name="generator_symbols">Símbolos</string>
+    <string name="generator_generate_password">Generar contraseña</string>
+
     <!-- Settings -->
     <string name="settings_search">Buscar</string>
     <string name="settings_security">Seguridad</string>

@@ -58,8 +58,8 @@ public class MainActivity extends AppCompatActivity {
             if (id == R.id.nav_vault) {
                 switchTo(vaultFragment);
                 return true;
-            } else if (id == R.id.nav_generator) { // <-- NUEVO: Si toca la llave...
-                switchTo(generatorFragment);       // <-- cambiamos al generador
+            } else if (id == R.id.nav_generator) {
+                switchTo(generatorFragment);
                 return true;
             } else if (id == R.id.nav_settings) {
                 switchTo(settingsFragment);
