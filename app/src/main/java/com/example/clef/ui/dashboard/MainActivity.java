@@ -14,6 +14,7 @@ public class MainActivity extends AppCompatActivity {
 
     private VaultFragment vaultFragment;
     private SettingsFragment settingsFragment;
+    private Fragment generatorFragment;
     private Fragment activeFragment;
 
     @Override
@@ -24,26 +25,41 @@ public class MainActivity extends AppCompatActivity {
         FragmentManager fm = getSupportFragmentManager();
 
         if (savedInstanceState == null) {
+            // Es la primera vez que se abre la app, creamos los 3 fragmentos
             vaultFragment = new VaultFragment();
             settingsFragment = new SettingsFragment();
+            generatorFragment = new GeneratorFragment();
+
+            // Los añadimos todos al contenedor, pero ocultamos los de Ajustes y Generador
             fm.beginTransaction()
                     .add(R.id.fragmentContainer, settingsFragment, "settings").hide(settingsFragment)
+                    .add(R.id.fragmentContainer, generatorFragment, "generator").hide(generatorFragment)
                     .add(R.id.fragmentContainer, vaultFragment, "vault")
                     .commit();
+            // La Bóveda es la que se queda visible por defecto
             activeFragment = vaultFragment;
         } else {
             // Recuperar fragments existentes tras recreación (ej. cambio de tema)
             vaultFragment = (VaultFragment) fm.findFragmentByTag("vault");
+            generatorFragment = (GeneratorFragment) fm.findFragmentByTag("generator");
             settingsFragment = (SettingsFragment) fm.findFragmentByTag("settings");
-            activeFragment = settingsFragment.isHidden() ? vaultFragment : settingsFragment;
+
+            // Averiguamos cuál estaba activo antes de girar la pantalla
+            if (vaultFragment != null && !vaultFragment.isHidden()) activeFragment = vaultFragment;
+            else if (settingsFragment != null && !settingsFragment.isHidden()) activeFragment = settingsFragment;
+            else if (generatorFragment != null && !generatorFragment.isHidden()) activeFragment = generatorFragment;
         }
 
         BottomNavigationView bottomNav = findViewById(R.id.bottomNav);
-        bottomNav.setSelectedItemId(activeFragment == settingsFragment ? R.id.nav_settings : R.id.nav_vault);
+        // Escuchamos qué botón toca el usuario en la barra inferior
         bottomNav.setOnItemSelectedListener(item -> {
             int id = item.getItemId();
+
             if (id == R.id.nav_vault) {
                 switchTo(vaultFragment);
+                return true;
+            } else if (id == R.id.nav_generator) { // <-- NUEVO: Si toca la llave...
+                switchTo(generatorFragment);       // <-- cambiamos al generador
                 return true;
             } else if (id == R.id.nav_settings) {
                 switchTo(settingsFragment);
@@ -59,8 +75,9 @@ public class MainActivity extends AppCompatActivity {
         overridePendingTransition(0, 0);
     }
 
+    // Este es el truco de magia: oculta el actual y muestra el nuevo
     private void switchTo(Fragment target) {
-        if (target == activeFragment) return;
+        if (target == null || target == activeFragment) return;
         getSupportFragmentManager().beginTransaction()
                 .hide(activeFragment)
                 .show(target)
