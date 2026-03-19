@@ -9,6 +9,8 @@ package com.example.clef.utils;
 import android.os.Handler;
 import android.os.Looper;
 
+import com.example.clef.data.model.Vault;
+
 import java.util.Arrays;
 
 public class SessionManager {
@@ -17,7 +19,8 @@ public class SessionManager {
 
     private static SessionManager instance;
 
-    private byte[] dek = null;
+    private byte[] dek   = null;
+    private Vault  vault = null;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private Runnable lockRunnable;
     private OnLockListener lockListener;
@@ -31,15 +34,26 @@ public class SessionManager {
         return instance;
     }
 
-    // Guarda la DEK en RAM y arranca el temporizador de auto-lock
-    public void unlock(byte[] dek) {
-        this.dek = dek;
+    // Guarda la DEK y el Vault en RAM y arranca el temporizador de auto-lock
+    public void unlock(byte[] dek, Vault vault) {
+        this.dek   = dek;
+        this.vault = vault;
         resetTimer();
     }
 
     // Devuelve la DEK si la sesión está activa, null si está bloqueada
     public byte[] getDek() {
         return dek;
+    }
+
+    // Devuelve el Vault descifrado en memoria, null si está bloqueado
+    public Vault getVault() {
+        return vault;
+    }
+
+    // Actualiza el Vault en memoria tras añadir, editar o borrar una credencial
+    public void updateVault(Vault vault) {
+        this.vault = vault;
     }
 
     // Devuelve true si hay una DEK en memoria (sesión desbloqueada)
@@ -54,12 +68,13 @@ public class SessionManager {
         handler.postDelayed(lockRunnable, LOCK_TIMEOUT_MS);
     }
 
-    // Borra la DEK de memoria y notifica al listener para ir a la pantalla de lock
+    // Borra la DEK y el Vault de memoria y notifica al listener
     public void lock() {
         if (dek != null) {
             Arrays.fill(dek, (byte) 0); // sobrescribe antes de soltar la referencia
             dek = null;
         }
+        vault = null;
         handler.removeCallbacks(lockRunnable != null ? lockRunnable : () -> {});
         if (lockListener != null) {
             lockListener.onLock();

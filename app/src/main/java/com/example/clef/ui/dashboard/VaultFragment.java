@@ -8,10 +8,20 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.clef.R;
+import com.example.clef.data.model.Vault;
+import com.example.clef.utils.SessionManager;
+
+import java.util.Collections;
 
 public class VaultFragment extends Fragment {
+
+    private VaultAdapter adapter;
+    private View         layoutEmpty;
+    private RecyclerView recyclerView;
 
     @Nullable
     @Override
@@ -25,8 +35,38 @@ public class VaultFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        view.findViewById(R.id.fabAdd).setOnClickListener(v -> {
-            // TODO: abrir diálogo para añadir credencial
-        });
+        layoutEmpty  = view.findViewById(R.id.layoutEmpty);
+        recyclerView = view.findViewById(R.id.recyclerVault);
+
+        adapter = new VaultAdapter(requireContext());
+        recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
+        recyclerView.setAdapter(adapter);
+
+        view.findViewById(R.id.fabAdd).setOnClickListener(v -> openAddDialog());
+
+        loadCredentials();
+    }
+
+    /** Recarga la lista desde el Vault en memoria. */
+    private void loadCredentials() {
+        Vault vault = SessionManager.getInstance().getVault();
+        if (vault == null) {
+            showList(Collections.emptyList());
+            return;
+        }
+        showList(vault.getCredentials());
+    }
+
+    private void showList(java.util.List<com.example.clef.data.model.Credential> credentials) {
+        adapter.setCredentials(credentials);
+        boolean empty = credentials.isEmpty();
+        layoutEmpty.setVisibility(empty ? View.VISIBLE : View.GONE);
+        recyclerView.setVisibility(empty ? View.GONE : View.VISIBLE);
+    }
+
+    private void openAddDialog() {
+        AddItemDialog dialog = AddItemDialog.newInstance();
+        dialog.setOnCredentialSavedListener(this::loadCredentials);
+        dialog.show(getChildFragmentManager(), "add_item");
     }
 }

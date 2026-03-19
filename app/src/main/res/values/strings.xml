@@ -46,6 +46,24 @@
     <string name="generator_symbols">Símbolos</string>
     <string name="generator_generate_password">Generar contraseña</string>
 
+    <!-- Bóveda -->
+    <string name="vault_empty_title">Sin contraseñas guardadas</string>
+    <string name="vault_empty_subtitle">Pulsa el botón + para añadir tu primera cuenta</string>
+    <string name="vault_fab_add">Añadir cuenta</string>
+    <string name="credential_copy_password">Copiar contraseña</string>
+    <string name="credential_copy_label">Contraseña de %1$s</string>
+
+    <!-- Añadir credencial -->
+    <string name="add_item_title">Nueva cuenta</string>
+    <string name="add_item_hint_title">Título (Gmail, Instagram…)</string>
+    <string name="add_item_hint_username">Correo o usuario</string>
+    <string name="add_item_hint_password">Contraseña</string>
+    <string name="add_item_hint_description">Descripción (opcional)</string>
+    <string name="add_item_save">Guardar</string>
+    <string name="add_item_error_required">Campo obligatorio</string>
+    <string name="add_item_error_session">Sesión expirada. Desbloquea la app de nuevo.</string>
+    <string name="add_item_error_save">Error al guardar. Comprueba tu conexión.</string>
+
     <!-- Unlock -->
     <string name="unlock_title">Bienvenido de vuelta</string>
     <string name="unlock_subtitle">Introduce tu contraseña maestra para acceder a tu bóveda</string>

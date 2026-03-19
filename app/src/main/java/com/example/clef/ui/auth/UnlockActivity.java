@@ -11,6 +11,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.clef.R;
 import com.example.clef.crypto.KeyManager;
+import com.example.clef.data.model.Vault;
 import com.example.clef.data.remote.FirebaseManager;
 import com.example.clef.data.repository.VaultRepository;
 import com.example.clef.ui.dashboard.MainActivity;
@@ -127,8 +128,20 @@ public class UnlockActivity extends AppCompatActivity {
         BiometricHelper.unlock(this, new BiometricHelper.UnlockCallback() {
             @Override
             public void onSuccess(byte[] dek) {
-                SessionManager.getInstance().unlock(dek);
-                goToMain();
+                // Con biometría tenemos la DEK pero no el Vault descifrado todavía.
+                // userData ya está cargado — solo necesitamos descifrar el vault con la DEK.
+                cryptoExecutor.execute(() -> {
+                    try {
+                        KeyManager km = new KeyManager();
+                        Vault vault = km.descifrarVault(userData.vault, dek);
+                        SessionManager.getInstance().unlock(dek, vault);
+                        mainHandler.post(UnlockActivity.this::goToMain);
+                    } catch (Exception e) {
+                        mainHandler.post(() ->
+                                Toast.makeText(UnlockActivity.this,
+                                        "Error al descifrar la bóveda", Toast.LENGTH_SHORT).show());
+                    }
+                });
             }
 
             @Override
@@ -172,7 +185,7 @@ public class UnlockActivity extends AppCompatActivity {
                 KeyManager keyManager = new KeyManager();
                 KeyManager.LoginResult result = keyManager.login(passwordChars, salt, cajaA, vault);
 
-                SessionManager.getInstance().unlock(result.dek);
+                SessionManager.getInstance().unlock(result.dek, result.vault);
                 mainHandler.post(this::goToMain);
 
             } catch (Exception e) {
