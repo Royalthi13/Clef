@@ -42,7 +42,7 @@ public class VaultFragment extends Fragment {
 
         // Enlazamos las variables con el XML
         recyclerView = view.findViewById(R.id.recyclerViewVault);
-        layoutEmpty = view.findViewById(R.id.layoutEmpty); // <-- 2. Lo conectamos con el XML
+        layoutEmpty = view.findViewById(R.id.layoutEmpty);
         etSearch = view.findViewById(R.id.etSearch);
         chipGroupCategories = view.findViewById(R.id.chipGroupCategories);
 
