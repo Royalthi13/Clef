@@ -19,17 +19,29 @@ import java.util.List;
 
 public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> {
 
-    private final List<Credential> items = new ArrayList<>();
+    // Tenemos dos listas: la original completa, y la que estamos mostrando ahora mismo
+    private final List<Credential> allItems = new ArrayList<>();
+    private final List<Credential> displayedItems = new ArrayList<>();
     private final Context context;
 
     public VaultAdapter(Context context) {
         this.context = context;
     }
 
-    /** Reemplaza la lista completa y notifica al RecyclerView. */
+    // Guarda la lista completa y la muestra.
     public void setCredentials(List<Credential> credentials) {
-        items.clear();
-        items.addAll(credentials);
+        allItems.clear();
+        allItems.addAll(credentials);
+
+        displayedItems.clear();
+        displayedItems.addAll(credentials);
+        notifyDataSetChanged();
+    }
+
+    // Metodo para el buscador futuro
+    public void filterList(List<Credential> filteredList) {
+        displayedItems.clear();
+        displayedItems.addAll(filteredList);
         notifyDataSetChanged();
     }
 
@@ -43,18 +55,25 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        Credential credential = items.get(position);
+        Credential credential = displayedItems.get(position);
 
-        // Inicial del título para el avatar
-        String title = credential.getTitle() != null ? credential.getTitle() : "?";
-        holder.tvInitial.setText(String.valueOf(title.charAt(0)).toUpperCase());
+        //  Tratamiento seguro del título para evitar cuelgues
+        String rawTitle = credential.getTitle();
+        final String title = (rawTitle == null || rawTitle.trim().isEmpty()) ? "Sin Título" : rawTitle;
+
+        //  Extraemos la inicial de forma segura
+        String initial = title.substring(0, 1).toUpperCase();
+        holder.tvInitial.setText(initial);
+
+        //  Rellenamos los textos
         holder.tvTitle.setText(title);
         holder.tvUsername.setText(credential.getUsername());
 
+        //  Configuramos el botón de copiar
         holder.btnCopy.setOnClickListener(v ->
                 ClipboardHelper.copySensitive(
                         context,
-                        context.getString(R.string.credential_copy_label, title),
+                        title, // Simplificamos el nombre que se copia
                         credential.getPassword()
                 )
         );
@@ -62,7 +81,7 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
 
     @Override
     public int getItemCount() {
-        return items.size();
+        return displayedItems.size();
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
