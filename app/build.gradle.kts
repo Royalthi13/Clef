@@ -57,6 +57,9 @@ dependencies {
     // 3. Auto-Lock de 60 segundos
     implementation("androidx.lifecycle:lifecycle-process:2.8.4")
 
+    // 5. Biometría
+    implementation("androidx.biometric:biometric:1.1.0")
+
     // 4. Lottie (Para la animación premium)
     implementation("com.airbnb.android:lottie:6.4.1")
 }

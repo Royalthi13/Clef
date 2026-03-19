@@ -46,6 +46,15 @@
     <string name="generator_symbols">Símbolos</string>
     <string name="generator_generate_password">Generar contraseña</string>
 
+    <!-- Unlock -->
+    <string name="unlock_title">Bienvenido de vuelta</string>
+    <string name="unlock_subtitle">Introduce tu contraseña maestra para acceder a tu bóveda</string>
+    <string name="unlock_biometric">Usar biometría</string>
+    <string name="unlock_cta">Desbloquear</string>
+    <string name="unlock_wrong_password">Contraseña incorrecta</string>
+    <string name="unlock_offline_warning">Sin conexión — usando datos locales</string>
+    <string name="unlock_no_data">No hay datos disponibles. Comprueba tu conexión.</string>
+
     <!-- Settings -->
     <string name="settings_search">Buscar</string>
     <string name="settings_security">Seguridad</string>
@@ -60,4 +69,6 @@
     <string name="settings_help">Ayuda y Soporte</string>
     <string name="settings_sign_out">Cerrar Sesión</string>
     <string name="settings_version">Clef Password Manager v2.4.0</string>
+    <string name="settings_biometrics_enabled">Biometría activada</string>
+    <string name="settings_biometrics_disabled">Biometría desactivada</string>
 </resources>

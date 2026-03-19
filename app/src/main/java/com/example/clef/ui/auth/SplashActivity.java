@@ -10,7 +10,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.example.clef.R;
 import com.example.clef.data.remote.AuthManager;
 import com.example.clef.data.remote.FirebaseManager;
-import com.example.clef.ui.dashboard.MainActivity;
 import com.example.clef.ui.setup.CreateMasterActivity;
 
 public class SplashActivity extends AppCompatActivity {
@@ -44,7 +43,7 @@ public class SplashActivity extends AppCompatActivity {
             firebaseManager.userExists()
                     .addOnSuccessListener(exists -> {
                         if (exists) {
-                            goTo(MainActivity.class);
+                            goTo(UnlockActivity.class);
                         } else {
                             goTo(CreateMasterActivity.class);
                         }

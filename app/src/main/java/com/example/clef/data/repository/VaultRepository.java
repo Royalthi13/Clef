@@ -1,6 +1,7 @@
 package com.example.clef.data.repository;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.util.Base64;
 
 import com.example.clef.crypto.KeyManager;
@@ -27,12 +28,18 @@ public class VaultRepository {
         void onError(Exception e);
     }
 
+    private static final String KEY_PREFS  = "clef_key_cache";
+    private static final String KEY_SALT   = "salt";
+    private static final String KEY_CAJA_A = "caja_a";
+
     private final FileManager     fileManager;
     private final FirebaseManager firebaseManager;
+    private final SharedPreferences keyPrefs;
 
     public VaultRepository(Context context) {
         this.fileManager     = new FileManager(context);
         this.firebaseManager = new FirebaseManager();
+        this.keyPrefs        = context.getSharedPreferences(KEY_PREFS, Context.MODE_PRIVATE);
     }
 
     // ── Registro ──────────────────────────────────────────────────────────────
@@ -77,8 +84,15 @@ public class VaultRepository {
     public void loadUserData(Callback<UserData> callback) {
         firebaseManager.downloadUserData()
                 .addOnSuccessListener(userData -> {
-                    if (userData != null && userData.vault != null) {
-                        saveLocalVault(userData.vault);
+                    if (userData != null) {
+                        if (userData.vault != null) saveLocalVault(userData.vault);
+                        // Guardamos salt y cajaA para el modo offline
+                        if (userData.salt != null && userData.cajaA != null) {
+                            keyPrefs.edit()
+                                    .putString(KEY_SALT, userData.salt)
+                                    .putString(KEY_CAJA_A, userData.cajaA)
+                                    .apply();
+                        }
                     }
                     callback.onSuccess(userData);
                 })
@@ -118,6 +132,18 @@ public class VaultRepository {
         firebaseManager.userHasMasterPassword()
                 .addOnSuccessListener(callback::onSuccess)
                 .addOnFailureListener(callback::onError);
+    }
+
+    /**
+     * Carga los datos de clave (salt + cajaA) cacheados para el modo offline.
+     * Devuelve un UserData con el vault local, o null si no hay nada cacheado.
+     */
+    public UserData loadOfflineUserData() {
+        String salt   = keyPrefs.getString(KEY_SALT, null);
+        String cajaA  = keyPrefs.getString(KEY_CAJA_A, null);
+        String vault  = loadLocalVault();
+        if (salt == null || cajaA == null || vault == null) return null;
+        return new UserData(salt, cajaA, null, vault);
     }
 
     /** true si hay un vault guardado en disco. */

@@ -15,8 +15,11 @@ import androidx.fragment.app.Fragment;
 import com.example.clef.R;
 import com.example.clef.data.remote.AuthManager;
 import com.example.clef.ui.auth.LoginActivity;
+import com.example.clef.utils.BiometricHelper;
+import com.example.clef.utils.SessionManager;
 import com.example.clef.utils.ThemeManager;
 import com.google.android.material.button.MaterialButtonToggleGroup;
+import com.google.android.material.switchmaterial.SwitchMaterial;
 
 public class SettingsFragment extends Fragment {
 
@@ -36,6 +39,7 @@ public class SettingsFragment extends Fragment {
 
         authManager = new AuthManager(requireActivity(), getString(R.string.default_web_client_id));
 
+        setupBiometricSwitch(view);
         setupThemeToggle(view);
 
         view.findViewById(R.id.btnSignOut).setOnClickListener(v ->
@@ -56,6 +60,56 @@ public class SettingsFragment extends Fragment {
         View rowImportExport = view.findViewById(R.id.rowImportExport);
         rowImportExport.setOnClickListener(v ->
                 Toast.makeText(requireContext(), "Próximamente", Toast.LENGTH_SHORT).show());
+    }
+
+    private void setupBiometricSwitch(View view) {
+        SwitchMaterial switchBiometrics = view.findViewById(R.id.switchBiometrics);
+
+        // Si el dispositivo no soporta biometría fuerte, ocultamos la opción
+        if (!BiometricHelper.isAvailable(requireContext())) {
+            switchBiometrics.setEnabled(false);
+            switchBiometrics.setChecked(false);
+            return;
+        }
+
+        // Pintamos el estado real (no el hardcodeado del XML)
+        switchBiometrics.setChecked(BiometricHelper.isEnabled(requireContext()));
+
+        switchBiometrics.setOnCheckedChangeListener((btn, isChecked) -> {
+            if (isChecked) {
+                // El usuario quiere activar — necesitamos la DEK activa para cifrarla
+                byte[] dek = SessionManager.getInstance().getDek();
+                if (dek == null) {
+                    Toast.makeText(requireContext(),
+                            "La sesión expiró. Desbloquea la app de nuevo.", Toast.LENGTH_SHORT).show();
+                    switchBiometrics.setChecked(false);
+                    return;
+                }
+
+                BiometricHelper.enable(requireActivity(), dek, new BiometricHelper.EnableCallback() {
+                    @Override
+                    public void onSuccess() {
+                        Toast.makeText(requireContext(),
+                                getString(R.string.settings_biometrics_enabled), Toast.LENGTH_SHORT).show();
+                    }
+
+                    @Override
+                    public void onError(String message) {
+                        Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show();
+                        switchBiometrics.setChecked(false);
+                    }
+
+                    @Override
+                    public void onCancelled() {
+                        switchBiometrics.setChecked(false);
+                    }
+                });
+            } else {
+                BiometricHelper.disable(requireContext());
+                Toast.makeText(requireContext(),
+                        getString(R.string.settings_biometrics_disabled), Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void setupThemeToggle(View view) {

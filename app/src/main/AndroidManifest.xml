@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
 
     <application
         android:name=".ClefApp"
@@ -27,6 +28,7 @@
             </intent-filter>
         </activity>
 
+        <activity android:name=".ui.auth.UnlockActivity" />
         <activity android:name=".ui.auth.LoginActivity" />
         <activity android:name=".ui.auth.RegisterActivity" />
         <activity android:name=".ui.dashboard.MainActivity" />

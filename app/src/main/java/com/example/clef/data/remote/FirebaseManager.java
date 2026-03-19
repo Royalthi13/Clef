@@ -34,7 +34,7 @@ public class FirebaseManager {
         public final String cajaB;
         public final String vault;
 
-        UserData(String salt, String cajaA, String cajaB, String vault) {
+        public UserData(String salt, String cajaA, String cajaB, String vault) {
             this.salt  = salt;
             this.cajaA = cajaA;
             this.cajaB = cajaB;
