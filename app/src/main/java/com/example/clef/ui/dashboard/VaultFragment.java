@@ -14,14 +14,19 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.clef.R;
 import com.example.clef.data.model.Vault;
 import com.example.clef.utils.SessionManager;
+import com.google.android.material.chip.ChipGroup;
+import com.google.android.material.textfield.TextInputEditText;
 
 import java.util.Collections;
 
 public class VaultFragment extends Fragment {
 
     private VaultAdapter adapter;
-    private View         layoutEmpty;
     private RecyclerView recyclerView;
+    private View layoutEmpty;
+
+    private TextInputEditText etSearch;
+    private ChipGroup chipGroupCategories;
 
     @Nullable
     @Override
@@ -35,13 +40,18 @@ public class VaultFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        layoutEmpty  = view.findViewById(R.id.layoutEmpty);
-        recyclerView = view.findViewById(R.id.recyclerVault);
+        // Enlazamos las variables con el XML
+        recyclerView = view.findViewById(R.id.recyclerViewVault);
+        layoutEmpty = view.findViewById(R.id.layoutEmpty);
+        etSearch = view.findViewById(R.id.etSearch);
+        chipGroupCategories = view.findViewById(R.id.chipGroupCategories);
 
+        // Configuramos la lista
         adapter = new VaultAdapter(requireContext());
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
         recyclerView.setAdapter(adapter);
 
+        // Configuramos el botón +
         view.findViewById(R.id.fabAdd).setOnClickListener(v -> openAddDialog());
     }
 
@@ -53,7 +63,6 @@ public class VaultFragment extends Fragment {
         loadCredentials();
     }
 
-    /** Recarga la lista desde el Vault en memoria. */
     private void loadCredentials() {
         Vault vault = SessionManager.getInstance().getVault();
         if (vault == null) {
@@ -65,9 +74,13 @@ public class VaultFragment extends Fragment {
 
     private void showList(java.util.List<com.example.clef.data.model.Credential> credentials) {
         adapter.setCredentials(credentials);
-        boolean empty = credentials.isEmpty();
-        layoutEmpty.setVisibility(empty ? View.VISIBLE : View.GONE);
-        recyclerView.setVisibility(empty ? View.GONE : View.VISIBLE);
+
+
+        boolean isEmpty = credentials.isEmpty();
+
+        // Si está vacío, mostramos el layoutEmpty y escondemos la lista
+        layoutEmpty.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
+        recyclerView.setVisibility(isEmpty ? View.GONE : View.VISIBLE);
     }
 
     private void openAddDialog() {

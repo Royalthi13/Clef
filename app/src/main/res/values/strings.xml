@@ -64,11 +64,21 @@
     <string name="import_error_wrong_puk">PUK incorrecto</string>
 
     <!-- Bóveda -->
-    <string name="vault_empty_title">Sin contraseñas guardadas</string>
+    <string name="vault_empty_title">Tu bóveda está vacía</string>
     <string name="vault_empty_subtitle">Pulsa el botón + para añadir tu primera cuenta</string>
+    <string name="vault_search">Buscar credenciales</string>
     <string name="vault_fab_add">Añadir cuenta</string>
     <string name="credential_copy_password">Copiar contraseña</string>
-    <string name="credential_copy_label">Contraseña de %1$s</string>
+    <string name="vault_filter_all">Todas</string>
+    <string name="vault_filter_bank">Bancos</string>
+    <string name="vault_filter_social">Redes sociales</string>
+    <string name="vault_filter_work">Trabajo</string>
+    <string name="vault_filter_game">Juegos</string>
+    <string name="vault_filter_shopping">Compras</string>
+    <string name="vault_filter_transport">Transporte</string>
+    <string name="vault_filter_leisure">Ocio</string>
+    <string name="vault_filter_sports">Deportes</string>
+    <string name="vault_filter_others">Otros</string>
 
     <!-- Añadir credencial -->
     <string name="add_item_title">Nueva cuenta</string>
