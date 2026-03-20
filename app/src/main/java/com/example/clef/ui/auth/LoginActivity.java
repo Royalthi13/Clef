@@ -144,7 +144,7 @@ public class LoginActivity extends AppCompatActivity {
     private void checkUserAndNavigate() {
         firebaseManager.userExists().addOnSuccessListener(exists -> {
             if (exists) {
-                goTo(MainActivity.class);
+                goTo(UnlockActivity.class);
             } else {
                 goTo(CreateMasterActivity.class);
             }
