@@ -1,5 +1,7 @@
 package com.example.clef.data.model;
 
+import com.example.clef.R;
+
 /**
  * Esta clase representa UNA contraseña guardada por el usuario.
  *
@@ -17,12 +19,36 @@ package com.example.clef.data.model;
  *   { "title": "Gmail", "username": "pepe@gmail.com", "password": "abc123" }
  */
 public class Credential {
-
+    public enum Category {
+        BANK,
+        SOCIAL,
+        WORK,
+        GAMES,
+        SHOPPING,
+        TRANSPORT,
+        LEISURE,
+        SPORTS,
+        OTHER;
+        public int getLabelRes() {
+            switch (this) {
+                case BANK:      return R.string.category_bank;
+                case SOCIAL:    return R.string.category_social;
+                case WORK:      return R.string.category_work;
+                case GAMES:     return R.string.category_games;
+                case SHOPPING:  return R.string.category_shopping;
+                case TRANSPORT: return R.string.category_transport;
+                case LEISURE:   return R.string.category_leisure;
+                case SPORTS:    return R.string.category_sports;
+                default:        return R.string.category_other;
+            }
+        }
+        }
     private String title;
     private String username;
     private String password;
     private String url;
     private String notes;
+    private Category category;
 
     /**
      * Constructor vacío necesario para que GSON pueda reconstruir
@@ -39,12 +65,13 @@ public class Credential {
      * @param url      Dirección web del sitio. Puede ser cadena vacía.
      * @param notes    Notas adicionales. Puede ser cadena vacía.
      */
-    public Credential(String title, String username, String password, String url, String notes) {
+    public Credential(String title, String username, String password, String url, String notes, Category category) {
         this.title    = title;
         this.username = username;
         this.password = password;
         this.url      = url;
         this.notes    = notes;
+        this.category = category;
     }
 
     /** Devuelve el nombre del sitio, por ejemplo "Gmail". */
@@ -76,4 +103,7 @@ public class Credential {
 
     /** Cambia las notas. */
     public void setNotes(String notes)       { this.notes = notes; }
+    public Category getCategory() { return category; }
+    public void setCategory(Category category) { this.category = category; }
+
 }

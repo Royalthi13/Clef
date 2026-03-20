@@ -116,4 +116,17 @@
     <string name="settings_version">Clef Password Manager v2.4.0</string>
     <string name="settings_biometrics_enabled">Biometría activada</string>
     <string name="settings_biometrics_disabled">Biometría desactivada</string>
+
+    <!--Tipos de datos-->
+    <string name="category_bank">Banco</string>
+    <string name="category_social">Redes Sociales</string>
+    <string name="category_work">Trabajo</string>
+    <string name="category_games">Juegos</string>
+    <string name="category_shopping">Compras</string>
+    <string name="category_transport">Transporte</string>
+    <string name="category_leisure">Ocio</string>
+    <string name="category_sports">Deportes</string>
+    <string name="category_other">Otro</string>
+    <string name="category_all">Todos</string>
+    <string name="add_item_hint_category">Categoría</string>
 </resources>

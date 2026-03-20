@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.clef.R;
+import com.example.clef.data.model.Credential;
 import com.example.clef.data.model.Vault;
 import com.example.clef.utils.SessionManager;
 import com.google.android.material.chip.ChipGroup;
@@ -45,7 +46,15 @@ public class VaultFragment extends Fragment {
         layoutEmpty = view.findViewById(R.id.layoutEmpty);
         etSearch = view.findViewById(R.id.etSearch);
         chipGroupCategories = view.findViewById(R.id.chipGroupCategories);
-
+        for (Credential.Category cat : Credential.Category.values()) {
+            com.google.android.material.chip.Chip chip = new com.google.android.material.chip.Chip(requireContext());
+            chip.setText(getString(cat.getLabelRes()));
+            chip.setCheckable(true);
+            chip.setClickable(true);
+            chip.setTag(cat);
+            chipGroupCategories.addView(chip);
+        }
+        chipGroupCategories.setOnCheckedStateChangeListener((group, checkedIds) -> applyFilters());
         // Configuramos la lista
         adapter = new VaultAdapter(requireContext());
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
@@ -64,12 +73,7 @@ public class VaultFragment extends Fragment {
     }
 
     private void loadCredentials() {
-        Vault vault = SessionManager.getInstance().getVault();
-        if (vault == null) {
-            showList(Collections.emptyList());
-            return;
-        }
-        showList(vault.getCredentials());
+        applyFilters();
     }
 
     private void showList(java.util.List<com.example.clef.data.model.Credential> credentials) {
@@ -82,10 +86,28 @@ public class VaultFragment extends Fragment {
         layoutEmpty.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
         recyclerView.setVisibility(isEmpty ? View.GONE : View.VISIBLE);
     }
+    private void applyFilters() {
+        Vault vault = SessionManager.getInstance().getVault();
+        if (vault == null) { showList(Collections.emptyList()); return; }
 
+        int checkedId = chipGroupCategories.getCheckedChipId();
+        java.util.List<Credential> list = new java.util.ArrayList<>(vault.getCredentials());
+
+        // Filtro por categoría (chipAll = R.id.chipAll, el resto tienen tag Category)
+        if (checkedId != View.NO_ID && checkedId != R.id.chipAll) {
+            com.google.android.material.chip.Chip chip = chipGroupCategories.findViewById(checkedId);
+            if (chip != null && chip.getTag() instanceof Credential.Category) {
+                Credential.Category cat = (Credential.Category) chip.getTag();
+                list.removeIf(c -> c.getCategory() != cat);
+            }
+        }
+
+        showList(list);
+    }
     private void openAddDialog() {
         AddItemDialog dialog = AddItemDialog.newInstance();
         dialog.setOnCredentialSavedListener(this::loadCredentials);
         dialog.show(getChildFragmentManager(), "add_item");
     }
+
 }
