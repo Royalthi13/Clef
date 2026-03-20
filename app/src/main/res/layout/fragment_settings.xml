@@ -35,11 +35,14 @@
             android:padding="16dp"
             android:paddingBottom="96dp">
 
-            <!-- User profile card -->
+            <!-- ── Card de perfil ──────────────────────────────────────────── -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/cardProfile"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground"
                 app:cardBackgroundColor="@color/clef_card_surface"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="1dp"
@@ -53,6 +56,14 @@
                     android:padding="14dp"
                     android:gravity="center_vertical">
 
+                    <!--
+                        Avatar circular.
+                        IMPORTANTE: Sin app:tint aquí.
+                        El tint oscurece las fotos reales cargadas con Glide.
+                        scaleType="centerCrop" para que la foto rellene el círculo.
+                        padding="0dp" para anular el padding del icono genérico
+                        cuando hay foto real (Glide lo gestiona con CircleCrop).
+                    -->
                     <com.google.android.material.card.MaterialCardView
                         android:layout_width="56dp"
                         android:layout_height="56dp"
@@ -64,10 +75,10 @@
                             android:id="@+id/ivAvatar"
                             android:layout_width="match_parent"
                             android:layout_height="match_parent"
-                            android:padding="14dp"
                             android:src="@drawable/ic_person_24"
-                            app:tint="?attr/colorOnPrimaryContainer"
-                            android:contentDescription="@null" />
+                            android:scaleType="centerCrop"
+                            android:contentDescription="@string/profile_photo_desc" />
+
                     </com.google.android.material.card.MaterialCardView>
 
                     <LinearLayout
@@ -81,18 +92,18 @@
                             android:id="@+id/tvUserName"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Juan Pérez"
                             android:textStyle="bold"
                             android:textSize="16sp"
-                            android:textColor="@color/clef_on_surface" />
+                            android:textColor="@color/clef_on_surface"
+                            tools:text="Adrián" />
 
                         <TextView
                             android:id="@+id/tvUserEmail"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="juan.perez@email.com"
                             android:textSize="13sp"
-                            android:textColor="?attr/colorOnSurfaceVariant" />
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            tools:text="adri@gmail.com" />
                     </LinearLayout>
 
                     <ImageView
@@ -104,7 +115,7 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Seguridad -->
+            <!-- ── Seguridad ───────────────────────────────────────────────── -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -235,7 +246,7 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Preferencias -->
+            <!-- ── Preferencias ────────────────────────────────────────────── -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -313,7 +324,6 @@
                                 android:saveEnabled="false"
                                 android:text="@string/theme_light" />
 
-
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/btnThemeDark"
                                 style="@style/Widget.Material3.Button.OutlinedButton"
@@ -378,7 +388,7 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Soporte + logout -->
+            <!-- ── Soporte + logout ────────────────────────────────────────── -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -394,6 +404,7 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
 
+                    <!-- Ayuda -->
                     <LinearLayout
                         android:id="@+id/rowHelp"
                         android:layout_width="match_parent"
@@ -444,6 +455,7 @@
                         android:layout_height="1dp"
                         android:background="@color/clef_border" />
 
+                    <!-- Cerrar sesión -->
                     <LinearLayout
                         android:id="@+id/btnSignOut"
                         android:layout_width="match_parent"
@@ -488,9 +500,11 @@
                             app:tint="#FFEF4444"
                             android:contentDescription="@null" />
                     </LinearLayout>
+
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
+            <!-- Versión -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -499,6 +513,7 @@
                 android:text="@string/settings_version"
                 android:textSize="12sp"
                 android:textColor="?attr/colorOnSurfaceVariant" />
+
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 

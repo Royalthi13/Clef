@@ -116,4 +116,19 @@
     <string name="settings_version">Clef Password Manager v2.4.0</string>
     <string name="settings_biometrics_enabled">Biometría activada</string>
     <string name="settings_biometrics_disabled">Biometría desactivada</string>
+
+
+    <!-- Perfil de usuario -->
+    <string name="profile_edit_title">Editar perfil</string>
+    <string name="profile_change_photo">Cambiar foto</string>
+    <string name="profile_name_hint">Nombre de usuario</string>
+    <string name="profile_save">Guardar</string>
+    <string name="profile_cancel">Cancelar</string>
+    <string name="profile_saved">Perfil actualizado</string>
+    <string name="profile_photo_desc">Foto de perfil</string>
+    <string name="profile_default_name">Usuario</string>
+    <string name="profile_error_name_required">El nombre no puede estar vacío</string>
+    <string name="profile_error_name_too_long">Máximo 40 caracteres</string>
+    <string name="profile_error_no_session">Sesión expirada. Vuelve a iniciar sesión.</string>
+    <string name="profile_error_save">Error al guardar el perfil. Inténtalo de nuevo.</string>
 </resources>

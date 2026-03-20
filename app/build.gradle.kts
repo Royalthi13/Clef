@@ -62,4 +62,6 @@ dependencies {
 
     // 4. Lottie (Para la animación premium)
     implementation("com.airbnb.android:lottie:6.4.1")
+
+    implementation("com.github.bumptech.glide:glide:4.16.0")
 }
