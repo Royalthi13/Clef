@@ -65,8 +65,6 @@ public class SettingsFragment extends Fragment {
         rowImportExport.setOnClickListener(v ->
                 ImportExportDialog.newInstance()
                         .show(getChildFragmentManager(), "import_export"));
-        setupSyncSwitch(view);
-
     }
 
     private void setupBiometricSwitch(View view) {
@@ -184,22 +182,6 @@ public class SettingsFragment extends Fragment {
         if (ms == 900_000)   return "15 minutos";
         if (ms == 1_800_000) return "30 minutos";
         return "Nunca";
-    }
-    private void setupSyncSwitch(View view) {
-        SwitchMaterial switchSync = view.findViewById(R.id.switchSync);
-        switchSync.setChecked(requireContext().getSharedPreferences("settings", 0)
-                .getBoolean("sync_enabled", false));
-
-        switchSync.setOnCheckedChangeListener((btn, isChecked) ->
-                requireContext().getSharedPreferences("settings", 0)
-                        .edit().putBoolean("sync_enabled", isChecked).apply());
-
-        view.findViewById(R.id.btnSyncInfo).setOnClickListener(v ->
-                new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                        .setTitle(getString(R.string.settings_sync))
-                        .setMessage(getString(R.string.sync_info_message))
-                        .setPositiveButton("Entendido", null)
-                        .show());
     }
 
 }
