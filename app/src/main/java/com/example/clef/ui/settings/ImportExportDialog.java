@@ -60,10 +60,10 @@ public class ImportExportDialog extends BottomSheetDialogFragment {
         super.onViewCreated(view, savedInstanceState);
 
         btnExport = view.findViewById(R.id.btnExport);
-        btnImport = view.findViewById(R.id.btnImport);
+
 
         btnExport.setOnClickListener(v -> onExport());
-        btnImport.setOnClickListener(v -> onImport());
+
     }
 
     @Override

@@ -5,6 +5,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -48,6 +49,7 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+
         View view = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.item_credential, parent, false);
         return new ViewHolder(view);
@@ -68,6 +70,7 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
         //  Rellenamos los textos
         holder.tvTitle.setText(title);
         holder.tvUsername.setText(credential.getUsername());
+        holder.ivSyncStatus.setVisibility(credential.isSynced() ? View.VISIBLE : View.GONE);
 
         //  Configuramos el botón de copiar
         holder.btnCopy.setOnClickListener(v ->
@@ -85,6 +88,7 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
+        final ImageView ivSyncStatus;
         final TextView    tvInitial;
         final TextView    tvTitle;
         final TextView    tvUsername;
@@ -95,6 +99,7 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
             tvInitial  = itemView.findViewById(R.id.tvInitial);
             tvTitle    = itemView.findViewById(R.id.tvTitle);
             tvUsername = itemView.findViewById(R.id.tvUsername);
+            ivSyncStatus = itemView.findViewById(R.id.ivSyncStatus);
             btnCopy    = itemView.findViewById(R.id.btnCopyPassword);
         }
     }

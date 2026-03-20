@@ -32,7 +32,7 @@ public class VaultRepository {
     private static final String KEY_SALT   = "salt";
     private static final String KEY_CAJA_A = "caja_a";
     private static final String KEY_CAJA_B = "caja_b";
-
+    private final Context context;
     private final FileManager     fileManager;
     private final FirebaseManager firebaseManager;
     private final SharedPreferences keyPrefs;
@@ -40,6 +40,7 @@ public class VaultRepository {
     public VaultRepository(Context context) {
         this.fileManager     = new FileManager(context);
         this.firebaseManager = new FirebaseManager();
+        this.context = context;
         this.keyPrefs        = context.getSharedPreferences(KEY_PREFS, Context.MODE_PRIVATE);
     }
 
@@ -76,7 +77,13 @@ public class VaultRepository {
      */
     public void saveVault(String encryptedVaultBase64, Callback<Void> callback) {
         saveLocalVault(encryptedVaultBase64);
-        callback.onSuccess(null);
+        boolean syncEnabled = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+                .getBoolean("sync_enabled", false);
+        if (syncEnabled) {
+            exportToFirebase(callback);
+        } else {
+            callback.onSuccess(null);
+        }
     }
 
     // ── Cargar datos del usuario ───────────────────────────────────────────────

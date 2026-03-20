@@ -47,7 +47,7 @@
     <string name="generator_generate_password">Generar contraseña</string>
 
     <!-- Importar / Exportar -->
-    <string name="import_export_title">Importar / Exportar</string>
+    <string name="import_export_title">Exportar copia de seguridad</string>
     <string name="export_section_title">Exportar</string>
     <string name="export_description">Sube tu bóveda a la nube como copia de seguridad. Podrás recuperarla en otro dispositivo.</string>
     <string name="export_button">Subir a la nube</string>
@@ -111,11 +111,15 @@
     <string name="theme_system">Sistema</string>
     <string name="theme_dark">Oscuro</string>
     <string name="settings_import_export">Importar/Exportar Datos</string>
+    <string name="settings_sync">Sincronización con la nube</string>
+    <string name="sync_info_message">Cuando la sincronización está activada, cada vez que guardes una credencial se subirá automáticamente a la nube. Si está desactivada, deberás hacerlo manualmente desde Importar/Exportar Datos.</string>
     <string name="settings_help">Ayuda y Soporte</string>
     <string name="settings_sign_out">Cerrar Sesión</string>
     <string name="settings_version">Clef Password Manager v2.4.0</string>
     <string name="settings_biometrics_enabled">Biometría activada</string>
     <string name="settings_biometrics_disabled">Biometría desactivada</string>
+
+
 
     <!--Tipos de datos-->
     <string name="category_bank">Banco</string>

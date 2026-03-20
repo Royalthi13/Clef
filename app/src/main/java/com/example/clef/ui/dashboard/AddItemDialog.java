@@ -165,6 +165,12 @@ public class AddItemDialog extends BottomSheetDialogFragment {
                 repo.saveVault(encryptedVault, new VaultRepository.Callback<Void>() {
                     @Override
                     public void onSuccess(Void result) {
+                        boolean syncEnabled = requireContext()
+                                .getSharedPreferences("settings", 0)
+                                .getBoolean("sync_enabled", false);
+                        for (com.example.clef.data.model.Credential c : vault.getCredentials()) {
+                            c.setSynced(syncEnabled);
+                        }
                         session.updateVault(vault);
                         mainHandler.post(() -> {
                             if (listener != null) listener.onCredentialSaved();

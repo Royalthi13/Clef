@@ -49,6 +49,7 @@ public class Credential {
     private String url;
     private String notes;
     private Category category;
+    private boolean synced;
 
     /**
      * Constructor vacío necesario para que GSON pueda reconstruir
@@ -105,5 +106,7 @@ public class Credential {
     public void setNotes(String notes)       { this.notes = notes; }
     public Category getCategory() { return category; }
     public void setCategory(Category category) { this.category = category; }
+    public boolean isSynced() { return synced; }
+    public void setSynced(boolean synced) { this.synced = synced; }
 
 }
