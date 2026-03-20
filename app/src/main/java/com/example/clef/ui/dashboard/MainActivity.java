@@ -8,6 +8,7 @@ import androidx.fragment.app.FragmentManager;
 
 import com.example.clef.R;
 import com.example.clef.ui.settings.SettingsFragment;
+import com.example.clef.utils.SessionManager;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 public class MainActivity extends AppCompatActivity {
@@ -21,6 +22,14 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        SessionManager.getInstance().setOnLockListener(() -> {
+            startActivity(new android.content.Intent(this, com.example.clef.ui.auth.UnlockActivity.class)
+                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK | android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                    .putExtra("session_expired", true));
+        });
+        long savedMs = getSharedPreferences("settings", 0).getLong("auto_lock_ms", 60_000);
+        SessionManager.getInstance().setLockTimeout(savedMs);
+        SessionManager.getInstance().resetTimer();
 
         FragmentManager fm = getSupportFragmentManager();
 

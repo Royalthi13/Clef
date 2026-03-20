@@ -49,7 +49,7 @@ public class AddItemDialog extends BottomSheetDialogFragment {
     }
 
     private OnCredentialSavedListener listener;
-
+    private com.google.android.material.chip.ChipGroup chipGroupCategory;
     private TextInputLayout   tilTitle;
     private TextInputLayout   tilUsername;
     private TextInputLayout   tilPassword;
@@ -88,6 +88,14 @@ public class AddItemDialog extends BottomSheetDialogFragment {
         etTitle        = view.findViewById(R.id.etTitle);
         etUsername     = view.findViewById(R.id.etUsername);
         etPassword     = view.findViewById(R.id.etPassword);
+        chipGroupCategory = view.findViewById(R.id.chipGroupCategory);
+        for (Credential.Category cat : Credential.Category.values()) {
+            com.google.android.material.chip.Chip chip = new com.google.android.material.chip.Chip(requireContext());
+            chip.setText(getString(cat.getLabelRes()));
+            chip.setCheckable(true);
+            chip.setTag(cat);
+            chipGroupCategory.addView(chip);
+        }
         etDescription  = view.findViewById(R.id.etDescription);
         btnSave        = view.findViewById(R.id.btnSave);
 
@@ -141,8 +149,11 @@ public class AddItemDialog extends BottomSheetDialogFragment {
         }
 
         setFormEnabled(false);
-
-        Credential credential = new Credential(title, username, password, "", notes);
+        int checkedId = chipGroupCategory.getCheckedChipId();
+        Credential.Category category = checkedId != View.NO_ID
+                ? (Credential.Category) chipGroupCategory.findViewById(checkedId).getTag()
+                : Credential.Category.OTHER;
+        Credential credential = new Credential(title, username, password, "", notes, category);
         vault.addCredential(credential);
 
         executor.execute(() -> {
