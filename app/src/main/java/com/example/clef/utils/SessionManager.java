@@ -8,14 +8,12 @@ package com.example.clef.utils;
 
 import android.os.Handler;
 import android.os.Looper;
-
 import com.example.clef.data.model.Vault;
-
 import java.util.Arrays;
 
 public class SessionManager {
 
-    private static final long LOCK_TIMEOUT_MS = 60_000; // 60 segundos
+    private long lockTimeoutMs = 60_000;
 
     private static SessionManager instance;
 
@@ -34,44 +32,41 @@ public class SessionManager {
         return instance;
     }
 
-    // Guarda la DEK y el Vault en RAM y arranca el temporizador de auto-lock
     public void unlock(byte[] dek, Vault vault) {
         this.dek   = dek;
         this.vault = vault;
         resetTimer();
     }
 
-    // Devuelve la DEK si la sesión está activa, null si está bloqueada
     public byte[] getDek() {
         return dek;
     }
 
-    // Devuelve el Vault descifrado en memoria, null si está bloqueado
     public Vault getVault() {
         return vault;
     }
 
-    // Actualiza el Vault en memoria tras añadir, editar o borrar una credencial
     public void updateVault(Vault vault) {
         this.vault = vault;
     }
 
-    // Devuelve true si hay una DEK en memoria (sesión desbloqueada)
     public boolean isUnlocked() {
         return dek != null;
     }
 
-    // Reinicia el temporizador de auto-lock (llamar en cada interacción del usuario)
+    public void setLockTimeout(long ms) {
+        lockTimeoutMs = ms;
+    }
+
     public void resetTimer() {
         handler.removeCallbacks(lockRunnable != null ? lockRunnable : () -> {});
         lockRunnable = () -> lock();
-        handler.postDelayed(lockRunnable, LOCK_TIMEOUT_MS);
+        handler.postDelayed(lockRunnable, lockTimeoutMs);
     }
 
-    // Borra la DEK y el Vault de memoria y notifica al listener
     public void lock() {
         if (dek != null) {
-            Arrays.fill(dek, (byte) 0); // sobrescribe antes de soltar la referencia
+            Arrays.fill(dek, (byte) 0);
             dek = null;
         }
         vault = null;
@@ -81,7 +76,6 @@ public class SessionManager {
         }
     }
 
-    // Registra un listener que la UI usa para redirigir a la pantalla de Master Password
     public void setOnLockListener(OnLockListener listener) {
         this.lockListener = listener;
     }

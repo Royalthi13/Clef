@@ -52,6 +52,10 @@ public class UnlockActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_unlock);
+        if (getIntent().getBooleanExtra("session_expired", false)) {
+            ((android.widget.TextView) findViewById(R.id.tvUnlockTitle))
+                    .setText("Tu sesión ha expirado");
+        }
 
         tilPassword    = findViewById(R.id.tilMasterPassword);
         etPassword     = findViewById(R.id.etMasterPassword);

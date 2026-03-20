@@ -55,7 +55,7 @@
     <string name="export_error_no_data">No hay datos locales para exportar</string>
     <string name="export_error_network">Error al conectar con el servidor</string>
     <string name="import_section_title">Importar</string>
-    <string name="import_description">Descarga tu bóveda desde la nube. Necesitarás tu contraseña maestra o tu código PUK.</string>
+    <string name="import_description">Descarga tu bóveda desde la nube. Necesitarás tu código PUK.</string>
 
     <string name="import_button">Traer de la nube</string>
     <string name="import_success">Bóveda importada correctamente</string>

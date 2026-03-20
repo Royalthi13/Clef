@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -54,8 +55,11 @@ public class SettingsFragment extends Fragment {
                 Toast.makeText(requireContext(), "Próximamente", Toast.LENGTH_SHORT).show());
 
         View rowAutoLock = view.findViewById(R.id.rowAutoLock);
-        rowAutoLock.setOnClickListener(v ->
-                Toast.makeText(requireContext(), "Próximamente", Toast.LENGTH_SHORT).show());
+        rowAutoLock.setOnClickListener(v -> showAutoLockDialog());
+        TextView tvAutoLockValue = view.findViewById(R.id.tvAutoLockValue);
+        long savedMs = requireContext().getSharedPreferences("settings", 0)
+                .getLong("auto_lock_ms", 60_000);
+        tvAutoLockValue.setText(msToLabel(savedMs));
 
         View rowImportExport = view.findViewById(R.id.rowImportExport);
         rowImportExport.setOnClickListener(v ->
@@ -154,4 +158,30 @@ public class SettingsFragment extends Fragment {
             }
         });
     }
+    private void showAutoLockDialog() {
+        String[] opciones = {"1 minuto", "5 minutos", "15 minutos", "30 minutos", "Nunca"};
+        long[]   valores  = {60_000, 300_000, 900_000, 1_800_000, Long.MAX_VALUE};
+        android.content.Context ctx = requireContext();
+
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(ctx)
+                .setTitle("Bloqueo automático")
+                .setItems(opciones, (dialog, which) -> {
+                    long ms = valores[which];
+                    ctx.getSharedPreferences("settings", 0)
+                            .edit().putLong("auto_lock_ms", ms).apply();
+                    SessionManager.getInstance().setLockTimeout(ms);
+                    SessionManager.getInstance().resetTimer();
+                    ((android.widget.TextView) requireActivity().findViewById(R.id.tvAutoLockValue)).setText(opciones[which]);
+                    Toast.makeText(ctx, "Auto-bloqueo: " + opciones[which], Toast.LENGTH_SHORT).show();
+                })
+                .show();
+    }
+    private String msToLabel(long ms) {
+        if (ms == 60_000)    return "1 minuto";
+        if (ms == 300_000)   return "5 minutos";
+        if (ms == 900_000)   return "15 minutos";
+        if (ms == 1_800_000) return "30 minutos";
+        return "Nunca";
+    }
+
 }
