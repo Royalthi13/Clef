@@ -31,6 +31,7 @@ public class VaultRepository {
     private static final String KEY_PREFS  = "clef_key_cache";
     private static final String KEY_SALT   = "salt";
     private static final String KEY_CAJA_A = "caja_a";
+    private static final String KEY_CAJA_B = "caja_b";
 
     private final FileManager     fileManager;
     private final FirebaseManager firebaseManager;
@@ -56,6 +57,12 @@ public class VaultRepository {
                         bundle.bovedaCifradaBase64)
                 .addOnSuccessListener(unused -> {
                     saveLocalVault(bundle.bovedaCifradaBase64);
+                    // Cacheamos las claves para que el desbloqueo offline funcione desde el principio
+                    keyPrefs.edit()
+                            .putString(KEY_SALT,   bundle.saltBase64)
+                            .putString(KEY_CAJA_A, bundle.cajaABase64)
+                            .putString(KEY_CAJA_B, bundle.cajaBBase64)
+                            .apply();
                     callback.onSuccess(null);
                 })
                 .addOnFailureListener(callback::onError);
@@ -64,14 +71,12 @@ public class VaultRepository {
     // ── Guardar bóveda ────────────────────────────────────────────────────────
 
     /**
-     * Guarda el vault cifrado en disco y lo sube a Firebase.
+     * Guarda el vault cifrado en disco.
      * Recibe el String Base64 que devuelve KeyManager.cifrarVault().
      */
     public void saveVault(String encryptedVaultBase64, Callback<Void> callback) {
         saveLocalVault(encryptedVaultBase64);
-        firebaseManager.uploadVault(encryptedVaultBase64)
-                .addOnSuccessListener(unused -> callback.onSuccess(null))
-                .addOnFailureListener(callback::onError);
+        callback.onSuccess(null);
     }
 
     // ── Cargar datos del usuario ───────────────────────────────────────────────
@@ -89,8 +94,9 @@ public class VaultRepository {
                         // Guardamos salt y cajaA para el modo offline
                         if (userData.salt != null && userData.cajaA != null) {
                             keyPrefs.edit()
-                                    .putString(KEY_SALT, userData.salt)
+                                    .putString(KEY_SALT,   userData.salt)
                                     .putString(KEY_CAJA_A, userData.cajaA)
+                                    .putString(KEY_CAJA_B, userData.cajaB)
                                     .apply();
                         }
                     }
@@ -139,11 +145,54 @@ public class VaultRepository {
      * Devuelve un UserData con el vault local, o null si no hay nada cacheado.
      */
     public UserData loadOfflineUserData() {
-        String salt   = keyPrefs.getString(KEY_SALT, null);
-        String cajaA  = keyPrefs.getString(KEY_CAJA_A, null);
-        String vault  = loadLocalVault();
+        String salt  = keyPrefs.getString(KEY_SALT,   null);
+        String cajaA = keyPrefs.getString(KEY_CAJA_A, null);
+        String cajaB = keyPrefs.getString(KEY_CAJA_B, null);
+        String vault = loadLocalVault();
         if (salt == null || cajaA == null || vault == null) return null;
-        return new UserData(salt, cajaA, null, vault);
+        return new UserData(salt, cajaA, cajaB, vault);
+    }
+
+    /**
+     * Sube todos los datos locales a Firebase como copia de seguridad.
+     * Se llama desde el botón "Exportar" en Ajustes.
+     */
+    public void exportToFirebase(Callback<Void> callback) {
+        String salt  = keyPrefs.getString(KEY_SALT,   null);
+        String cajaA = keyPrefs.getString(KEY_CAJA_A, null);
+        String cajaB = keyPrefs.getString(KEY_CAJA_B, null);
+        String vault = loadLocalVault();
+
+        if (salt == null || cajaA == null || cajaB == null || vault == null) {
+            callback.onError(new Exception("no_local_data"));
+            return;
+        }
+
+        firebaseManager.uploadAll(salt, cajaA, cajaB, vault)
+                .addOnSuccessListener(unused -> callback.onSuccess(null))
+                .addOnFailureListener(callback::onError);
+    }
+
+    /**
+     * Descarga todos los datos de Firebase y los guarda localmente.
+     * Se llama desde el botón "Importar" en Ajustes antes de descifrar.
+     */
+    public void downloadAndCacheFromFirebase(Callback<UserData> callback) {
+        firebaseManager.downloadUserData()
+                .addOnSuccessListener(userData -> {
+                    if (userData != null) {
+                        if (userData.vault != null) saveLocalVault(userData.vault);
+                        if (userData.salt != null) {
+                            keyPrefs.edit()
+                                    .putString(KEY_SALT,   userData.salt)
+                                    .putString(KEY_CAJA_A, userData.cajaA)
+                                    .putString(KEY_CAJA_B, userData.cajaB)
+                                    .apply();
+                        }
+                    }
+                    callback.onSuccess(userData);
+                })
+                .addOnFailureListener(callback::onError);
     }
 
     /** true si hay un vault guardado en disco. */

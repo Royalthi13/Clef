@@ -76,34 +76,18 @@ public class UnlockActivity extends AppCompatActivity {
 
     private void loadUserData() {
         VaultRepository repo = new VaultRepository(this);
-        repo.loadUserData(new VaultRepository.Callback<FirebaseManager.UserData>() {
-            @Override
-            public void onSuccess(FirebaseManager.UserData result) {
-                userData = result;
-                setLoading(false);
-                onDataReady();
-            }
-
-            @Override
-            public void onError(Exception e) {
-                // Sin red: intentamos con los datos cacheados localmente
-                FirebaseManager.UserData cached = repo.loadOfflineUserData();
-                if (cached != null) {
-                    userData = cached;
-                    setLoading(false);
-                    Toast.makeText(UnlockActivity.this,
-                            getString(R.string.unlock_offline_warning), Toast.LENGTH_SHORT).show();
-                    onDataReady();
-                } else {
-                    setLoading(false);
-                    Toast.makeText(UnlockActivity.this,
-                            getString(R.string.unlock_no_data), Toast.LENGTH_LONG).show();
-                    // Sin datos ni en red ni en caché: el usuario no puede desbloquear
-                    // Mandamos a login para que se autentique de nuevo
-                    goTo(LoginActivity.class);
-                }
-            }
-        });
+        FirebaseManager.UserData cached = repo.loadOfflineUserData();
+        if (cached != null) {
+            userData = cached;
+            setLoading(false);
+            onDataReady();
+        } else {
+            setLoading(false);
+            Toast.makeText(this,
+                    "No hay datos locales. Usa Importar en Ajustes.",
+                    Toast.LENGTH_LONG).show();
+            goTo(LoginActivity.class);
+        }
     }
 
     /** Configura la UI y, si la biometría está activa, la lanza automáticamente. */

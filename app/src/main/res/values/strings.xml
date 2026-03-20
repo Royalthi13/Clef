@@ -46,6 +46,23 @@
     <string name="generator_symbols">Símbolos</string>
     <string name="generator_generate_password">Generar contraseña</string>
 
+    <!-- Importar / Exportar -->
+    <string name="import_export_title">Importar / Exportar</string>
+    <string name="export_section_title">Exportar</string>
+    <string name="export_description">Sube tu bóveda a la nube como copia de seguridad. Podrás recuperarla en otro dispositivo.</string>
+    <string name="export_button">Subir a la nube</string>
+    <string name="export_success">Bóveda exportada correctamente</string>
+    <string name="export_error_no_data">No hay datos locales para exportar</string>
+    <string name="export_error_network">Error al conectar con el servidor</string>
+    <string name="import_section_title">Importar</string>
+    <string name="import_description">Descarga tu bóveda desde la nube. Necesitarás tu contraseña maestra o tu código PUK.</string>
+
+    <string name="import_button">Traer de la nube</string>
+    <string name="import_success">Bóveda importada correctamente</string>
+    <string name="import_error_no_cloud_data">No hay datos en la nube para este usuario</string>
+    <string name="import_error_network">Error al conectar con el servidor</string>
+    <string name="import_error_wrong_puk">PUK incorrecto</string>
+
     <!-- Bóveda -->
     <string name="vault_empty_title">Sin contraseñas guardadas</string>
     <string name="vault_empty_subtitle">Pulsa el botón + para añadir tu primera cuenta</string>

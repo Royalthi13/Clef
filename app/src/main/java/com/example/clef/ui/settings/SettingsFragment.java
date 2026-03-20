@@ -59,7 +59,8 @@ public class SettingsFragment extends Fragment {
 
         View rowImportExport = view.findViewById(R.id.rowImportExport);
         rowImportExport.setOnClickListener(v ->
-                Toast.makeText(requireContext(), "Próximamente", Toast.LENGTH_SHORT).show());
+                ImportExportDialog.newInstance()
+                        .show(getChildFragmentManager(), "import_export"));
     }
 
     private void setupBiometricSwitch(View view) {

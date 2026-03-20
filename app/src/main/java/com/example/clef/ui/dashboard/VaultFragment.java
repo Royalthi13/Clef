@@ -43,7 +43,13 @@ public class VaultFragment extends Fragment {
         recyclerView.setAdapter(adapter);
 
         view.findViewById(R.id.fabAdd).setOnClickListener(v -> openAddDialog());
+    }
 
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Recargamos cada vez que el fragmento vuelve a ser visible,
+        // así la lista se actualiza tras añadir una credencial o tras importar
         loadCredentials();
     }
 
