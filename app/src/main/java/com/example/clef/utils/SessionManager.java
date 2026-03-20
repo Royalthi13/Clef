@@ -60,6 +60,7 @@ public class SessionManager {
 
     public void resetTimer() {
         handler.removeCallbacks(lockRunnable != null ? lockRunnable : () -> {});
+        if (lockTimeoutMs == Long.MAX_VALUE) return;
         lockRunnable = () -> lock();
         handler.postDelayed(lockRunnable, lockTimeoutMs);
     }

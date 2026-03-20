@@ -27,6 +27,10 @@ public class MainActivity extends AppCompatActivity {
                     .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK | android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
                     .putExtra("session_expired", true));
         });
+        long savedMs = getSharedPreferences("settings", 0).getLong("auto_lock_ms", 60_000);
+        SessionManager.getInstance().setLockTimeout(savedMs);
+        SessionManager.getInstance().resetTimer();
+
         FragmentManager fm = getSupportFragmentManager();
 
         if (savedInstanceState == null) {
