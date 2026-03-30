@@ -64,6 +64,14 @@ public class VaultFragment extends Fragment {
         chipGroupCategories.setOnCheckedStateChangeListener((group, checkedIds) -> applyFilters());
 
         adapter = new VaultAdapter(requireContext());
+        adapter.setOnDeleteListener((position, credential) -> {
+            new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                    .setTitle("Eliminar credencial")
+                    .setMessage("¿Eliminar \"" + credential.getTitle() + "\"? Esta acción no se puede deshacer.")
+                    .setPositiveButton("Eliminar", (dialog, which) -> deleteCredential(credential))
+                    .setNegativeButton("Cancelar", null)
+                    .show();
+        });
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
         recyclerView.setAdapter(adapter);
 
@@ -79,7 +87,40 @@ public class VaultFragment extends Fragment {
             }
         });
     }
+    private void deleteCredential(Credential credential) {
+        SessionManager session = SessionManager.getInstance();
+        byte[] dek   = session.getDek();
+        Vault  vault = session.getVault();
+        if (dek == null || vault == null) return;
 
+        int idx = vault.getCredentials().indexOf(credential);
+        if (idx < 0) return;
+
+        vault.removeCredential(idx);
+
+        java.util.concurrent.Executors.newSingleThreadExecutor().execute(() -> {
+            try {
+                com.example.clef.crypto.KeyManager km = new com.example.clef.crypto.KeyManager();
+                String encrypted = km.cifrarVault(vault, dek);
+                new com.example.clef.data.repository.VaultRepository(requireContext())
+                        .saveVault(encrypted, new com.example.clef.data.repository.VaultRepository.Callback<Void>() {
+                            @Override public void onSuccess(Void r) {
+                                session.updateVault(vault);
+                                requireActivity().runOnUiThread(VaultFragment.this::applyFilters);
+                            }
+                            @Override public void onError(Exception e) {
+                                // revertir
+                                vault.addCredential(credential);
+                                requireActivity().runOnUiThread(() ->
+                                        android.widget.Toast.makeText(requireContext(),
+                                                "Error al eliminar", android.widget.Toast.LENGTH_SHORT).show());
+                            }
+                        });
+            } catch (Exception e) {
+                vault.addCredential(credential);
+            }
+        });
+    }
     @Override
     public void onResume() {
         super.onResume();

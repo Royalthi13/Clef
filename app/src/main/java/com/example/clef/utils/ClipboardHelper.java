@@ -1,10 +1,13 @@
 package com.example.clef.utils;
 
 import android.content.ClipData;
+import android.content.ClipDescription;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.PersistableBundle;
 
 import androidx.annotation.NonNull;
 
@@ -19,7 +22,9 @@ public class ClipboardHelper {
 
     /**
      * Copia texto al portapapeles y programa su borrado a los 45s.
-     * Si el usuario cambia el portapapeles antes, no borra el contenido nuevo.
+     * En Android 13+ marcamos el clip como sensible para ocultar la preview.
+     * El borrado real compara el texto exacto antes de limpiar,
+     * para no borrar si el usuario copió algo distinto después.
      */
     public static void copySensitive(@NonNull Context context,
                                      @NonNull String label,
@@ -28,22 +33,36 @@ public class ClipboardHelper {
         if (cm == null) return;
 
         ClipData clip = ClipData.newPlainText(label, text);
-        cm.setPrimaryClip(clip);
 
-        if (pendingClear != null) {
-            handler.removeCallbacks(pendingClear);
+        // Android 13+: marcar como contenido sensible oculta la notificación de portapapeles
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            PersistableBundle extras = new PersistableBundle();
+            extras.putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true);
+            clip.getDescription().setExtras(extras);
         }
 
+        cm.setPrimaryClip(clip);
+
+        // Cancelar borrado pendiente anterior
+        if (pendingClear != null) {
+            handler.removeCallbacks(pendingClear);
+            pendingClear = null;
+        }
+
+        final String copiedText = text;
+
         pendingClear = () -> {
-            ClipData current = cm.getPrimaryClip();
-            if (current != null
-                    && current.getItemCount() > 0
-                    && current.getDescription() != null
-                    && "text/plain".equals(current.getDescription().getMimeType(0))) {
+            try {
+                if (!cm.hasPrimaryClip()) return;
+                ClipData current = cm.getPrimaryClip();
+                if (current == null || current.getItemCount() == 0) return;
+
                 CharSequence currentText = current.getItemAt(0).coerceToText(context);
-                if (currentText != null && currentText.toString().equals(text)) {
+                if (currentText != null && copiedText.contentEquals(currentText)) {
                     cm.setPrimaryClip(ClipData.newPlainText("", ""));
                 }
+            } catch (Exception ignored) {
+                // SecurityException posible si la app está en background en algunos dispositivos
             }
         };
 

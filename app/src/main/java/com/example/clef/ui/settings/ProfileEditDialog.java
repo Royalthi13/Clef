@@ -257,6 +257,10 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
         user.updateProfile(request)
                 .addOnSuccessListener(unused -> {
                     setLoading(false);
+                    // Invalidar caché de Glide para que la foto nueva se muestre inmediatamente
+                    if (copiedPhotoFile != null) {
+                        Glide.get(requireContext()).clearMemory();
+                    }
                     Toast.makeText(requireContext(),
                             getString(R.string.profile_saved), Toast.LENGTH_SHORT).show();
                     if (listener != null) {

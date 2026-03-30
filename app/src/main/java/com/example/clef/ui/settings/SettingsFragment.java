@@ -180,13 +180,13 @@ public class SettingsFragment extends Fragment {
         ProfileEditDialog dialog = ProfileEditDialog.newInstance();
         dialog.setOnProfileUpdatedListener((newName, localPhoto) -> {
             tvUserName.setText(newName);
-
             if (localPhoto != null && isAdded()) {
-                // Quitamos el tint antes de cargar la foto nueva
                 ivAvatar.clearColorFilter();
                 Glide.with(requireContext())
                         .load(localPhoto)
                         .transform(new CircleCrop())
+                        .skipMemoryCache(true)
+                        .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.NONE)
                         .placeholder(R.drawable.ic_person_24)
                         .into(ivAvatar);
             }

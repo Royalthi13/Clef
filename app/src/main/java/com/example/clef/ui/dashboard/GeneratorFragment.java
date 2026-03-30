@@ -53,30 +53,36 @@ public class GeneratorFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        tvGeneratedPassword = view.findViewById(R.id.tvGeneratedPassword);
-        tvLengthValue       = view.findViewById(R.id.tvLengthValue);
-        sliderLength        = view.findViewById(R.id.sliderLength);
-        switchUppercase     = view.findViewById(R.id.switchUppercase);
-        switchLowercase     = view.findViewById(R.id.switchLowercase);
-        switchNumbers       = view.findViewById(R.id.switchNumbers);
-        switchSymbols       = view.findViewById(R.id.switchSymbols);
-        btnCopy             = view.findViewById(R.id.btnCopy);
-        btnGenerate         = view.findViewById(R.id.btnGenerate);
+        tvLengthValue   = view.findViewById(R.id.tvLengthValue);
+        sliderLength    = view.findViewById(R.id.sliderLength);
+        switchUppercase = view.findViewById(R.id.switchUppercase);
+        switchLowercase = view.findViewById(R.id.switchLowercase);
+        switchNumbers   = view.findViewById(R.id.switchNumbers);
+        switchSymbols   = view.findViewById(R.id.switchSymbols);
+        btnCopy     = view.findViewById(R.id.btnCopy);
+        btnGenerate = view.findViewById(R.id.btnGenerate);
+
+        // Ocultar sección de preview — este fragment es solo configuración
+        view.findViewById(R.id.btnCopy).setVisibility(View.GONE);
+        view.findViewById(R.id.btnGenerate).setVisibility(View.GONE);
+        TextView tvGenerated = view.findViewById(R.id.tvGeneratedPassword);
+        if (tvGenerated != null) {
+            tvGenerated.setText("Configura aquí la fortaleza de tus contraseñas.\nSe generarán automáticamente al crear una cuenta.");
+            tvGenerated.setTextSize(14);
+        }
 
         loadSavedConfig();
         updateLengthLabel((int) sliderLength.getValue());
-        generatePreview();
 
         sliderLength.addOnChangeListener((slider, value, fromUser) -> {
             updateLengthLabel((int) value);
             saveConfig();
-            generatePreview();
         });
 
-        switchUppercase.setOnCheckedChangeListener((btn, checked) -> { saveConfig(); generatePreview(); });
-        switchLowercase.setOnCheckedChangeListener((btn, checked) -> { saveConfig(); generatePreview(); });
-        switchNumbers  .setOnCheckedChangeListener((btn, checked) -> { saveConfig(); generatePreview(); });
-        switchSymbols  .setOnCheckedChangeListener((btn, checked) -> { saveConfig(); generatePreview(); });
+        switchUppercase.setOnCheckedChangeListener((btn, checked) -> saveConfig());
+        switchLowercase.setOnCheckedChangeListener((btn, checked) -> saveConfig());
+        switchNumbers  .setOnCheckedChangeListener((btn, checked) -> saveConfig());
+        switchSymbols  .setOnCheckedChangeListener((btn, checked) -> saveConfig());
 
         btnGenerate.setOnClickListener(v -> generatePreview());
 
