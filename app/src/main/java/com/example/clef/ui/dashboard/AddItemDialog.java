@@ -41,6 +41,7 @@ public class AddItemDialog extends BottomSheetDialogFragment {
     private TextInputEditText etTitle;
     private TextInputEditText etUsername;
     private TextInputEditText etPassword;
+    private TextInputEditText etUrl;         // ← NUEVO
     private TextInputEditText etDescription;
     private MaterialButton    btnSave;
 
@@ -69,11 +70,12 @@ public class AddItemDialog extends BottomSheetDialogFragment {
         etTitle     = view.findViewById(R.id.etTitle);
         etUsername  = view.findViewById(R.id.etUsername);
         etPassword  = view.findViewById(R.id.etPassword);
+        etUrl       = view.findViewById(R.id.etUrl);         // ← NUEVO
         etDescription = view.findViewById(R.id.etDescription);
         btnSave     = view.findViewById(R.id.btnSave);
         chipGroupCategory = view.findViewById(R.id.chipGroupCategory);
 
-        // Añadir chips de categoría dinámicamente
+        // Chips de categoría
         for (Credential.Category cat : Credential.Category.values()) {
             com.google.android.material.chip.Chip chip =
                     new com.google.android.material.chip.Chip(requireContext());
@@ -83,14 +85,13 @@ public class AddItemDialog extends BottomSheetDialogFragment {
             chipGroupCategory.addView(chip);
         }
 
-        // Icono de dado en el campo contraseña → genera con la config del Generador
+        // Icono de dado → genera contraseña con config del Generador
         tilPassword.setEndIconMode(TextInputLayout.END_ICON_CUSTOM);
         tilPassword.setEndIconDrawable(R.drawable.ic_generator);
         tilPassword.setEndIconContentDescription("Generar contraseña");
         tilPassword.setEndIconOnClickListener(v -> {
             String generated = PasswordGenerator.generateFromPrefs(requireContext());
             etPassword.setText(generated);
-            // Mover cursor al final
             etPassword.setSelection(generated.length());
         });
 
@@ -107,6 +108,7 @@ public class AddItemDialog extends BottomSheetDialogFragment {
         String title    = text(etTitle);
         String username = text(etUsername);
         String password = text(etPassword);
+        String url      = text(etUrl);           // ← NUEVO
         String notes    = text(etDescription);
 
         boolean valid = true;
@@ -149,7 +151,8 @@ public class AddItemDialog extends BottomSheetDialogFragment {
                 .getSharedPreferences("settings", 0)
                 .getBoolean("sync_enabled", false);
 
-        Credential credential = new Credential(title, username, password, "", notes, category);
+        // ← url se pasa ahora al constructor en lugar de ""
+        Credential credential = new Credential(title, username, password, url, notes, category);
         vault.addCredential(credential);
 
         executor.execute(() -> {
@@ -191,14 +194,16 @@ public class AddItemDialog extends BottomSheetDialogFragment {
     }
 
     private String text(TextInputEditText et) {
+        if (et == null) return "";
         return et.getText() != null ? et.getText().toString().trim() : "";
     }
 
     private void setFormEnabled(boolean enabled) {
-        etTitle.setEnabled(enabled);
-        etUsername.setEnabled(enabled);
-        etPassword.setEnabled(enabled);
+        etTitle      .setEnabled(enabled);
+        etUsername   .setEnabled(enabled);
+        etPassword   .setEnabled(enabled);
+        if (etUrl != null) etUrl.setEnabled(enabled);
         etDescription.setEnabled(enabled);
-        btnSave.setEnabled(enabled);
+        btnSave      .setEnabled(enabled);
     }
 }

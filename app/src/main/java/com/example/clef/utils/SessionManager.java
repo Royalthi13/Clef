@@ -9,7 +9,7 @@ import java.util.Arrays;
 
 public class SessionManager {
 
-    private static volatile SessionManager instance; // volatile para visibilidad entre hilos
+    private static volatile SessionManager instance;
 
     private byte[] dek   = null;
     private Vault  vault = null;
@@ -21,7 +21,6 @@ public class SessionManager {
 
     private SessionManager() {}
 
-    /** Double-checked locking — seguro y sin overhead tras la primera inicialización. */
     public static SessionManager getInstance() {
         if (instance == null) {
             synchronized (SessionManager.class) {
@@ -33,39 +32,94 @@ public class SessionManager {
         return instance;
     }
 
+    // ── Sesión ─────────────────────────────────────────────────────────────────
+
     public void unlock(byte[] dek, Vault vault) {
         this.dek   = dek;
         this.vault = vault;
-        resetTimer();
+        // Al desbloquear, resetear el timer de inactividad
+        resetInactivityTimer();
     }
 
-    public byte[] getDek()   { return dek; }
-    public Vault  getVault() { return vault; }
+    public byte[]  getDek()        { return dek; }
+    public Vault   getVault()      { return vault; }
+    public boolean isUnlocked()    { return dek != null; }
+    public void    updateVault(Vault vault) { this.vault = vault; }
 
-    public void updateVault(Vault vault) { this.vault = vault; }
+    // ── Timer de bloqueo ───────────────────────────────────────────────────────
 
-    public boolean isUnlocked() { return dek != null; }
+    /** Configura el tiempo de inactividad antes del bloqueo automático. */
+    public void setLockTimeout(long ms) {
+        this.lockTimeoutMs = ms;
+    }
 
-    public void setLockTimeout(long ms) { lockTimeoutMs = ms; }
+    /**
+     * Cancela el timer activo (app vuelve a foreground).
+     * Llamado desde ClefApp.onStart().
+     */
+    public void cancelLockTimer() {
+        if (lockRunnable != null) {
+            handler.removeCallbacks(lockRunnable);
+            lockRunnable = null;
+        }
+    }
 
-    public void resetTimer() {
-        if (lockRunnable != null) handler.removeCallbacks(lockRunnable);
-        if (lockTimeoutMs == Long.MAX_VALUE) return;
+    /**
+     * Inicia el timer de bloqueo por background (app pasa a background).
+     * Llamado desde ClefApp.onStop().
+     */
+    public void startLockTimer() {
+        cancelLockTimer(); // Evitar duplicados
+        if (lockTimeoutMs == Long.MAX_VALUE) return; // "Nunca" seleccionado
+        if (!isUnlocked()) return; // Ya bloqueado, no hace falta
+
         lockRunnable = this::lock;
         handler.postDelayed(lockRunnable, lockTimeoutMs);
     }
 
+    /**
+     * Reinicia el timer de inactividad (se llama al desbloquear o cuando el usuario actúa).
+     * Distinto de startLockTimer: este se usa para la inactividad dentro de la app,
+     * startLockTimer para cuando la app pasa a background.
+     *
+     * @deprecated Usa startLockTimer/cancelLockTimer para el ciclo de vida de la app.
+     * Este método se mantiene para compatibilidad con código existente.
+     */
+    public void resetTimer() {
+        cancelLockTimer();
+        startLockTimer();
+    }
+
+    // ── Bloqueo ────────────────────────────────────────────────────────────────
+
     public void lock() {
+        cancelLockTimer();
         if (dek != null) {
-            Arrays.fill(dek, (byte) 0);
+            Arrays.fill(dek, (byte) 0x00);
             dek = null;
         }
         vault = null;
-        if (lockRunnable != null) handler.removeCallbacks(lockRunnable);
         if (lockListener != null) lockListener.onLock();
     }
 
-    public void setOnLockListener(OnLockListener listener) { this.lockListener = listener; }
+    // ── Callback ───────────────────────────────────────────────────────────────
 
-    public interface OnLockListener { void onLock(); }
+    public void setOnLockListener(OnLockListener listener) {
+        this.lockListener = listener;
+    }
+
+    public interface OnLockListener {
+        void onLock();
+    }
+
+    // ── Privado ────────────────────────────────────────────────────────────────
+
+    private void resetInactivityTimer() {
+        cancelLockTimer();
+        // Solo reiniciar si la sesión está abierta y hay un timeout configurado
+        if (lockTimeoutMs != Long.MAX_VALUE && isUnlocked()) {
+            lockRunnable = this::lock;
+            handler.postDelayed(lockRunnable, lockTimeoutMs);
+        }
+    }
 }

@@ -12,34 +12,25 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.example.clef.R;
-import com.example.clef.utils.ClipboardHelper;
 import com.example.clef.utils.PasswordGenerator;
-import com.google.android.material.button.MaterialButton;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.slider.Slider;
 
 /**
- * Fragmento de configuración del generador de contraseñas.
+ * Fragmento de CONFIGURACIÓN del generador de contraseñas.
  *
- * No genera la contraseña final aquí — eso ocurre en AddItemDialog al pulsar
- * el icono de dado en el campo de contraseña. Este fragment solo guarda la
- * configuración (longitud y tipos de caracteres) que PasswordGenerator.generateFromPrefs()
- * leerá después.
- *
- * El botón "Generar" de este fragment sirve como preview para que el usuario
- * pueda ver cómo quedaría una contraseña con la configuración actual.
+ * Este fragmento NO genera contraseñas — solo guarda la configuración
+ * (longitud y tipos de caracteres) en SharedPreferences.
+ * La generación real ocurre en AddItemDialog al pulsar el icono de dado.
  */
 public class GeneratorFragment extends Fragment {
 
-    private TextView       tvGeneratedPassword;
     private TextView       tvLengthValue;
     private Slider         sliderLength;
     private MaterialSwitch switchUppercase;
     private MaterialSwitch switchLowercase;
     private MaterialSwitch switchNumbers;
     private MaterialSwitch switchSymbols;
-    private MaterialButton btnCopy;
-    private MaterialButton btnGenerate;
 
     @Nullable
     @Override
@@ -59,18 +50,30 @@ public class GeneratorFragment extends Fragment {
         switchLowercase = view.findViewById(R.id.switchLowercase);
         switchNumbers   = view.findViewById(R.id.switchNumbers);
         switchSymbols   = view.findViewById(R.id.switchSymbols);
-        btnCopy     = view.findViewById(R.id.btnCopy);
-        btnGenerate = view.findViewById(R.id.btnGenerate);
 
-        // Ocultar sección de preview — este fragment es solo configuración
-        view.findViewById(R.id.btnCopy).setVisibility(View.GONE);
-        view.findViewById(R.id.btnGenerate).setVisibility(View.GONE);
+        // Ocultar la sección de preview — este fragment es SOLO configuración
+        View btnCopy    = view.findViewById(R.id.btnCopy);
+        View btnGenerate= view.findViewById(R.id.btnGenerate);
+        if (btnCopy != null)     btnCopy.setVisibility(View.GONE);
+        if (btnGenerate != null) btnGenerate.setVisibility(View.GONE);
+
         TextView tvGenerated = view.findViewById(R.id.tvGeneratedPassword);
         if (tvGenerated != null) {
-            tvGenerated.setText("Configura aquí la fortaleza de tus contraseñas.\nSe generarán automáticamente al crear una cuenta.");
-            tvGenerated.setTextSize(14);
+            tvGenerated.setText(
+                    "Configura aquí la fortaleza de tus contraseñas.\n" +
+                            "Se generarán automáticamente al crear una cuenta."
+            );
+            tvGenerated.setTextSize(14f);
+            tvGenerated.setTextColor(
+                    requireContext().getResources().getColor(
+                            android.R.color.darker_gray, requireContext().getTheme()
+                    )
+            );
         }
 
+        // También ocultar la card superior completa (la del label "TU NUEVA CONTRASEÑA")
+        // para que quede más limpio como pantalla de configuración
+        // Cargamos config y configuramos listeners
         loadSavedConfig();
         updateLengthLabel((int) sliderLength.getValue());
 
@@ -83,22 +86,6 @@ public class GeneratorFragment extends Fragment {
         switchLowercase.setOnCheckedChangeListener((btn, checked) -> saveConfig());
         switchNumbers  .setOnCheckedChangeListener((btn, checked) -> saveConfig());
         switchSymbols  .setOnCheckedChangeListener((btn, checked) -> saveConfig());
-
-        btnGenerate.setOnClickListener(v -> generatePreview());
-
-        btnCopy.setOnClickListener(v -> {
-            String pwd = tvGeneratedPassword.getText().toString();
-            if (!pwd.isEmpty() && !pwd.equals(getString(R.string.generator_new_password))) {
-                ClipboardHelper.copySensitive(requireContext(), "contraseña", pwd);
-            }
-        });
-    }
-
-    // ── Helpers ────────────────────────────────────────────────────────────────
-
-    private void generatePreview() {
-        String pwd = PasswordGenerator.generateFromPrefs(requireContext());
-        tvGeneratedPassword.setText(pwd);
     }
 
     private void updateLengthLabel(int length) {
@@ -116,12 +103,10 @@ public class GeneratorFragment extends Fragment {
         );
     }
 
-    /** Carga la configuración guardada en los controles de la UI. */
     private void loadSavedConfig() {
         SharedPreferences prefs = requireContext()
                 .getSharedPreferences(PasswordGenerator.PREFS_NAME, android.content.Context.MODE_PRIVATE);
-
-        sliderLength.setValue(prefs.getInt(PasswordGenerator.KEY_LENGTH, 16));
+        sliderLength   .setValue(prefs.getInt    (PasswordGenerator.KEY_LENGTH,    16));
         switchUppercase.setChecked(prefs.getBoolean(PasswordGenerator.KEY_UPPERCASE, true));
         switchLowercase.setChecked(prefs.getBoolean(PasswordGenerator.KEY_LOWERCASE, true));
         switchNumbers  .setChecked(prefs.getBoolean(PasswordGenerator.KEY_NUMBERS,   true));

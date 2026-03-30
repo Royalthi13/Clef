@@ -146,4 +146,13 @@
     <string name="category_other">Otro</string>
     <string name="category_all">Todos</string>
     <string name="add_item_hint_category">Categoría</string>
+
+
+
+    <!-- Splash -->
+    <string name="splash_tagline">La llave siempre estuvo contigo</string>
+
+    <!-- Dialog añadir credencial -->
+    <string name="add_item_hint_url">URL del sitio (opcional)</string>
+
 </resources>

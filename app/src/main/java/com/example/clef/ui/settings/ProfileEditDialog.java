@@ -1,10 +1,14 @@
 package com.example.clef.ui.settings;
 
+import android.Manifest;
 import android.app.Activity;
-import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
@@ -17,9 +21,13 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.bumptech.glide.load.resource.bitmap.CircleCrop;
+import com.bumptech.glide.signature.ObjectKey;
 import com.example.clef.R;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.button.MaterialButton;
@@ -31,85 +39,76 @@ import com.google.firebase.auth.UserProfileChangeRequest;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class ProfileEditDialog extends BottomSheetDialogFragment {
 
-    // ── Interfaz de callback ───────────────────────────────────────────────────
+    // ── Constantes SharedPreferences ───────────────────────────────────────────
+
+    public static final String PREFS_NAME     = "profile_prefs";
+    public static final String KEY_PHOTO_PATH = "local_photo_path";
+    /**
+     * Timestamp que se actualiza cada vez que se guarda una foto nueva.
+     * Glide lo usa como parte de la cache key → al cambiar, invalida la caché.
+     * Esto es lo que soluciona el bug de "la foto no cambia al cambiar de tema".
+     */
+    public static final String KEY_PHOTO_SIG  = "photo_signature";
+
+    // ── Listener ───────────────────────────────────────────────────────────────
 
     public interface OnProfileUpdatedListener {
         void onProfileUpdated(String newName, File localPhoto);
     }
+    private OnProfileUpdatedListener listener;
 
-    // ── Constantes SharedPreferences ───────────────────────────────────────────
+    // ── Vistas — IDs del layout dialog_profile_edit.xml ───────────────────────
 
-    static final String PREFS_PROFILE  = "clef_profile";
-    static final String KEY_PHOTO_PATH = "local_photo_path";
-
-    // ── Vistas ─────────────────────────────────────────────────────────────────
-
-    private ImageView         ivProfilePhoto;
-    private View              btnChangePhoto;
-    private TextInputLayout   tilDisplayName;
-    private TextInputEditText etDisplayName;
-    private MaterialButton    btnSave;
-    private MaterialButton    btnCancel;
-    private View              loadingOverlay;
+    private ImageView         ivProfilePhoto;   // R.id.ivProfilePhoto
+    private TextInputLayout   tilDisplayName;   // R.id.tilDisplayName
+    private TextInputEditText etDisplayName;    // R.id.etDisplayName
+    private MaterialButton    btnSaveProfile;   // R.id.btnSaveProfile
+    private MaterialButton    btnCancelProfile; // R.id.btnCancelProfile
+    private View              loadingOverlay;   // R.id.loadingOverlay
+    private View              btnChangePhoto;   // R.id.btnChangePhoto
 
     // ── Estado ─────────────────────────────────────────────────────────────────
 
-    private File copiedPhotoFile = null;
-    private OnProfileUpdatedListener listener;
+    private File selectedPhotoFile = null;
+    private Uri  cameraUri         = null;
 
-    // ── Launcher de galería ────────────────────────────────────────────────────
-    //
-    // IMPORTANTE: usamos GetContent en lugar de ACTION_PICK + EXTERNAL_CONTENT_URI.
-    // ACTION_PICK con setType() causa conflicto en muchos dispositivos y el
-    // selector se cierra sin devolver nada. GetContent es el estándar moderno.
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
-    private final ActivityResultLauncher<String> galleryLauncher =
-            registerForActivityResult(
-                    new ActivityResultContracts.GetContent(),
-                    uri -> {
-                        if (uri == null) return; // usuario canceló
+    // ── Launchers ──────────────────────────────────────────────────────────────
 
-                        // Tomamos permiso persistente para poder leer el URI
-                        // incluso después de que el BottomSheet se cierre
-                        try {
-                            requireContext().getContentResolver()
-                                    .takePersistableUriPermission(
-                                            uri,
-                                            Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                        } catch (Exception ignored) {
-                            // Algunos proveedores no soportan permisos persistentes,
-                            // no es crítico porque copiamos el archivo inmediatamente
-                        }
+    private final ActivityResultLauncher<Intent> galleryLauncher =
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (result.getResultCode() == Activity.RESULT_OK
+                        && result.getData() != null
+                        && result.getData().getData() != null) {
+                    handlePhotoSelected(result.getData().getData());
+                }
+            });
 
-                        // Copiamos el archivo AL MOMENTO mientras el URI es válido
-                        copiedPhotoFile = copyUriToInternal(uri);
+    private final ActivityResultLauncher<Uri> cameraLauncher =
+            registerForActivityResult(new ActivityResultContracts.TakePicture(), ok -> {
+                if (ok && cameraUri != null) handlePhotoSelected(cameraUri);
+            });
 
-                        if (copiedPhotoFile != null) {
-                            loadPhotoFromFile(copiedPhotoFile);
-                        } else {
-                            // Si la copia falló mostramos un error claro
-                            Toast.makeText(requireContext(),
-                                    "No se pudo cargar la imagen. Inténtalo de nuevo.",
-                                    Toast.LENGTH_SHORT).show();
-                        }
+    private final ActivityResultLauncher<String> permissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {
+                if (granted) launchCamera();
+                else Toast.makeText(requireContext(),
+                        "Se necesita permiso de cámara", Toast.LENGTH_SHORT).show();
+            });
 
-                        updateSaveButtonState(etDisplayName.getText());
-                    });
+    // ── Factory ────────────────────────────────────────────────────────────────
 
-    // ── Construcción ───────────────────────────────────────────────────────────
+    public static ProfileEditDialog newInstance() { return new ProfileEditDialog(); }
 
-    public static ProfileEditDialog newInstance() {
-        return new ProfileEditDialog();
-    }
-
-    public void setOnProfileUpdatedListener(OnProfileUpdatedListener l) {
-        this.listener = l;
-    }
+    public void setOnProfileUpdatedListener(OnProfileUpdatedListener l) { this.listener = l; }
 
     // ── Ciclo de vida ──────────────────────────────────────────────────────────
 
@@ -118,6 +117,7 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
+        // Usa el layout existente — dialog_profile_edit.xml
         return inflater.inflate(R.layout.dialog_profile_edit, container, false);
     }
 
@@ -125,93 +125,169 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        ivProfilePhoto = view.findViewById(R.id.ivProfilePhoto);
-        btnChangePhoto = view.findViewById(R.id.btnChangePhoto);
-        tilDisplayName = view.findViewById(R.id.tilDisplayName);
-        etDisplayName  = view.findViewById(R.id.etDisplayName);
-        btnSave        = view.findViewById(R.id.btnSaveProfile);
-        btnCancel      = view.findViewById(R.id.btnCancelProfile);
-        loadingOverlay = view.findViewById(R.id.loadingOverlay);
+        // IDs del layout dialog_profile_edit.xml
+        ivProfilePhoto   = view.findViewById(R.id.ivProfilePhoto);
+        tilDisplayName   = view.findViewById(R.id.tilDisplayName);
+        etDisplayName    = view.findViewById(R.id.etDisplayName);
+        btnSaveProfile   = view.findViewById(R.id.btnSaveProfile);
+        btnCancelProfile = view.findViewById(R.id.btnCancelProfile);
+        loadingOverlay   = view.findViewById(R.id.loadingOverlay);
+        btnChangePhoto   = view.findViewById(R.id.btnChangePhoto);
 
-        populateCurrentData();
-        setupListeners();
-    }
+        loadCurrentPhoto();
 
-    // ── Precarga de datos actuales ─────────────────────────────────────────────
-
-    private void populateCurrentData() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        if (user == null) return;
-
-        // Nombre actual
-        String displayName = user.getDisplayName();
-        if (displayName != null && !displayName.isEmpty()) {
-            etDisplayName.setText(displayName);
-            etDisplayName.setSelection(displayName.length());
+        if (user != null && user.getDisplayName() != null) {
+            etDisplayName.setText(user.getDisplayName());
         }
 
-        // Foto: local primero, luego Google
-        File localPhoto = getLocalPhotoFile();
-        if (localPhoto != null && localPhoto.exists()) {
-            loadPhotoFromFile(localPhoto);
-        } else {
-            Uri googlePhoto = user.getPhotoUrl();
-            if (googlePhoto != null) {
-                loadPhotoFromUri(googlePhoto);
-            } else {
-                ivProfilePhoto.setImageResource(R.drawable.ic_person_24);
-            }
-        }
-
-        btnSave.setEnabled(false);
-    }
-
-    // ── Listeners ──────────────────────────────────────────────────────────────
-
-    private void setupListeners() {
-        // Ambos abren la galería: el texto "Cambiar foto" y la propia foto
-        btnChangePhoto.setOnClickListener(v -> openGallery());
-        ivProfilePhoto.setOnClickListener(v -> openGallery());
-
+        // Desactivar "Guardar" hasta que haya cambios
+        btnSaveProfile.setEnabled(false);
         etDisplayName.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int i, int c, int a) {}
             @Override public void onTextChanged(CharSequence s, int i, int b, int c) {}
             @Override
             public void afterTextChanged(Editable s) {
-                tilDisplayName.setError(null);
-                updateSaveButtonState(s);
+                String current = user != null && user.getDisplayName() != null
+                        ? user.getDisplayName() : "";
+                boolean nameChanged  = !s.toString().trim().equals(current);
+                boolean photoChanged = selectedPhotoFile != null;
+                btnSaveProfile.setEnabled(
+                        (nameChanged || photoChanged) && s.toString().trim().length() >= 2);
             }
         });
 
-        btnSave.setOnClickListener(v -> onSave());
-        btnCancel.setOnClickListener(v -> dismiss());
+        btnChangePhoto.setOnClickListener(v -> showPhotoOptions());
+        ivProfilePhoto .setOnClickListener(v -> showPhotoOptions());
+        btnSaveProfile .setOnClickListener(v -> onSave());
+        btnCancelProfile.setOnClickListener(v -> dismiss());
     }
 
-    private void updateSaveButtonState(CharSequence currentText) {
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        if (user == null) {
-            btnSave.setEnabled(false);
-            return;
-        }
-
-        String current = currentText != null ? currentText.toString().trim() : "";
-        String saved   = user.getDisplayName() != null ? user.getDisplayName() : "";
-
-        boolean nameChanged  = !current.equals(saved);
-        boolean photoChanged = copiedPhotoFile != null;
-
-        btnSave.setEnabled((nameChanged || photoChanged) && !current.isEmpty());
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        executor.shutdownNow();
     }
 
-    // ── Galería ────────────────────────────────────────────────────────────────
+    // ── Carga de foto actual ───────────────────────────────────────────────────
 
     /**
-     * Abre el selector de imágenes del sistema.
-     * GetContent("image/*") es la forma correcta y moderna —
-     * compatible con Google Fotos, Files, y cualquier proveedor.
+     * Carga la foto usando la signatura guardada.
+     * Cuando la signatura cambia (nuevo timestamp tras guardar foto),
+     * Glide descarta la caché y recarga el archivo del disco.
+     * Esto resuelve el bug de "la foto no cambia al cambiar de tema".
      */
+    private void loadCurrentPhoto() {
+        SharedPreferences prefs = requireContext()
+                .getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE);
+        String localPath = prefs.getString(KEY_PHOTO_PATH, null);
+        long   signature = prefs.getLong(KEY_PHOTO_SIG, 0L);
+
+        if (localPath != null) {
+            File f = new File(localPath);
+            if (f.exists()) {
+                ivProfilePhoto.clearColorFilter();
+                Glide.with(this)
+                        .load(f)
+                        .signature(new ObjectKey(signature))
+                        .skipMemoryCache(true)
+                        .diskCacheStrategy(DiskCacheStrategy.NONE)
+                        .transform(new CircleCrop())
+                        .placeholder(R.drawable.ic_person_24)
+                        .into(ivProfilePhoto);
+                return;
+            }
+        }
+
+        // Fallback: foto de Firebase o placeholder
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user != null && user.getPhotoUrl() != null) {
+            ivProfilePhoto.clearColorFilter();
+            Glide.with(this)
+                    .load(user.getPhotoUrl())
+                    .transform(new CircleCrop())
+                    .placeholder(R.drawable.ic_person_24)
+                    .into(ivProfilePhoto);
+        } else {
+            ivProfilePhoto.setImageResource(R.drawable.ic_person_24);
+        }
+    }
+
+    // ── Selección de foto ──────────────────────────────────────────────────────
+
+    private void showPhotoOptions() {
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Cambiar foto de perfil")
+                .setItems(new String[]{"Cámara", "Galería"}, (d, which) -> {
+                    if (which == 0) requestCameraPermission();
+                    else openGallery();
+                })
+                .show();
+    }
+
+    private void requestCameraPermission() {
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA)
+                == PackageManager.PERMISSION_GRANTED) {
+            launchCamera();
+        } else {
+            permissionLauncher.launch(Manifest.permission.CAMERA);
+        }
+    }
+
+    private void launchCamera() {
+        try {
+            File tmp = File.createTempFile("cam_", ".jpg",
+                    requireContext().getExternalFilesDir(Environment.DIRECTORY_PICTURES));
+            cameraUri = FileProvider.getUriForFile(requireContext(),
+                    requireContext().getPackageName() + ".provider", tmp);
+            cameraLauncher.launch(cameraUri);
+        } catch (IOException e) {
+            Toast.makeText(requireContext(), "Error al abrir la cámara", Toast.LENGTH_SHORT).show();
+        }
+    }
+
     private void openGallery() {
-        galleryLauncher.launch("image/*");
+        Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+        intent.setType("image/*");
+        galleryLauncher.launch(intent);
+    }
+
+    /**
+     * Copia la imagen al directorio privado de la app y actualiza la preview.
+     * Se ejecuta en hilo de fondo para no bloquear la UI.
+     */
+    private void handlePhotoSelected(Uri uri) {
+        executor.execute(() -> {
+            try {
+                File dest = getProfilePhotoFile();
+                try (InputStream in = requireContext().getContentResolver().openInputStream(uri);
+                     FileOutputStream out = new FileOutputStream(dest)) {
+                    if (in == null) throw new IOException("Stream nulo");
+                    byte[] buf = new byte[4096];
+                    int len;
+                    while ((len = in.read(buf)) != -1) out.write(buf, 0, len);
+                }
+                selectedPhotoFile = dest;
+
+                requireActivity().runOnUiThread(() -> {
+                    if (!isAdded()) return;
+                    ivProfilePhoto.clearColorFilter();
+                    // Preview inmediata — sin caché, recarga el archivo recién copiado
+                    Glide.with(this)
+                            .load(dest)
+                            .skipMemoryCache(true)
+                            .diskCacheStrategy(DiskCacheStrategy.NONE)
+                            .transform(new CircleCrop())
+                            .into(ivProfilePhoto);
+                    // Habilitar botón Guardar ahora que hay una foto nueva
+                    btnSaveProfile.setEnabled(true);
+                });
+            } catch (Exception e) {
+                requireActivity().runOnUiThread(() ->
+                        Toast.makeText(requireContext(),
+                                "No se pudo cargar la imagen", Toast.LENGTH_SHORT).show());
+            }
+        });
     }
 
     // ── Guardar ────────────────────────────────────────────────────────────────
@@ -219,122 +295,69 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
     private void onSave() {
         String newName = etDisplayName.getText() != null
                 ? etDisplayName.getText().toString().trim() : "";
+        if (newName.length() < 2) {
+            tilDisplayName.setError("El nombre debe tener al menos 2 caracteres");
+            return;
+        }
 
-        if (newName.isEmpty()) {
-            tilDisplayName.setError(getString(R.string.profile_error_name_required));
-            return;
-        }
-        if (newName.length() > 40) {
-            tilDisplayName.setError(getString(R.string.profile_error_name_too_long));
-            return;
-        }
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null) { dismiss(); return; }
 
         setLoading(true);
 
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        if (user == null) {
-            setLoading(false);
-            Toast.makeText(requireContext(),
-                    getString(R.string.profile_error_no_session), Toast.LENGTH_SHORT).show();
-            dismiss();
-            return;
-        }
-
-        // Guardamos la ruta local ANTES de llamar a Firebase
-        if (copiedPhotoFile != null) {
+        /**
+         * IMPORTANTE: guardamos la ruta Y la signatura en SharedPreferences
+         * ANTES de llamar a Firebase. Así, aunque Firebase tarde o la Activity
+         * se recree por cambio de tema, la foto ya está persistida con una
+         * signatura nueva → Glide invalidará la caché al recargar.
+         */
+        if (selectedPhotoFile != null && selectedPhotoFile.exists()) {
+            long newSig = System.currentTimeMillis(); // timestamp único → nueva cache key
             requireContext()
-                    .getSharedPreferences(PREFS_PROFILE, Context.MODE_PRIVATE)
+                    .getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
                     .edit()
-                    .putString(KEY_PHOTO_PATH, copiedPhotoFile.getAbsolutePath())
+                    .putString(KEY_PHOTO_PATH, selectedPhotoFile.getAbsolutePath())
+                    .putLong(KEY_PHOTO_SIG, newSig)
                     .apply();
         }
 
-        // Actualizamos solo el displayName en Firebase Auth
-        UserProfileChangeRequest request = new UserProfileChangeRequest.Builder()
-                .setDisplayName(newName)
-                .build();
+        UserProfileChangeRequest.Builder builder =
+                new UserProfileChangeRequest.Builder().setDisplayName(newName);
+        if (selectedPhotoFile != null) {
+            builder.setPhotoUri(Uri.fromFile(selectedPhotoFile));
+        }
 
-        user.updateProfile(request)
+        user.updateProfile(builder.build())
                 .addOnSuccessListener(unused -> {
                     setLoading(false);
-                    // Invalidar caché de Glide para que la foto nueva se muestre inmediatamente
-                    if (copiedPhotoFile != null) {
-                        Glide.get(requireContext()).clearMemory();
-                    }
-                    Toast.makeText(requireContext(),
-                            getString(R.string.profile_saved), Toast.LENGTH_SHORT).show();
-                    if (listener != null) {
-                        listener.onProfileUpdated(newName, copiedPhotoFile);
-                    }
+                    Toast.makeText(requireContext(), "Perfil actualizado", Toast.LENGTH_SHORT).show();
+                    if (listener != null) listener.onProfileUpdated(newName, selectedPhotoFile);
                     dismiss();
                 })
                 .addOnFailureListener(e -> {
                     setLoading(false);
+                    // La foto local ya está guardada aunque Firebase falle
                     Toast.makeText(requireContext(),
-                            getString(R.string.profile_error_save), Toast.LENGTH_LONG).show();
+                            "Guardado localmente. Sin conexión con el servidor.",
+                            Toast.LENGTH_LONG).show();
+                    if (listener != null) listener.onProfileUpdated(newName, selectedPhotoFile);
+                    dismiss();
                 });
     }
 
-    // ── Helpers de foto ────────────────────────────────────────────────────────
+    // ── Helpers ────────────────────────────────────────────────────────────────
 
-    /**
-     * Copia el contenido del URI a filesDir/profile_photo.jpg.
-     * El archivo interno es permanente y no necesita permisos de galería.
-     * Se llama inmediatamente al recibir el URI, antes de que caduque.
-     */
-    private File copyUriToInternal(Uri uri) {
-        try {
-            File dest = new File(requireContext().getFilesDir(), "profile_photo.jpg");
-            InputStream  in  = requireContext().getContentResolver().openInputStream(uri);
-            if (in == null) return null;
-            OutputStream out = new FileOutputStream(dest);
-            byte[] buf = new byte[8192];
-            int len;
-            while ((len = in.read(buf)) > 0) out.write(buf, 0, len);
-            in.close();
-            out.close();
-            return dest;
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private File getLocalPhotoFile() {
-        String path = requireContext()
-                .getSharedPreferences(PREFS_PROFILE, Context.MODE_PRIVATE)
-                .getString(KEY_PHOTO_PATH, null);
-        if (path == null) return null;
-        File f = new File(path);
-        return f.exists() ? f : null;
-    }
-
-    private void loadPhotoFromFile(File file) {
-        if (!isAdded() || getContext() == null) return;
-        ivProfilePhoto.clearColorFilter();
-        Glide.with(requireContext())
-                .load(file)
-                .transform(new CircleCrop())
-                .placeholder(R.drawable.ic_person_24)
-                .error(R.drawable.ic_person_24)
-                .into(ivProfilePhoto);
-    }
-
-    private void loadPhotoFromUri(Uri uri) {
-        if (!isAdded() || getContext() == null) return;
-        ivProfilePhoto.clearColorFilter();
-        Glide.with(requireContext())
-                .load(uri)
-                .transform(new CircleCrop())
-                .placeholder(R.drawable.ic_person_24)
-                .error(R.drawable.ic_person_24)
-                .into(ivProfilePhoto);
+    private File getProfilePhotoFile() {
+        File dir = new File(requireContext().getFilesDir(), "profile");
+        //noinspection ResultOfMethodCallIgnored
+        dir.mkdirs();
+        return new File(dir, "avatar.jpg");
     }
 
     private void setLoading(boolean loading) {
-        loadingOverlay.setVisibility(loading ? View.VISIBLE : View.GONE);
-        btnSave.setEnabled(!loading);
-        btnCancel.setEnabled(!loading);
-        btnChangePhoto.setEnabled(!loading);
-        etDisplayName.setEnabled(!loading);
+        if (loadingOverlay != null)
+            loadingOverlay.setVisibility(loading ? View.VISIBLE : View.GONE);
+        btnSaveProfile  .setEnabled(!loading);
+        btnCancelProfile.setEnabled(!loading);
     }
 }

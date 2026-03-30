@@ -1,6 +1,8 @@
 package com.example.clef.ui.dashboard;
 
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
@@ -14,8 +16,10 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.clef.R;
+import com.example.clef.crypto.KeyManager;
 import com.example.clef.data.model.Credential;
 import com.example.clef.data.model.Vault;
+import com.example.clef.data.repository.VaultRepository;
 import com.example.clef.utils.SessionManager;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.textfield.TextInputEditText;
@@ -23,6 +27,8 @@ import com.google.android.material.textfield.TextInputEditText;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class VaultFragment extends Fragment {
 
@@ -31,6 +37,10 @@ public class VaultFragment extends Fragment {
     private View              layoutEmpty;
     private TextInputEditText etSearch;
     private ChipGroup         chipGroupCategories;
+
+    // Executor compartido — se cierra en onDestroyView
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     @Nullable
     @Override
@@ -60,71 +70,126 @@ public class VaultFragment extends Fragment {
             chipGroupCategories.addView(chip);
         }
 
-        // Refiltrar al cambiar categoría
         chipGroupCategories.setOnCheckedStateChangeListener((group, checkedIds) -> applyFilters());
 
         adapter = new VaultAdapter(requireContext());
-        adapter.setOnDeleteListener((position, credential) -> {
-            new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                    .setTitle("Eliminar credencial")
-                    .setMessage("¿Eliminar \"" + credential.getTitle() + "\"? Esta acción no se puede deshacer.")
-                    .setPositiveButton("Eliminar", (dialog, which) -> deleteCredential(credential))
-                    .setNegativeButton("Cancelar", null)
-                    .show();
-        });
+        adapter.setOnDeleteListener((position, credential) ->
+                new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                        .setTitle("Eliminar credencial")
+                        .setMessage("¿Eliminar \"" + credential.getTitle() + "\"?\nEsta acción no se puede deshacer.")
+                        .setPositiveButton("Eliminar", (dialog, which) -> deleteCredential(credential))
+                        .setNegativeButton("Cancelar", null)
+                        .show()
+        );
+
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
         recyclerView.setAdapter(adapter);
 
         view.findViewById(R.id.fabAdd).setOnClickListener(v -> openAddDialog());
 
-        // Búsqueda en tiempo real — antes no tenía TextWatcher
         etSearch.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int i, int c, int a) {}
             @Override public void onTextChanged(CharSequence s, int i, int b, int c) {}
-            @Override
-            public void afterTextChanged(Editable s) {
-                applyFilters();
-            }
+            @Override public void afterTextChanged(Editable s) { applyFilters(); }
         });
     }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        executor.shutdownNow();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        applyFilters();
+    }
+
+    // ── Borrado correcto ───────────────────────────────────────────────────────
+
+    /**
+     * Borra una credencial de la bóveda.
+     *
+     * IMPORTANTE: No usamos indexOf(credential) porque Credential no sobreescribe
+     * equals() y el objeto puede ser una instancia distinta tras reconstruir desde JSON.
+     * En su lugar buscamos por referencia de objeto con un bucle explícito,
+     * y si no funciona, buscamos por título+username como fallback.
+     */
     private void deleteCredential(Credential credential) {
         SessionManager session = SessionManager.getInstance();
         byte[] dek   = session.getDek();
         Vault  vault = session.getVault();
         if (dek == null || vault == null) return;
 
-        int idx = vault.getCredentials().indexOf(credential);
-        if (idx < 0) return;
+        List<Credential> list = vault.getCredentials();
 
-        vault.removeCredential(idx);
+        // Buscar por referencia primero
+        int idx = -1;
+        for (int i = 0; i < list.size(); i++) {
+            if (list.get(i) == credential) { idx = i; break; }
+        }
 
-        java.util.concurrent.Executors.newSingleThreadExecutor().execute(() -> {
+        // Fallback: buscar por título + usuario si no encontramos por referencia
+        if (idx < 0) {
+            for (int i = 0; i < list.size(); i++) {
+                Credential c = list.get(i);
+                boolean titleMatch = safeEquals(c.getTitle(),    credential.getTitle());
+                boolean userMatch  = safeEquals(c.getUsername(), credential.getUsername());
+                if (titleMatch && userMatch) { idx = i; break; }
+            }
+        }
+
+        if (idx < 0) {
+            android.widget.Toast.makeText(requireContext(),
+                    "No se encontró la credencial", android.widget.Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        final int finalIdx = idx;
+        final Credential removed = list.get(finalIdx);
+        vault.removeCredential(finalIdx);
+
+        executor.execute(() -> {
             try {
-                com.example.clef.crypto.KeyManager km = new com.example.clef.crypto.KeyManager();
+                KeyManager km = new KeyManager();
                 String encrypted = km.cifrarVault(vault, dek);
-                new com.example.clef.data.repository.VaultRepository(requireContext())
-                        .saveVault(encrypted, new com.example.clef.data.repository.VaultRepository.Callback<Void>() {
-                            @Override public void onSuccess(Void r) {
+                new VaultRepository(requireContext())
+                        .saveVault(encrypted, new VaultRepository.Callback<Void>() {
+                            @Override
+                            public void onSuccess(Void r) {
                                 session.updateVault(vault);
-                                requireActivity().runOnUiThread(VaultFragment.this::applyFilters);
+                                mainHandler.post(() -> {
+                                    if (isAdded()) applyFilters();
+                                });
                             }
-                            @Override public void onError(Exception e) {
-                                // revertir
-                                vault.addCredential(credential);
-                                requireActivity().runOnUiThread(() ->
+                            @Override
+                            public void onError(Exception e) {
+                                // Revertir el borrado en memoria
+                                vault.getCredentials().add(finalIdx, removed);
+                                mainHandler.post(() -> {
+                                    if (isAdded()) {
+                                        applyFilters();
                                         android.widget.Toast.makeText(requireContext(),
-                                                "Error al eliminar", android.widget.Toast.LENGTH_SHORT).show());
+                                                "Error al eliminar. Inténtalo de nuevo.",
+                                                android.widget.Toast.LENGTH_SHORT).show();
+                                    }
+                                });
                             }
                         });
             } catch (Exception e) {
-                vault.addCredential(credential);
+                vault.getCredentials().add(finalIdx, removed);
+                mainHandler.post(() -> {
+                    if (isAdded()) applyFilters();
+                });
             }
         });
     }
-    @Override
-    public void onResume() {
-        super.onResume();
-        applyFilters();
+
+    private boolean safeEquals(String a, String b) {
+        if (a == null && b == null) return true;
+        if (a == null || b == null) return false;
+        return a.equals(b);
     }
 
     // ── Filtrado combinado (categoría + texto) ─────────────────────────────────
@@ -150,9 +215,9 @@ public class VaultFragment extends Fragment {
                 ? etSearch.getText().toString().trim().toLowerCase() : "";
         if (!query.isEmpty()) {
             list.removeIf(c -> {
-                String title    = c.getTitle()    != null ? c.getTitle()   .toLowerCase() : "";
-                String username = c.getUsername() != null ? c.getUsername().toLowerCase() : "";
-                return !title.contains(query) && !username.contains(query);
+                String t = c.getTitle()    != null ? c.getTitle()   .toLowerCase() : "";
+                String u = c.getUsername() != null ? c.getUsername().toLowerCase() : "";
+                return !t.contains(query) && !u.contains(query);
             });
         }
 
@@ -162,8 +227,8 @@ public class VaultFragment extends Fragment {
     private void showList(List<Credential> credentials) {
         adapter.setCredentials(credentials);
         boolean empty = credentials.isEmpty();
-        layoutEmpty  .setVisibility(empty ? View.VISIBLE : View.GONE);
-        recyclerView .setVisibility(empty ? View.GONE    : View.VISIBLE);
+        layoutEmpty .setVisibility(empty ? View.VISIBLE : View.GONE);
+        recyclerView.setVisibility(empty ? View.GONE    : View.VISIBLE);
     }
 
     private void openAddDialog() {
