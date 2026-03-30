@@ -25,23 +25,22 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Pantalla de desbloqueo que aparece cuando el usuario ya está autenticado
- * en Firebase pero la sesión está bloqueada (no hay DEK en memoria).
+ * Pantalla de desbloqueo cuando el usuario ya está autenticado en Firebase
+ * pero la DEK no está en memoria (sesión bloqueada o dispositivo nuevo).
  *
  * Flujo:
- *   1. Carga salt + cajaA + vault desde Firebase (o caché local si hay sin red).
- *   2. Si la biometría está activada, lanza el prompt biométrico automáticamente.
- *   3. Si el usuario cancela la biometría (o no la tiene activada), muestra
- *      el campo de contraseña maestra.
- *   4. Al autenticarse correctamente, guarda la DEK en SessionManager y va a MainActivity.
+ *   1. Intentar cargar datos desde caché local (dispositivo conocido).
+ *   2. Si no hay caché, descargar de Firebase (dispositivo nuevo).
+ *   3. Si hay biometría activa, lanzarla automáticamente.
+ *   4. Si el usuario introduce la contraseña correctamente, desbloquear.
  */
 public class UnlockActivity extends AppCompatActivity {
 
-    private TextInputLayout  tilPassword;
+    private TextInputLayout   tilPassword;
     private TextInputEditText etPassword;
-    private MaterialButton   btnUnlock;
-    private MaterialButton   btnBiometric;
-    private View             loadingOverlay;
+    private MaterialButton    btnUnlock;
+    private MaterialButton    btnBiometric;
+    private View              loadingOverlay;
 
     private FirebaseManager.UserData userData;
 
@@ -52,9 +51,9 @@ public class UnlockActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_unlock);
+
         if (getIntent().getBooleanExtra("session_expired", false)) {
-            ((android.widget.TextView) findViewById(R.id.tvUnlockTitle))
-                    .setText("Tu sesión ha expirado");
+            ((android.widget.TextView) findViewById(R.id.tvUnlockTitle)).setText("Tu sesión ha expirado");
         }
 
         tilPassword    = findViewById(R.id.tilMasterPassword);
@@ -75,53 +74,73 @@ public class UnlockActivity extends AppCompatActivity {
         cryptoExecutor.shutdownNow();
     }
 
-
     // ── Carga de datos ─────────────────────────────────────────────────────────
 
+    /**
+     * Primero intenta la caché local. Si no existe (dispositivo nuevo),
+     * descarga de Firebase. Esto rompe el bucle infinito en dispositivos nuevos.
+     */
     private void loadUserData() {
         VaultRepository repo = new VaultRepository(this);
         FirebaseManager.UserData cached = repo.loadOfflineUserData();
+
         if (cached != null) {
+            // Dispositivo conocido: datos en caché
             userData = cached;
             setLoading(false);
             onDataReady();
         } else {
-            setLoading(false);
-            Toast.makeText(this,
-                    "No hay datos locales. Usa Importar en Ajustes.",
-                    Toast.LENGTH_LONG).show();
-            goTo(LoginActivity.class);
+            // Dispositivo nuevo: descargar de Firebase
+            repo.downloadAndCacheFromFirebase(new VaultRepository.Callback<FirebaseManager.UserData>() {
+                @Override
+                public void onSuccess(FirebaseManager.UserData data) {
+                    if (data != null) {
+                        userData = data;
+                        setLoading(false);
+                        onDataReady();
+                    } else {
+                        setLoading(false);
+                        showNoDataError();
+                    }
+                }
+
+                @Override
+                public void onError(Exception e) {
+                    setLoading(false);
+                    Toast.makeText(UnlockActivity.this,
+                            getString(R.string.unlock_no_data), Toast.LENGTH_LONG).show();
+                    goTo(LoginActivity.class);
+                }
+            });
         }
     }
 
-    /** Configura la UI y, si la biometría está activa, la lanza automáticamente. */
-    private void onDataReady() {
-        boolean bioAvailable = BiometricHelper.isAvailable(this)
-                && BiometricHelper.isEnabled(this);
+    private void showNoDataError() {
+        Toast.makeText(this, getString(R.string.unlock_no_data), Toast.LENGTH_LONG).show();
+        goTo(LoginActivity.class);
+    }
 
+    private void onDataReady() {
+        boolean bioAvailable = BiometricHelper.isAvailable(this) && BiometricHelper.isEnabled(this);
         if (bioAvailable) {
             btnBiometric.setVisibility(View.VISIBLE);
             btnBiometric.setOnClickListener(v -> launchBiometric());
-            // Lanzamos el prompt automáticamente al cargar la pantalla
             launchBiometric();
         } else {
             btnBiometric.setVisibility(View.GONE);
         }
     }
 
-
-    // ── Autenticación biométrica ───────────────────────────────────────────────
+    // ── Biometría ──────────────────────────────────────────────────────────────
 
     private void launchBiometric() {
         BiometricHelper.unlock(this, new BiometricHelper.UnlockCallback() {
             @Override
             public void onSuccess(byte[] dek) {
-                // Con biometría tenemos la DEK pero no el Vault descifrado todavía.
-                // userData ya está cargado — solo necesitamos descifrar el vault con la DEK.
                 cryptoExecutor.execute(() -> {
                     try {
-                        KeyManager km = new KeyManager();
-                        Vault vault = km.descifrarVault(userData.vault, dek);
+                        KeyManager km    = new KeyManager();
+                        Vault      vault = km.descifrarVault(userData.vault, dek);
                         SessionManager.getInstance().unlock(dek, vault);
                         mainHandler.post(UnlockActivity.this::goToMain);
                     } catch (Exception e) {
@@ -132,21 +151,15 @@ public class UnlockActivity extends AppCompatActivity {
                 });
             }
 
-            @Override
-            public void onError(String message) {
-                // La biometría falló o fue invalidada — el campo de contraseña sigue disponible
+            @Override public void onError(String message) {
                 Toast.makeText(UnlockActivity.this, message, Toast.LENGTH_SHORT).show();
             }
 
-            @Override
-            public void onCancelled() {
-                // El usuario pulsó "Usar contraseña" — no hacemos nada, el campo ya está visible
-            }
+            @Override public void onCancelled() { /* el campo de contraseña sigue visible */ }
         });
     }
 
-
-    // ── Autenticación con contraseña maestra ───────────────────────────────────
+    // ── Contraseña maestra ─────────────────────────────────────────────────────
 
     private void onMasterPasswordSubmit() {
         if (userData == null) {
@@ -162,7 +175,6 @@ public class UnlockActivity extends AppCompatActivity {
         tilPassword.setError(null);
         setLoading(true);
 
-        // Copiamos los datos antes de entrar al hilo: los Strings son inmutables, está bien
         char[] passwordChars = password.toCharArray();
         String salt  = userData.salt;
         String cajaA = userData.cajaA;
@@ -170,12 +182,10 @@ public class UnlockActivity extends AppCompatActivity {
 
         cryptoExecutor.execute(() -> {
             try {
-                KeyManager keyManager = new KeyManager();
-                KeyManager.LoginResult result = keyManager.login(passwordChars, salt, cajaA, vault);
-
+                KeyManager.LoginResult result =
+                        new KeyManager().login(passwordChars, salt, cajaA, vault);
                 SessionManager.getInstance().unlock(result.dek, result.vault);
                 mainHandler.post(this::goToMain);
-
             } catch (Exception e) {
                 mainHandler.post(() -> {
                     setLoading(false);
@@ -184,7 +194,6 @@ public class UnlockActivity extends AppCompatActivity {
             }
         });
     }
-
 
     // ── Navegación ─────────────────────────────────────────────────────────────
 
@@ -198,13 +207,12 @@ public class UnlockActivity extends AppCompatActivity {
         finish();
     }
 
-
     // ── UI helpers ─────────────────────────────────────────────────────────────
 
     private void setLoading(boolean loading) {
         loadingOverlay.setVisibility(loading ? View.VISIBLE : View.GONE);
-        btnUnlock.setEnabled(!loading);
-        etPassword.setEnabled(!loading);
+        btnUnlock   .setEnabled(!loading);
         btnBiometric.setEnabled(!loading);
+        etPassword  .setEnabled(!loading);
     }
 }

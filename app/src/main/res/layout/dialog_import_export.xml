@@ -9,14 +9,14 @@
     android:paddingTop="8dp"
     android:paddingBottom="32dp">
 
-    <!-- Tirador del BottomSheet -->
+    <!-- Tirador -->
     <View
         android:layout_width="40dp"
         android:layout_height="4dp"
         android:layout_gravity="center_horizontal"
         android:layout_marginBottom="20dp"
-        android:backgroundTint="?attr/colorOutline"
-        android:background="@color/clef_border" />
+        android:background="@color/clef_border"
+        android:backgroundTint="?attr/colorOutline" />
 
     <TextView
         android:layout_width="match_parent"
@@ -27,7 +27,7 @@
         android:textSize="20sp"
         android:textStyle="bold" />
 
-    <!-- ── SECCIÓN EXPORTAR ────────────────────────────────────── -->
+    <!-- ── EXPORTAR ─────────────────────────────────────────────────────────── -->
 
     <TextView
         android:layout_width="match_parent"
@@ -77,5 +77,54 @@
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
+    <!-- ── IMPORTAR ─────────────────────────────────────────────────────────── -->
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:text="@string/import_section_title"
+        android:textAllCaps="true"
+        android:letterSpacing="0.12"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:textColor="?attr/colorPrimary" />
+
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:cardBackgroundColor="@color/clef_card_surface"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="1dp"
+        app:strokeColor="@color/clef_border"
+        app:strokeWidth="1dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="14dp"
+                android:text="@string/import_description"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="14sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnImport"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:text="@string/import_button"
+                android:textStyle="bold"
+                app:icon="@drawable/ic_cloud_24"
+                app:iconGravity="textStart"
+                app:iconPadding="10dp" />
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
 
 </LinearLayout>

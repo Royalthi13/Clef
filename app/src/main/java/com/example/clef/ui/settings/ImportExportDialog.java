@@ -23,29 +23,15 @@ import com.google.android.material.button.MaterialButton;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/**
- * BottomSheet para exportar e importar la bóveda desde Firebase.
- *
- * EXPORTAR:
- *   Lee el vault cifrado del disco + claves del caché local (salt, cajaA, cajaB)
- *   y los sube todos a Firebase.
- *
- * IMPORTAR:
- *   Descarga el vault cifrado de Firebase y lo descifra con la DEK activa en sesión.
- *   El usuario ya está desbloqueado para llegar aquí, por lo que no hace falta PUK.
- *   (El PUK se pide en el flujo de dispositivo nuevo, no aquí.)
- */
 public class ImportExportDialog extends BottomSheetDialogFragment {
 
     private MaterialButton btnExport;
-    private MaterialButton btnImport;
+    private MaterialButton btnImport; // ahora siempre inicializado desde el XML
 
     private final ExecutorService executor    = Executors.newSingleThreadExecutor();
     private final Handler         mainHandler = new Handler(Looper.getMainLooper());
 
-    public static ImportExportDialog newInstance() {
-        return new ImportExportDialog();
-    }
+    public static ImportExportDialog newInstance() { return new ImportExportDialog(); }
 
     @Nullable
     @Override
@@ -60,10 +46,10 @@ public class ImportExportDialog extends BottomSheetDialogFragment {
         super.onViewCreated(view, savedInstanceState);
 
         btnExport = view.findViewById(R.id.btnExport);
-
+        btnImport = view.findViewById(R.id.btnImport);
 
         btnExport.setOnClickListener(v -> onExport());
-
+        btnImport.setOnClickListener(v -> onImport());
     }
 
     @Override
@@ -72,12 +58,10 @@ public class ImportExportDialog extends BottomSheetDialogFragment {
         executor.shutdownNow();
     }
 
-
     // ── Exportar ───────────────────────────────────────────────────────────────
 
     private void onExport() {
         setFormEnabled(false);
-
         VaultRepository repo = new VaultRepository(requireContext());
         repo.exportToFirebase(new VaultRepository.Callback<Void>() {
             @Override
@@ -103,7 +87,6 @@ public class ImportExportDialog extends BottomSheetDialogFragment {
         });
     }
 
-
     // ── Importar ───────────────────────────────────────────────────────────────
 
     private void onImport() {
@@ -115,7 +98,6 @@ public class ImportExportDialog extends BottomSheetDialogFragment {
         }
 
         setFormEnabled(false);
-
         VaultRepository repo = new VaultRepository(requireContext());
         repo.downloadAndCacheFromFirebase(new VaultRepository.Callback<FirebaseManager.UserData>() {
             @Override
@@ -142,22 +124,15 @@ public class ImportExportDialog extends BottomSheetDialogFragment {
         });
     }
 
-    /**
-     * Descifra el vault descargado con la DEK activa en sesión.
-     * Se ejecuta en hilo de fondo.
-     */
     private void decryptAndUnlock(FirebaseManager.UserData userData, byte[] dek) {
         try {
-            KeyManager km = new KeyManager();
-            Vault vault = km.descifrarVault(userData.vault, dek);
+            Vault vault = new KeyManager().descifrarVault(userData.vault, dek);
             SessionManager.getInstance().unlock(dek, vault);
-
             mainHandler.post(() -> {
                 Toast.makeText(requireContext(),
                         getString(R.string.import_success), Toast.LENGTH_SHORT).show();
                 dismiss();
             });
-
         } catch (Exception e) {
             mainHandler.post(() -> {
                 setFormEnabled(true);
@@ -166,7 +141,6 @@ public class ImportExportDialog extends BottomSheetDialogFragment {
             });
         }
     }
-
 
     // ── Helpers ────────────────────────────────────────────────────────────────
 

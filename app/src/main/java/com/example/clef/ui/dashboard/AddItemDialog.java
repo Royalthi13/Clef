@@ -16,6 +16,7 @@ import com.example.clef.crypto.KeyManager;
 import com.example.clef.data.model.Credential;
 import com.example.clef.data.model.Vault;
 import com.example.clef.data.repository.VaultRepository;
+import com.example.clef.utils.PasswordGenerator;
 import com.example.clef.utils.SessionManager;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.button.MaterialButton;
@@ -25,23 +26,6 @@ import com.google.android.material.textfield.TextInputLayout;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/**
- * BottomSheet para añadir una credencial nueva a la bóveda.
- *
- * Campos:
- *   - Título (obligatorio)   → Credential.title
- *   - Correo / usuario (obligatorio) → Credential.username
- *   - Contraseña (obligatoria, con toggle ver/ocultar) → Credential.password
- *   - Descripción (opcional) → Credential.notes
- *
- * Al guardar:
- *   1. Lee el Vault en memoria desde SessionManager.
- *   2. Añade la Credential al Vault.
- *   3. Lo cifra con la DEK activa (hilo de fondo).
- *   4. Lo sube a Firebase + caché local a través de VaultRepository.
- *   5. Actualiza el Vault en SessionManager.
- *   6. Llama al listener para que VaultFragment refresque la lista.
- */
 public class AddItemDialog extends BottomSheetDialogFragment {
 
     public interface OnCredentialSavedListener {
@@ -49,6 +33,7 @@ public class AddItemDialog extends BottomSheetDialogFragment {
     }
 
     private OnCredentialSavedListener listener;
+
     private com.google.android.material.chip.ChipGroup chipGroupCategory;
     private TextInputLayout   tilTitle;
     private TextInputLayout   tilUsername;
@@ -59,16 +44,12 @@ public class AddItemDialog extends BottomSheetDialogFragment {
     private TextInputEditText etDescription;
     private MaterialButton    btnSave;
 
-    private final ExecutorService executor   = Executors.newSingleThreadExecutor();
+    private final ExecutorService executor    = Executors.newSingleThreadExecutor();
     private final Handler         mainHandler = new Handler(Looper.getMainLooper());
 
-    public static AddItemDialog newInstance() {
-        return new AddItemDialog();
-    }
+    public static AddItemDialog newInstance() { return new AddItemDialog(); }
 
-    public void setOnCredentialSavedListener(OnCredentialSavedListener l) {
-        this.listener = l;
-    }
+    public void setOnCredentialSavedListener(OnCredentialSavedListener l) { this.listener = l; }
 
     @Nullable
     @Override
@@ -82,22 +63,36 @@ public class AddItemDialog extends BottomSheetDialogFragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        tilTitle       = view.findViewById(R.id.tilTitle);
-        tilUsername    = view.findViewById(R.id.tilUsername);
-        tilPassword    = view.findViewById(R.id.tilPassword);
-        etTitle        = view.findViewById(R.id.etTitle);
-        etUsername     = view.findViewById(R.id.etUsername);
-        etPassword     = view.findViewById(R.id.etPassword);
+        tilTitle    = view.findViewById(R.id.tilTitle);
+        tilUsername = view.findViewById(R.id.tilUsername);
+        tilPassword = view.findViewById(R.id.tilPassword);
+        etTitle     = view.findViewById(R.id.etTitle);
+        etUsername  = view.findViewById(R.id.etUsername);
+        etPassword  = view.findViewById(R.id.etPassword);
+        etDescription = view.findViewById(R.id.etDescription);
+        btnSave     = view.findViewById(R.id.btnSave);
         chipGroupCategory = view.findViewById(R.id.chipGroupCategory);
+
+        // Añadir chips de categoría dinámicamente
         for (Credential.Category cat : Credential.Category.values()) {
-            com.google.android.material.chip.Chip chip = new com.google.android.material.chip.Chip(requireContext());
+            com.google.android.material.chip.Chip chip =
+                    new com.google.android.material.chip.Chip(requireContext());
             chip.setText(getString(cat.getLabelRes()));
             chip.setCheckable(true);
             chip.setTag(cat);
             chipGroupCategory.addView(chip);
         }
-        etDescription  = view.findViewById(R.id.etDescription);
-        btnSave        = view.findViewById(R.id.btnSave);
+
+        // Icono de dado en el campo contraseña → genera con la config del Generador
+        tilPassword.setEndIconMode(TextInputLayout.END_ICON_CUSTOM);
+        tilPassword.setEndIconDrawable(R.drawable.ic_generator);
+        tilPassword.setEndIconContentDescription("Generar contraseña");
+        tilPassword.setEndIconOnClickListener(v -> {
+            String generated = PasswordGenerator.generateFromPrefs(requireContext());
+            etPassword.setText(generated);
+            // Mover cursor al final
+            etPassword.setSelection(generated.length());
+        });
 
         btnSave.setOnClickListener(v -> onSave());
     }
@@ -109,7 +104,6 @@ public class AddItemDialog extends BottomSheetDialogFragment {
     }
 
     private void onSave() {
-        // Validación
         String title    = text(etTitle);
         String username = text(etUsername);
         String password = text(etPassword);
@@ -119,24 +113,20 @@ public class AddItemDialog extends BottomSheetDialogFragment {
         if (title.isEmpty()) {
             tilTitle.setError(getString(R.string.add_item_error_required));
             valid = false;
-        } else {
-            tilTitle.setError(null);
-        }
+        } else tilTitle.setError(null);
+
         if (username.isEmpty()) {
             tilUsername.setError(getString(R.string.add_item_error_required));
             valid = false;
-        } else {
-            tilUsername.setError(null);
-        }
+        } else tilUsername.setError(null);
+
         if (password.isEmpty()) {
             tilPassword.setError(getString(R.string.add_item_error_required));
             valid = false;
-        } else {
-            tilPassword.setError(null);
-        }
+        } else tilPassword.setError(null);
+
         if (!valid) return;
 
-        // Sesión activa
         SessionManager session = SessionManager.getInstance();
         byte[] dek   = session.getDek();
         Vault  vault = session.getVault();
@@ -149,13 +139,16 @@ public class AddItemDialog extends BottomSheetDialogFragment {
         }
 
         setFormEnabled(false);
+
         int checkedId = chipGroupCategory.getCheckedChipId();
         Credential.Category category = checkedId != View.NO_ID
                 ? (Credential.Category) chipGroupCategory.findViewById(checkedId).getTag()
                 : Credential.Category.OTHER;
+
         boolean syncEnabled = requireContext()
                 .getSharedPreferences("settings", 0)
                 .getBoolean("sync_enabled", false);
+
         Credential credential = new Credential(title, username, password, "", notes, category);
         credential.setSynced(syncEnabled);
         vault.addCredential(credential);
@@ -178,7 +171,6 @@ public class AddItemDialog extends BottomSheetDialogFragment {
 
                     @Override
                     public void onError(Exception e) {
-                        // Revertimos el cambio en memoria si falla Firebase
                         vault.removeCredential(vault.getCredentials().size() - 1);
                         mainHandler.post(() -> {
                             setFormEnabled(true);

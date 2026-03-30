@@ -16,40 +16,41 @@ public class SplashActivity extends AppCompatActivity {
 
     private static final int TIMEOUT_MS = 8000;
 
-    private AuthManager authManager;
+    private AuthManager     authManager;
     private FirebaseManager firebaseManager;
 
-    private final Handler timeoutHandler = new Handler(Looper.getMainLooper());
-    private boolean navigated = false;
+    private final Handler  timeoutHandler = new Handler(Looper.getMainLooper());
+    private boolean        navigated      = false;
 
-    private final Runnable timeoutRunnable = () -> {
-        // Si Firebase no responde en 8 segundos, mandamos al Login
-        goTo(LoginActivity.class);
-    };
+    private final Runnable timeoutRunnable = () -> goTo(LoginActivity.class);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_splash);
 
-        authManager = new AuthManager(this, getString(R.string.default_web_client_id));
+        authManager     = new AuthManager(this, getString(R.string.default_web_client_id));
         firebaseManager = new FirebaseManager();
 
         if (authManager.getCurrentUser() == null) {
             goTo(LoginActivity.class);
-        } else {
-            timeoutHandler.postDelayed(timeoutRunnable, TIMEOUT_MS);
-
-            firebaseManager.userExists()
-                    .addOnSuccessListener(exists -> {
-                        if (exists) {
-                            goTo(UnlockActivity.class);
-                        } else {
-                            goTo(CreateMasterActivity.class);
-                        }
-                    })
-                    .addOnFailureListener(e -> goTo(LoginActivity.class));
+            return;
         }
+
+        // Usuario autenticado en Firebase — verificar si ya tiene bóveda configurada
+        timeoutHandler.postDelayed(timeoutRunnable, TIMEOUT_MS);
+
+        // Usamos userHasMasterPassword en lugar de userExists:
+        // un documento puede existir sin cajaA si el registro falló a mitad.
+        firebaseManager.userHasMasterPassword()
+                .addOnSuccessListener(hasMaster -> {
+                    if (hasMaster) {
+                        goTo(UnlockActivity.class);
+                    } else {
+                        goTo(CreateMasterActivity.class);
+                    }
+                })
+                .addOnFailureListener(e -> goTo(LoginActivity.class));
     }
 
     @Override

@@ -1,13 +1,25 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample backup rules file; uncomment and customize as necessary.
-   See https://developer.android.com/guide/topics/data/autobackup
-   for details.
-   Note: This file is ignored for devices older than API 31
-   See https://developer.android.com/about/versions/12/backup-restore
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Reglas de backup de Android.
+    Se excluyen todos los datos sensibles para que Android Backup
+    no los suba a Google Drive sin el conocimiento del usuario.
 -->
 <full-backup-content>
-    <!--
-   <include domain="sharedpref" path="."/>
-   <exclude domain="sharedpref" path="device.xml"/>
--->
+
+    <!-- Claves criptográficas cacheadas (salt, cajaA, cajaB) -->
+    <exclude domain="sharedpref" path="clef_key_cache.xml" />
+
+    <!-- DEK cifrada con la clave biométrica del Keystore -->
+    <exclude domain="sharedpref" path="clef_biometric_prefs.xml" />
+
+    <!-- Bóveda cifrada en disco -->
+    <exclude domain="file" path="vault.enc" />
+
+    <!-- Foto de perfil local (datos personales) -->
+    <exclude domain="file" path="profile_photo.jpg" />
+
+    <!-- Preferencias generales de la app (tema, auto-lock, sync) -->
+    <!-- Se excluyen porque contienen configuración sensible de seguridad -->
+    <exclude domain="sharedpref" path="settings.xml" />
+
 </full-backup-content>
