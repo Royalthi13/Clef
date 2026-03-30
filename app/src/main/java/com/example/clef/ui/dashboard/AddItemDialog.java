@@ -150,7 +150,6 @@ public class AddItemDialog extends BottomSheetDialogFragment {
                 .getBoolean("sync_enabled", false);
 
         Credential credential = new Credential(title, username, password, "", notes, category);
-        credential.setSynced(syncEnabled);
         vault.addCredential(credential);
 
         executor.execute(() -> {
@@ -162,6 +161,7 @@ public class AddItemDialog extends BottomSheetDialogFragment {
                 repo.saveVault(encryptedVault, new VaultRepository.Callback<Void>() {
                     @Override
                     public void onSuccess(Void result) {
+                        credential.setSynced(syncEnabled);
                         session.updateVault(vault);
                         mainHandler.post(() -> {
                             if (listener != null) listener.onCredentialSaved();
