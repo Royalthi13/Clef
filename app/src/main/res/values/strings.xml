@@ -51,9 +51,19 @@
     <string name="export_section_title">Exportar</string>
     <string name="export_description">Sube tu bóveda a la nube como copia de seguridad. Podrás recuperarla en otro dispositivo.</string>
     <string name="export_button">Subir a la nube</string>
-    <string name="export_success">Bóveda exportada correctamente</string>
+    <string name="export_success">Credenciales subidas correctamente</string>
     <string name="export_error_no_data">No hay datos locales para exportar</string>
     <string name="export_error_network">Error al conectar con el servidor</string>
+    <string name="export_all_synced">Todas las credenciales ya están en la nube</string>
+    <string name="export_select_title">Selecciona qué subir</string>
+    <string name="export_upload_button">Subir</string>
+    <string name="cancel">Cancelar</string>
+    <string name="delete_cloud_button">Borrar datos de la nube</string>
+    <string name="delete_cloud_confirm_title">¿Borrar datos de la nube?</string>
+    <string name="delete_cloud_confirm_message">Se eliminarán todas las credenciales de Firebase. Tus datos locales no se verán afectados.</string>
+    <string name="delete_cloud_confirm_action">Borrar</string>
+    <string name="delete_cloud_success">Datos eliminados de la nube</string>
+    <string name="delete_cloud_error">Error al eliminar los datos de la nube</string>
     <string name="import_section_title">Importar</string>
     <string name="import_description">Descarga tu bóveda desde la nube. Necesitarás tu código PUK.</string>
 

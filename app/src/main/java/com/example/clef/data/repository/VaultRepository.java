@@ -202,6 +202,25 @@ public class VaultRepository {
                 .addOnFailureListener(callback::onError);
     }
 
+    public void uploadSpecificVaultToFirebase(String encryptedVault, Callback<Void> callback) {
+        String salt  = keyPrefs.getString(KEY_SALT,   null);
+        String cajaA = keyPrefs.getString(KEY_CAJA_A, null);
+        String cajaB = keyPrefs.getString(KEY_CAJA_B, null);
+
+        if (salt == null || cajaA == null || cajaB == null) {
+            callback.onError(new Exception("no_local_data"));
+            return;
+        }
+
+        firebaseManager.uploadAll(salt, cajaA, cajaB, encryptedVault)
+                .addOnSuccessListener(unused -> callback.onSuccess(null))
+                .addOnFailureListener(callback::onError);
+    }
+
+    public void saveLocalVaultOnly(String encryptedVaultBase64) {
+        saveLocalVault(encryptedVaultBase64);
+    }
+
     /** true si hay un vault guardado en disco. */
     public boolean hasLocalVault() {
         return fileManager.vaultExists();

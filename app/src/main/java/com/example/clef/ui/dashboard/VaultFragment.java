@@ -127,6 +127,12 @@ public class VaultFragment extends Fragment {
         applyFilters();
     }
 
+    @Override
+    public void onHiddenChanged(boolean hidden) {
+        super.onHiddenChanged(hidden);
+        if (!hidden) applyFilters();
+    }
+
     // ── Filtrado combinado (categoría + texto) ─────────────────────────────────
 
     private void applyFilters() {

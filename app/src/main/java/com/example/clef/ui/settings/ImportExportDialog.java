@@ -1,32 +1,41 @@
 package com.example.clef.ui.settings;
 
+import android.app.Dialog;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.clef.R;
 import com.example.clef.crypto.KeyManager;
+import com.example.clef.data.model.Credential;
 import com.example.clef.data.model.Vault;
 import com.example.clef.data.remote.FirebaseManager;
 import com.example.clef.data.repository.VaultRepository;
 import com.example.clef.utils.SessionManager;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class ImportExportDialog extends BottomSheetDialogFragment {
 
     private MaterialButton btnExport;
-    private MaterialButton btnImport; // ahora siempre inicializado desde el XML
+    private MaterialButton btnRemoveFromCloud;
+    private MaterialButton btnImport;
 
     private final ExecutorService executor    = Executors.newSingleThreadExecutor();
     private final Handler         mainHandler = new Handler(Looper.getMainLooper());
@@ -46,9 +55,11 @@ public class ImportExportDialog extends BottomSheetDialogFragment {
         super.onViewCreated(view, savedInstanceState);
 
         btnExport = view.findViewById(R.id.btnExport);
+        btnRemoveFromCloud = view.findViewById(R.id.btnRemoveFromCloud);
         btnImport = view.findViewById(R.id.btnImport);
 
         btnExport.setOnClickListener(v -> onExport());
+        btnRemoveFromCloud.setOnClickListener(v -> onRemoveFromCloud());
         btnImport.setOnClickListener(v -> onImport());
     }
 
@@ -61,27 +72,155 @@ public class ImportExportDialog extends BottomSheetDialogFragment {
     // ── Exportar ───────────────────────────────────────────────────────────────
 
     private void onExport() {
+        SessionManager session = SessionManager.getInstance();
+        Vault vault = session.getVault();
+        byte[] dek = session.getDek();
+
+        if (vault == null || dek == null) {
+            Toast.makeText(requireContext(),
+                    getString(R.string.add_item_error_session), Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        List<Credential> unsynced = new ArrayList<>();
+        for (Credential c : vault.getCredentials()) {
+            if (!c.isSynced()) unsynced.add(c);
+        }
+
+        if (unsynced.isEmpty()) {
+            Toast.makeText(requireContext(),
+                    getString(R.string.export_all_synced), Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        View dialogView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.dialog_upload_select, null);
+        RecyclerView rv = dialogView.findViewById(R.id.rvCredentials);
+        UploadSelectAdapter adapter = new UploadSelectAdapter(requireContext(), unsynced);
+        rv.setLayoutManager(new LinearLayoutManager(requireContext()));
+        rv.setAdapter(adapter);
+
+        Dialog dialog = new MaterialAlertDialogBuilder(requireContext())
+                .setView(dialogView)
+                .create();
+
+        dialogView.findViewById(R.id.btnCancel).setOnClickListener(v -> dialog.dismiss());
+        dialogView.findViewById(R.id.btnUpload).setOnClickListener(v -> {
+            List<Credential> seleccionadas = adapter.getSelected();
+            if (!seleccionadas.isEmpty()) {
+                dialog.dismiss();
+                uploadSelected(seleccionadas, vault, dek);
+            }
+        });
+
+        dialog.show();
+    }
+
+    private void uploadSelected(List<Credential> seleccionadas, Vault vault, byte[] dek) {
         setFormEnabled(false);
-        VaultRepository repo = new VaultRepository(requireContext());
-        repo.exportToFirebase(new VaultRepository.Callback<Void>() {
-            @Override
-            public void onSuccess(Void result) {
+        for (Credential c : seleccionadas) c.setSynced(true);
+
+        executor.execute(() -> {
+            try {
+                String encryptedVault = new KeyManager().cifrarVault(vault, dek);
+                VaultRepository repo = new VaultRepository(requireContext());
+                repo.saveVault(encryptedVault, new VaultRepository.Callback<Void>() {
+                    @Override
+                    public void onSuccess(Void result) {
+                        SessionManager.getInstance().updateVault(vault);
+                        mainHandler.post(() -> {
+                            setFormEnabled(true);
+                            Toast.makeText(requireContext(),
+                                    getString(R.string.export_success), Toast.LENGTH_SHORT).show();
+                            dismiss();
+                        });
+                    }
+
+                    @Override
+                    public void onError(Exception e) {
+                        for (Credential c : seleccionadas) c.setSynced(false);
+                        mainHandler.post(() -> {
+                            setFormEnabled(true);
+                            Toast.makeText(requireContext(),
+                                    getString(R.string.export_error_network), Toast.LENGTH_LONG).show();
+                        });
+                    }
+                });
+            } catch (Exception e) {
+                for (Credential c : seleccionadas) c.setSynced(false);
                 mainHandler.post(() -> {
                     setFormEnabled(true);
                     Toast.makeText(requireContext(),
-                            getString(R.string.export_success), Toast.LENGTH_SHORT).show();
-                    dismiss();
+                            getString(R.string.export_error_network), Toast.LENGTH_LONG).show();
                 });
             }
+        });
+    }
 
-            @Override
-            public void onError(Exception e) {
+    // ── Borrar datos de la nube ────────────────────────────────────────────────
+
+    private void onRemoveFromCloud() {
+        SessionManager session = SessionManager.getInstance();
+        Vault vault = session.getVault();
+        byte[] dek = session.getDek();
+
+        if (vault == null || dek == null) {
+            Toast.makeText(requireContext(),
+                    getString(R.string.add_item_error_session), Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(getString(R.string.delete_cloud_confirm_title))
+                .setMessage(getString(R.string.delete_cloud_confirm_message))
+                .setPositiveButton(getString(R.string.delete_cloud_confirm_action), (d, w) ->
+                        deleteAllFromCloud(vault, dek))
+                .setNegativeButton(getString(R.string.cancel), null)
+                .show();
+    }
+
+    private void deleteAllFromCloud(Vault vault, byte[] dek) {
+        setFormEnabled(false);
+
+        executor.execute(() -> {
+            try {
+                // Subir un vault vacío a Firebase
+                Vault emptyVault = new Vault();
+                String encryptedEmpty = new KeyManager().cifrarVault(emptyVault, dek);
+                VaultRepository repo = new VaultRepository(requireContext());
+                repo.uploadSpecificVaultToFirebase(encryptedEmpty, new VaultRepository.Callback<Void>() {
+                    @Override
+                    public void onSuccess(Void result) {
+                        // Marcar todas las credenciales locales como no sincronizadas
+                        for (Credential c : vault.getCredentials()) c.setSynced(false);
+                        // Guardar vault local actualizado
+                        try {
+                            String encryptedLocal = new KeyManager().cifrarVault(vault, dek);
+                            repo.saveLocalVaultOnly(encryptedLocal);
+                        } catch (Exception ignored) {}
+                        SessionManager.getInstance().updateVault(vault);
+                        mainHandler.post(() -> {
+                            setFormEnabled(true);
+                            Toast.makeText(requireContext(),
+                                    getString(R.string.delete_cloud_success), Toast.LENGTH_SHORT).show();
+                            dismiss();
+                        });
+                    }
+
+                    @Override
+                    public void onError(Exception e) {
+                        mainHandler.post(() -> {
+                            setFormEnabled(true);
+                            Toast.makeText(requireContext(),
+                                    getString(R.string.delete_cloud_error), Toast.LENGTH_LONG).show();
+                        });
+                    }
+                });
+            } catch (Exception e) {
                 mainHandler.post(() -> {
                     setFormEnabled(true);
-                    String msg = "no_local_data".equals(e.getMessage())
-                            ? getString(R.string.export_error_no_data)
-                            : getString(R.string.export_error_network);
-                    Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show();
+                    Toast.makeText(requireContext(),
+                            getString(R.string.delete_cloud_error), Toast.LENGTH_LONG).show();
                 });
             }
         });
@@ -146,6 +285,7 @@ public class ImportExportDialog extends BottomSheetDialogFragment {
 
     private void setFormEnabled(boolean enabled) {
         btnExport.setEnabled(enabled);
+        btnRemoveFromCloud.setEnabled(enabled);
         btnImport.setEnabled(enabled);
     }
 }

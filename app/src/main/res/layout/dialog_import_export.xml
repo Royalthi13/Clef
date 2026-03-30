@@ -74,6 +74,21 @@
                 app:iconGravity="textStart"
                 app:iconPadding="10dp" />
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnRemoveFromCloud"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="8dp"
+                android:text="@string/delete_cloud_button"
+                android:textStyle="bold"
+                app:icon="@drawable/ic_cloud_24"
+                app:iconGravity="textStart"
+                app:iconPadding="10dp"
+                app:strokeColor="#FFEF4444"
+                app:iconTint="#FFEF4444"
+                android:textColor="#FFEF4444" />
+
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
