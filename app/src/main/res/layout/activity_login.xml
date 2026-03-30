@@ -24,17 +24,19 @@
             android:layout_marginBottom="32dp">
 
             <FrameLayout
-                android:layout_width="80dp"
-                android:layout_height="80dp"
+                android:layout_width="100dp"
+                android:layout_height="100dp"
                 android:background="@drawable/bg_icon_container"
                 android:layout_marginBottom="16dp">
 
-                <ImageView
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
+                <com.airbnb.lottie.LottieAnimationView
+                    android:id="@+id/lottieLogin"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
                     android:layout_gravity="center"
-                    android:src="@drawable/ic_shield_lock"
-                    android:contentDescription="@null" />
+                    app:lottie_autoPlay="true"
+                    app:lottie_loop="true"
+                    app:lottie_rawRes="@raw/animacion_login" />
             </FrameLayout>
 
             <TextView
