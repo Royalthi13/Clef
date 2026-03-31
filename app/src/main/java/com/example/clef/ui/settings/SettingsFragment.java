@@ -22,6 +22,7 @@ import com.bumptech.glide.load.resource.bitmap.CircleCrop;
 import com.bumptech.glide.signature.ObjectKey;
 import com.example.clef.R;
 import com.example.clef.data.remote.AuthManager;
+import com.example.clef.data.repository.VaultRepository;
 import com.example.clef.ui.auth.LoginActivity;
 import com.example.clef.utils.BiometricHelper;
 import com.example.clef.utils.SessionManager;
@@ -58,7 +59,6 @@ public class SettingsFragment extends Fragment {
         tvUserName  = view.findViewById(R.id.tvUserName);
         tvUserEmail = view.findViewById(R.id.tvUserEmail);
 
-        // Card de perfil → abre el editor
         view.findViewById(R.id.cardProfile).setOnClickListener(v -> openProfileEditor());
 
         setupBiometricSwitch(view);
@@ -72,45 +72,32 @@ public class SettingsFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        // Se llama también cuando la Activity se recrea por cambio de tema.
-        // loadUserProfile usa la signatura de SharedPreferences para invalidar
-        // la caché de Glide exactamente cuando la foto cambió, y solo entonces.
         loadUserProfile();
     }
 
     // ── Perfil ─────────────────────────────────────────────────────────────────
 
-    /**
-     * Carga nombre, email y foto del usuario.
-     *
-     * La foto usa Glide con signature(ObjectKey(timestamp)) — cada vez que
-     * ProfileEditDialog guarda una foto nueva, actualiza KEY_PHOTO_SIG con
-     * System.currentTimeMillis(). Glide ve que la signature cambió, descarta
-     * la caché y recarga el archivo del disco. Eso resuelve el bug de la foto
-     * que no cambia al cambiar de tema.
-     */
     private void loadUserProfile() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null || !isAdded()) return;
 
-        // Nombre
         String name = user.getDisplayName();
         if (name != null && !name.isEmpty()) {
             tvUserName.setText(name);
         } else {
             String email = user.getEmail();
             tvUserName.setText(email != null && email.contains("@")
-                    ? email.substring(0, email.indexOf('@')) : getString(R.string.profile_default_name));
+                    ? email.substring(0, email.indexOf('@'))
+                    : getString(R.string.profile_default_name));
         }
-
-        // Email
         tvUserEmail.setText(user.getEmail() != null ? user.getEmail() : "");
 
-        // Foto — leer ruta y signatura de SharedPreferences
+        // Claves de foto específicas del usuario actual — soluciona el bug de
+        // "foto de cuenta A visible al entrar con cuenta B"
         SharedPreferences prefs = requireContext()
                 .getSharedPreferences(ProfileEditDialog.PREFS_NAME, Context.MODE_PRIVATE);
-        String localPath = prefs.getString(ProfileEditDialog.KEY_PHOTO_PATH, null);
-        long   signature = prefs.getLong(ProfileEditDialog.KEY_PHOTO_SIG, 0L);
+        String localPath = prefs.getString(ProfileEditDialog.photoPathKey(user.getUid()), null);
+        long   signature = prefs.getLong(ProfileEditDialog.photoSigKey(user.getUid()), 0L);
 
         if (localPath != null) {
             File f = new File(localPath);
@@ -118,7 +105,7 @@ public class SettingsFragment extends Fragment {
                 ivAvatar.clearColorFilter();
                 Glide.with(this)
                         .load(f)
-                        .signature(new ObjectKey(signature)) // invalida caché cuando cambia la foto
+                        .signature(new ObjectKey(signature))
                         .skipMemoryCache(true)
                         .diskCacheStrategy(DiskCacheStrategy.NONE)
                         .transform(new CircleCrop())
@@ -128,7 +115,6 @@ public class SettingsFragment extends Fragment {
             }
         }
 
-        // Fallback: foto de Firebase
         Uri googlePhoto = user.getPhotoUrl();
         if (googlePhoto != null) {
             ivAvatar.clearColorFilter();
@@ -147,13 +133,12 @@ public class SettingsFragment extends Fragment {
         ProfileEditDialog dialog = ProfileEditDialog.newInstance();
         dialog.setOnProfileUpdatedListener((newName, localPhoto) -> {
             tvUserName.setText(newName);
-            // loadUserProfile lee la nueva signatura ya guardada por ProfileEditDialog
             loadUserProfile();
         });
         dialog.show(getChildFragmentManager(), "edit_profile");
     }
 
-    // ── Biometría (IDs reales del fragment_settings.xml) ──────────────────────
+    // ── Biometría ──────────────────────────────────────────────────────────────
 
     private void setupBiometricSwitch(View view) {
         SwitchMaterial switchBiometrics = view.findViewById(R.id.switchBiometrics);
@@ -178,7 +163,8 @@ public class SettingsFragment extends Fragment {
                 BiometricHelper.enable(requireActivity(), dek, new BiometricHelper.EnableCallback() {
                     @Override public void onSuccess() {
                         Toast.makeText(requireContext(),
-                                getString(R.string.settings_biometrics_enabled), Toast.LENGTH_SHORT).show();
+                                getString(R.string.settings_biometrics_enabled),
+                                Toast.LENGTH_SHORT).show();
                     }
                     @Override public void onError(String message) {
                         Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show();
@@ -189,12 +175,13 @@ public class SettingsFragment extends Fragment {
             } else {
                 BiometricHelper.disable(requireContext());
                 Toast.makeText(requireContext(),
-                        getString(R.string.settings_biometrics_disabled), Toast.LENGTH_SHORT).show();
+                        getString(R.string.settings_biometrics_disabled),
+                        Toast.LENGTH_SHORT).show();
             }
         });
     }
 
-    // ── Tema (ID toggleTheme en el layout) ────────────────────────────────────
+    // ── Tema ──────────────────────────────────────────────────────────────────
 
     private void setupThemeToggle(View view) {
         MaterialButtonToggleGroup toggleTheme = view.findViewById(R.id.toggleTheme);
@@ -209,9 +196,8 @@ public class SettingsFragment extends Fragment {
                 newMode = (checkedId == R.id.btnThemeLight)
                         ? ThemeManager.MODE_LIGHT : ThemeManager.MODE_DARK;
             } else {
-                if (group.getCheckedButtonId() == View.NO_ID) {
-                    newMode = ThemeManager.MODE_SYSTEM;
-                } else return;
+                if (group.getCheckedButtonId() == View.NO_ID) newMode = ThemeManager.MODE_SYSTEM;
+                else return;
             }
             if (newMode != ThemeManager.load(requireContext())) {
                 ThemeManager.apply(requireContext(), newMode);
@@ -225,8 +211,7 @@ public class SettingsFragment extends Fragment {
         TextView tvAutoLockValue = view.findViewById(R.id.tvAutoLockValue);
         SharedPreferences prefs = requireContext()
                 .getSharedPreferences("settings", Context.MODE_PRIVATE);
-        long savedMs = prefs.getLong("auto_lock_ms", 60_000);
-        tvAutoLockValue.setText(msToLabel(savedMs));
+        tvAutoLockValue.setText(msToLabel(prefs.getLong("auto_lock_ms", 60_000)));
 
         view.findViewById(R.id.rowAutoLock).setOnClickListener(v -> {
             String[] opciones = {"1 minuto", "5 minutos", "15 minutos", "30 minutos", "Nunca"};
@@ -239,8 +224,6 @@ public class SettingsFragment extends Fragment {
                         SessionManager.getInstance().setLockTimeout(ms);
                         SessionManager.getInstance().resetTimer();
                         tvAutoLockValue.setText(opciones[which]);
-                        Toast.makeText(requireContext(),
-                                "Auto-bloqueo: " + opciones[which], Toast.LENGTH_SHORT).show();
                     })
                     .show();
         });
@@ -276,12 +259,55 @@ public class SettingsFragment extends Fragment {
 
     private void setupSignOut(View view) {
         view.findViewById(R.id.btnSignOut).setOnClickListener(v ->
-                authManager.signOut(requireActivity(), () -> {
-                    startActivity(new Intent(requireActivity(), LoginActivity.class));
-                    requireActivity().finish();
-                }));
+                new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                        .setTitle("Cerrar sesión")
+                        .setMessage("Se eliminará el vault local y los datos biométricos de este dispositivo.")
+                        .setPositiveButton("Cerrar sesión", (d, w) -> performSignOut())
+                        .setNegativeButton("Cancelar", null)
+                        .show());
+
         view.findViewById(R.id.rowHelp).setOnClickListener(v ->
                 Toast.makeText(requireContext(), "Próximamente", Toast.LENGTH_SHORT).show());
+    }
+
+    /**
+     * Cierre de sesión limpio y seguro.
+     *
+     * Orden de operaciones:
+     *   1. Limpiar DEK de memoria (SessionManager.lock)
+     *   2. Borrar DEK cifrada del disco (BiometricHelper.disable)
+     *   3. Borrar caché de claves criptográficas (salt, cajaA, cajaB)
+     *   4. Borrar vault local (vault.enc)
+     *   5. Borrar prefs de foto de perfil
+     *   6. Cerrar sesión en Firebase y Google
+     *
+     * Antes, signOut() no hacía nada de esto — la DEK cifrada y el caché de
+     * claves permanecían en disco tras el logout, causando que la biometría
+     * y los datos del usuario anterior fueran accesibles al siguiente usuario.
+     */
+    private void performSignOut() {
+        // 1. Limpiar sesión en memoria
+        SessionManager.getInstance().lock();
+
+        // 2. Borrar biometría del usuario actual
+        BiometricHelper.disable(requireContext());
+
+        // 3. Borrar caché de claves criptográficas
+        new VaultRepository(requireContext()).clearKeyCache();
+
+        // 4. Borrar vault local
+        new VaultRepository(requireContext()).clearLocalVault();
+
+        // 5. Borrar foto de perfil local (las prefs contienen ruta + signatura)
+        requireContext()
+                .getSharedPreferences(ProfileEditDialog.PREFS_NAME, Context.MODE_PRIVATE)
+                .edit().clear().apply();
+
+        // 6. Cerrar sesión Firebase + Google → navegar a Login
+        authManager.signOut(requireActivity(), () -> {
+            startActivity(new Intent(requireActivity(), LoginActivity.class)
+                    .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK));
+        });
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

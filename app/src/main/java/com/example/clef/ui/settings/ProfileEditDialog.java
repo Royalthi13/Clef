@@ -48,14 +48,20 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
 
     // ── Constantes SharedPreferences ───────────────────────────────────────────
 
-    public static final String PREFS_NAME     = "profile_prefs";
-    public static final String KEY_PHOTO_PATH = "local_photo_path";
-    /**
-     * Timestamp que se actualiza cada vez que se guarda una foto nueva.
-     * Glide lo usa como parte de la cache key → al cambiar, invalida la caché.
-     * Esto es lo que soluciona el bug de "la foto no cambia al cambiar de tema".
-     */
-    public static final String KEY_PHOTO_SIG  = "photo_signature";
+    public static final String PREFS_NAME = "profile_prefs";
+
+    // Las claves de foto son por UID para evitar que la foto de un usuario
+    // aparezca al cambiar de cuenta en el mismo dispositivo.
+
+    /** Clave para la ruta local de la foto del usuario con el UID dado. */
+    public static String photoPathKey(String uid) {
+        return "local_photo_path_" + uid;
+    }
+
+    /** Clave para la signatura de caché de Glide del usuario con el UID dado. */
+    public static String photoSigKey(String uid) {
+        return "photo_signature_" + uid;
+    }
 
     // ── Listener ───────────────────────────────────────────────────────────────
 
@@ -64,15 +70,15 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
     }
     private OnProfileUpdatedListener listener;
 
-    // ── Vistas — IDs del layout dialog_profile_edit.xml ───────────────────────
+    // ── Vistas ─────────────────────────────────────────────────────────────────
 
-    private ImageView         ivProfilePhoto;   // R.id.ivProfilePhoto
-    private TextInputLayout   tilDisplayName;   // R.id.tilDisplayName
-    private TextInputEditText etDisplayName;    // R.id.etDisplayName
-    private MaterialButton    btnSaveProfile;   // R.id.btnSaveProfile
-    private MaterialButton    btnCancelProfile; // R.id.btnCancelProfile
-    private View              loadingOverlay;   // R.id.loadingOverlay
-    private View              btnChangePhoto;   // R.id.btnChangePhoto
+    private ImageView         ivProfilePhoto;
+    private TextInputLayout   tilDisplayName;
+    private TextInputEditText etDisplayName;
+    private MaterialButton    btnSaveProfile;
+    private MaterialButton    btnCancelProfile;
+    private View              loadingOverlay;
+    private View              btnChangePhoto;
 
     // ── Estado ─────────────────────────────────────────────────────────────────
 
@@ -117,7 +123,6 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
-        // Usa el layout existente — dialog_profile_edit.xml
         return inflater.inflate(R.layout.dialog_profile_edit, container, false);
     }
 
@@ -125,7 +130,6 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // IDs del layout dialog_profile_edit.xml
         ivProfilePhoto   = view.findViewById(R.id.ivProfilePhoto);
         tilDisplayName   = view.findViewById(R.id.tilDisplayName);
         etDisplayName    = view.findViewById(R.id.etDisplayName);
@@ -141,7 +145,6 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
             etDisplayName.setText(user.getDisplayName());
         }
 
-        // Desactivar "Guardar" hasta que haya cambios
         btnSaveProfile.setEnabled(false);
         etDisplayName.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int i, int c, int a) {}
@@ -171,17 +174,15 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
 
     // ── Carga de foto actual ───────────────────────────────────────────────────
 
-    /**
-     * Carga la foto usando la signatura guardada.
-     * Cuando la signatura cambia (nuevo timestamp tras guardar foto),
-     * Glide descarta la caché y recarga el archivo del disco.
-     * Esto resuelve el bug de "la foto no cambia al cambiar de tema".
-     */
     private void loadCurrentPhoto() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null) { ivProfilePhoto.setImageResource(R.drawable.ic_person_24); return; }
+
+        // Leer con clave específica del UID actual
         SharedPreferences prefs = requireContext()
                 .getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE);
-        String localPath = prefs.getString(KEY_PHOTO_PATH, null);
-        long   signature = prefs.getLong(KEY_PHOTO_SIG, 0L);
+        String localPath = prefs.getString(photoPathKey(user.getUid()), null);
+        long   signature = prefs.getLong(photoSigKey(user.getUid()), 0L);
 
         if (localPath != null) {
             File f = new File(localPath);
@@ -199,12 +200,9 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
             }
         }
 
-        // Fallback: foto de Firebase o placeholder
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        if (user != null && user.getPhotoUrl() != null) {
+        if (user.getPhotoUrl() != null) {
             ivProfilePhoto.clearColorFilter();
-            Glide.with(this)
-                    .load(user.getPhotoUrl())
+            Glide.with(this).load(user.getPhotoUrl())
                     .transform(new CircleCrop())
                     .placeholder(R.drawable.ic_person_24)
                     .into(ivProfilePhoto);
@@ -252,10 +250,6 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
         galleryLauncher.launch(intent);
     }
 
-    /**
-     * Copia la imagen al directorio privado de la app y actualiza la preview.
-     * Se ejecuta en hilo de fondo para no bloquear la UI.
-     */
     private void handlePhotoSelected(Uri uri) {
         executor.execute(() -> {
             try {
@@ -272,14 +266,12 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
                 requireActivity().runOnUiThread(() -> {
                     if (!isAdded()) return;
                     ivProfilePhoto.clearColorFilter();
-                    // Preview inmediata — sin caché, recarga el archivo recién copiado
                     Glide.with(this)
                             .load(dest)
                             .skipMemoryCache(true)
                             .diskCacheStrategy(DiskCacheStrategy.NONE)
                             .transform(new CircleCrop())
                             .into(ivProfilePhoto);
-                    // Habilitar botón Guardar ahora que hay una foto nueva
                     btnSaveProfile.setEnabled(true);
                 });
             } catch (Exception e) {
@@ -305,19 +297,16 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
 
         setLoading(true);
 
-        /**
-         * IMPORTANTE: guardamos la ruta Y la signatura en SharedPreferences
-         * ANTES de llamar a Firebase. Así, aunque Firebase tarde o la Activity
-         * se recree por cambio de tema, la foto ya está persistida con una
-         * signatura nueva → Glide invalidará la caché al recargar.
-         */
+        // Persistir foto antes de Firebase, con clave específica del UID.
+        // Si Firebase falla o la Activity se recrea por cambio de tema,
+        // la foto ya está guardada con su signatura correcta.
         if (selectedPhotoFile != null && selectedPhotoFile.exists()) {
-            long newSig = System.currentTimeMillis(); // timestamp único → nueva cache key
+            long newSig = System.currentTimeMillis();
             requireContext()
                     .getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
                     .edit()
-                    .putString(KEY_PHOTO_PATH, selectedPhotoFile.getAbsolutePath())
-                    .putLong(KEY_PHOTO_SIG, newSig)
+                    .putString(photoPathKey(user.getUid()), selectedPhotoFile.getAbsolutePath())
+                    .putLong(photoSigKey(user.getUid()), newSig)
                     .apply();
         }
 
@@ -336,7 +325,6 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
                 })
                 .addOnFailureListener(e -> {
                     setLoading(false);
-                    // La foto local ya está guardada aunque Firebase falle
                     Toast.makeText(requireContext(),
                             "Guardado localmente. Sin conexión con el servidor.",
                             Toast.LENGTH_LONG).show();
@@ -348,10 +336,13 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
     // ── Helpers ────────────────────────────────────────────────────────────────
 
     private File getProfilePhotoFile() {
+        FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();
+        String uid = (u != null) ? u.getUid() : "anon";
+        // Cada usuario tiene su propio archivo de foto para no solaparse
         File dir = new File(requireContext().getFilesDir(), "profile");
         //noinspection ResultOfMethodCallIgnored
         dir.mkdirs();
-        return new File(dir, "avatar.jpg");
+        return new File(dir, "avatar_" + uid + ".jpg");
     }
 
     private void setLoading(boolean loading) {
