@@ -33,6 +33,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
 import java.io.File;
+import java.util.Arrays;
 
 public class SettingsFragment extends Fragment {
 
@@ -92,12 +93,30 @@ public class SettingsFragment extends Fragment {
         }
         tvUserEmail.setText(user.getEmail() != null ? user.getEmail() : "");
 
-        // Claves de foto específicas del usuario actual — soluciona el bug de
-        // "foto de cuenta A visible al entrar con cuenta B"
         SharedPreferences prefs = requireContext()
                 .getSharedPreferences(ProfileEditDialog.PREFS_NAME, Context.MODE_PRIVATE);
-        String localPath = prefs.getString(ProfileEditDialog.photoPathKey(user.getUid()), null);
-        long   signature = prefs.getLong(ProfileEditDialog.photoSigKey(user.getUid()), 0L);
+
+        // Intentar primero con la clave nueva (por UID).
+        // Si no hay foto guardada aún con la clave nueva, buscar con la clave
+        // antigua para no romper a usuarios que tenían foto antes de la actualización.
+        String uid       = user.getUid();
+        String localPath = prefs.getString(ProfileEditDialog.photoPathKey(uid), null);
+        long   signature = prefs.getLong(ProfileEditDialog.photoSigKey(uid), 0L);
+
+        // Fallback de migración: clave antigua sin UID
+        if (localPath == null) {
+            localPath = prefs.getString("local_photo_path", null);
+            signature = prefs.getLong("photo_signature", 0L);
+            // Si encontramos foto con la clave antigua, migrarla a la nueva
+            if (localPath != null) {
+                prefs.edit()
+                        .putString(ProfileEditDialog.photoPathKey(uid), localPath)
+                        .putLong(ProfileEditDialog.photoSigKey(uid), signature)
+                        .remove("local_photo_path")
+                        .remove("photo_signature")
+                        .apply();
+            }
+        }
 
         if (localPath != null) {
             File f = new File(localPath);
@@ -261,7 +280,7 @@ public class SettingsFragment extends Fragment {
         view.findViewById(R.id.btnSignOut).setOnClickListener(v ->
                 new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
                         .setTitle("Cerrar sesión")
-                        .setMessage("Se eliminará el vault local y los datos biométricos de este dispositivo.")
+                        .setMessage("Se eliminarán el vault local y los datos biométricos de este dispositivo.")
                         .setPositiveButton("Cerrar sesión", (d, w) -> performSignOut())
                         .setNegativeButton("Cancelar", null)
                         .show());
@@ -273,38 +292,43 @@ public class SettingsFragment extends Fragment {
     /**
      * Cierre de sesión limpio y seguro.
      *
-     * Orden de operaciones:
-     *   1. Limpiar DEK de memoria (SessionManager.lock)
-     *   2. Borrar DEK cifrada del disco (BiometricHelper.disable)
-     *   3. Borrar caché de claves criptográficas (salt, cajaA, cajaB)
-     *   4. Borrar vault local (vault.enc)
-     *   5. Borrar prefs de foto de perfil
-     *   6. Cerrar sesión en Firebase y Google
+     * IMPORTANTE — orden de operaciones muy concreto:
      *
-     * Antes, signOut() no hacía nada de esto — la DEK cifrada y el caché de
-     * claves permanecían en disco tras el logout, causando que la biometría
-     * y los datos del usuario anterior fueran accesibles al siguiente usuario.
+     * El crash anterior ocurría porque SessionManager.lock() dispara
+     * OnLockListener, que lanza UnlockActivity con FLAG_ACTIVITY_CLEAR_TASK,
+     * que destruye MainActivity y el Fragment. El código que seguía después
+     * (requireContext(), VaultRepository, etc.) fallaba con
+     * IllegalStateException porque el Fragment ya no estaba adjunto.
+     *
+     * Solución: desconectar el listener ANTES de limpiar la sesión, hacer
+     * toda la limpieza a mano, y navegar nosotros mismos al final.
      */
     private void performSignOut() {
-        // 1. Limpiar sesión en memoria
+        // 1. Desconectar el listener de bloqueo para que lock() no lance
+        //    UnlockActivity y destruya el Fragment mientras seguimos ejecutando
+        SessionManager.getInstance().setOnLockListener(null);
+
+        // 2. Limpiar la DEK de memoria (zeroise + null)
         SessionManager.getInstance().lock();
 
-        // 2. Borrar biometría del usuario actual
+        // 3. Borrar biometría del usuario actual (DEK cifrada en disco)
         BiometricHelper.disable(requireContext());
 
-        // 3. Borrar caché de claves criptográficas
-        new VaultRepository(requireContext()).clearKeyCache();
+        // 4. Borrar caché de claves criptográficas (salt, cajaA, cajaB)
+        VaultRepository repo = new VaultRepository(requireContext());
+        repo.clearKeyCache();
 
-        // 4. Borrar vault local
-        new VaultRepository(requireContext()).clearLocalVault();
+        // 5. Borrar vault local (vault.enc)
+        repo.clearLocalVault();
 
-        // 5. Borrar foto de perfil local (las prefs contienen ruta + signatura)
+        // 6. Borrar prefs de foto de perfil
         requireContext()
                 .getSharedPreferences(ProfileEditDialog.PREFS_NAME, Context.MODE_PRIVATE)
                 .edit().clear().apply();
 
-        // 6. Cerrar sesión Firebase + Google → navegar a Login
+        // 7. Cerrar sesión en Firebase + Google y navegar a Login
         authManager.signOut(requireActivity(), () -> {
+            if (!isAdded()) return;
             startActivity(new Intent(requireActivity(), LoginActivity.class)
                     .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK));
         });

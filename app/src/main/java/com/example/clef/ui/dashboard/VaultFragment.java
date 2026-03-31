@@ -38,9 +38,8 @@ public class VaultFragment extends Fragment {
     private TextInputEditText etSearch;
     private ChipGroup         chipGroupCategories;
 
-    // Executor compartido — se cierra en onDestroyView
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
-    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private final ExecutorService executor    = Executors.newSingleThreadExecutor();
+    private final Handler         mainHandler = new Handler(Looper.getMainLooper());
 
     @Nullable
     @Override
@@ -59,7 +58,6 @@ public class VaultFragment extends Fragment {
         etSearch            = view.findViewById(R.id.etSearch);
         chipGroupCategories = view.findViewById(R.id.chipGroupCategories);
 
-        // Chips de categoría dinámicos
         for (Credential.Category cat : Credential.Category.values()) {
             com.google.android.material.chip.Chip chip =
                     new com.google.android.material.chip.Chip(requireContext());
@@ -106,84 +104,118 @@ public class VaultFragment extends Fragment {
         applyFilters();
     }
 
-    // ── Borrado correcto ───────────────────────────────────────────────────────
+    // ── Borrado con refresco del vault ─────────────────────────────────────────
 
     /**
      * Borra una credencial de la bóveda.
      *
-     * IMPORTANTE: No usamos indexOf(credential) porque Credential no sobreescribe
-     * equals() y el objeto puede ser una instancia distinta tras reconstruir desde JSON.
-     * En su lugar buscamos por referencia de objeto con un bucle explícito,
-     * y si no funciona, buscamos por título+username como fallback.
+     * PROBLEMA ANTERIOR: Si el usuario tiene la app abierta en dos dispositivos
+     * simultáneamente y el dispositivo A modifica el vault, el dispositivo B
+     * sigue teniendo en memoria la versión antigua. Al intentar borrar, el
+     * objeto Credential no se encuentra por referencia ni por título porque
+     * los índices han cambiado, y visualmente parece que falla sin razón.
+     *
+     * SOLUCIÓN: Antes de borrar, sincronizar siempre el vault desde disco local
+     * (que se actualiza cuando Firebase notifica cambios). Si el vault en memoria
+     * difiere, usamos el más fresco del disco para hacer el borrado.
+     * Esto soluciona la desincronización entre dispositivos.
      */
     private void deleteCredential(Credential credential) {
         SessionManager session = SessionManager.getInstance();
-        byte[] dek   = session.getDek();
-        Vault  vault = session.getVault();
-        if (dek == null || vault == null) return;
-
-        List<Credential> list = vault.getCredentials();
-
-        // Buscar por referencia primero
-        int idx = -1;
-        for (int i = 0; i < list.size(); i++) {
-            if (list.get(i) == credential) { idx = i; break; }
-        }
-
-        // Fallback: buscar por título + usuario si no encontramos por referencia
-        if (idx < 0) {
-            for (int i = 0; i < list.size(); i++) {
-                Credential c = list.get(i);
-                boolean titleMatch = safeEquals(c.getTitle(),    credential.getTitle());
-                boolean userMatch  = safeEquals(c.getUsername(), credential.getUsername());
-                if (titleMatch && userMatch) { idx = i; break; }
-            }
-        }
-
-        if (idx < 0) {
-            android.widget.Toast.makeText(requireContext(),
-                    "No se encontró la credencial", android.widget.Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        final int finalIdx = idx;
-        final Credential removed = list.get(finalIdx);
-        vault.removeCredential(finalIdx);
+        byte[] dek = session.getDek();
+        if (dek == null) return;
 
         executor.execute(() -> {
             try {
-                KeyManager km = new KeyManager();
-                String encrypted = km.cifrarVault(vault, dek);
-                new VaultRepository(requireContext())
-                        .saveVault(encrypted, new VaultRepository.Callback<Void>() {
-                            @Override
-                            public void onSuccess(Void r) {
-                                session.updateVault(vault);
-                                mainHandler.post(() -> {
-                                    if (isAdded()) applyFilters();
-                                });
-                            }
-                            @Override
-                            public void onError(Exception e) {
-                                // Revertir el borrado en memoria
-                                vault.getCredentials().add(finalIdx, removed);
-                                mainHandler.post(() -> {
-                                    if (isAdded()) {
-                                        applyFilters();
-                                        android.widget.Toast.makeText(requireContext(),
-                                                "Error al eliminar. Inténtalo de nuevo.",
-                                                android.widget.Toast.LENGTH_SHORT).show();
-                                    }
-                                });
+                // Cargar el vault más fresco desde disco local
+                // (puede haber sido actualizado por otro dispositivo via Firebase)
+                VaultRepository repo = new VaultRepository(requireContext());
+                String freshVaultB64 = repo.loadLocalVault();
+
+                Vault vault;
+                if (freshVaultB64 != null) {
+                    // Usar el vault del disco, que puede ser más reciente que el de memoria
+                    vault = new KeyManager().descifrarVault(freshVaultB64, dek);
+                    // Actualizar también la sesión para que la UI refleje el estado real
+                    session.updateVault(vault);
+                } else {
+                    vault = session.getVault();
+                }
+
+                if (vault == null) return;
+
+                List<Credential> list = vault.getCredentials();
+                int idx = findCredentialIndex(list, credential);
+
+                if (idx < 0) {
+                    // No encontrado ni en el vault fresco → ya fue borrado por otro dispositivo
+                    mainHandler.post(() -> {
+                        if (isAdded()) {
+                            applyFilters(); // Refrescar UI para quitar el item fantasma
+                            android.widget.Toast.makeText(requireContext(),
+                                    "Esta credencial ya no existe en tu bóveda",
+                                    android.widget.Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                    return;
+                }
+
+                final Credential removed = list.get(idx);
+                vault.removeCredential(idx);
+
+                String encrypted = new KeyManager().cifrarVault(vault, dek);
+                repo.saveVault(encrypted, new VaultRepository.Callback<Void>() {
+                    @Override
+                    public void onSuccess(Void r) {
+                        session.updateVault(vault);
+                        mainHandler.post(() -> { if (isAdded()) applyFilters(); });
+                    }
+
+                    @Override
+                    public void onError(Exception e) {
+                        // Revertir en memoria
+                        vault.getCredentials().add(idx, removed);
+                        mainHandler.post(() -> {
+                            if (isAdded()) {
+                                applyFilters();
+                                android.widget.Toast.makeText(requireContext(),
+                                        "Error al eliminar. Inténtalo de nuevo.",
+                                        android.widget.Toast.LENGTH_SHORT).show();
                             }
                         });
+                    }
+                });
+
             } catch (Exception e) {
-                vault.getCredentials().add(finalIdx, removed);
                 mainHandler.post(() -> {
-                    if (isAdded()) applyFilters();
+                    if (isAdded())
+                        android.widget.Toast.makeText(requireContext(),
+                                "Error al acceder a la bóveda",
+                                android.widget.Toast.LENGTH_SHORT).show();
                 });
             }
         });
+    }
+
+    /**
+     * Busca el índice de una credencial en la lista.
+     * Primero por referencia de objeto (mismo dispositivo, mismo vault en memoria).
+     * Luego por título+usuario (vault reconstruido desde JSON, otro dispositivo).
+     */
+    private int findCredentialIndex(List<Credential> list, Credential target) {
+        // 1. Búsqueda por referencia
+        for (int i = 0; i < list.size(); i++) {
+            if (list.get(i) == target) return i;
+        }
+        // 2. Búsqueda por contenido (vault recargado desde disco)
+        for (int i = 0; i < list.size(); i++) {
+            Credential c = list.get(i);
+            if (safeEquals(c.getTitle(),    target.getTitle()) &&
+                    safeEquals(c.getUsername(), target.getUsername())) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     private boolean safeEquals(String a, String b) {
@@ -192,7 +224,7 @@ public class VaultFragment extends Fragment {
         return a.equals(b);
     }
 
-    // ── Filtrado combinado (categoría + texto) ─────────────────────────────────
+    // ── Filtrado ──────────────────────────────────────────────────────────────
 
     private void applyFilters() {
         Vault vault = SessionManager.getInstance().getVault();
@@ -200,7 +232,6 @@ public class VaultFragment extends Fragment {
 
         List<Credential> list = new ArrayList<>(vault.getCredentials());
 
-        // Filtro por categoría
         int checkedId = chipGroupCategories.getCheckedChipId();
         if (checkedId != View.NO_ID && checkedId != R.id.chipAll) {
             com.google.android.material.chip.Chip chip = chipGroupCategories.findViewById(checkedId);
@@ -210,7 +241,6 @@ public class VaultFragment extends Fragment {
             }
         }
 
-        // Filtro por texto (título o usuario)
         String query = etSearch.getText() != null
                 ? etSearch.getText().toString().trim().toLowerCase() : "";
         if (!query.isEmpty()) {
