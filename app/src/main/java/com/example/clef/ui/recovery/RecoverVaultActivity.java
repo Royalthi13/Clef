@@ -10,10 +10,12 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.clef.R;
+import com.example.clef.crypto.CryptoUtils;
 import com.example.clef.crypto.KeyManager;
 import com.example.clef.data.remote.FirebaseManager;
 import com.example.clef.data.repository.VaultRepository;
-import com.example.clef.ui.auth.UnlockActivity;
+import com.example.clef.ui.dashboard.MainActivity;
+import com.example.clef.ui.setup.ShowPukActivity;
 import com.example.clef.utils.SessionManager;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
@@ -27,13 +29,15 @@ import java.util.concurrent.Executors;
  * Pantalla de recuperación de acceso usando el código PUK.
  *
  * Flujo:
- *   1. El usuario introduce su código PUK (formato XXXX-XXXX-...).
- *   2. El usuario elige una nueva Contraseña Maestra.
- *   3. Se descarga el bundle de Firebase (salt + cajaB + vault).
- *   4. KeyManager.recoverWithPuk() abre la Caja B con el PUK → DEK.
- *   5. Se re-envuelve la DEK con la nueva contraseña → nueva Caja A.
- *   6. Se sube la nueva Caja A a Firebase.
- *   7. Se guarda la sesión en SessionManager y se navega a MainActivity.
+ *   1. El usuario introduce su código PUK y una nueva Contraseña Maestra.
+ *   2. Se descarga el bundle de Firebase (salt + cajaB + vault).
+ *   3. KeyManager.recoverWithPuk() abre la Caja B con el PUK → DEK.
+ *   4. Se re-envuelve la DEK con la nueva contraseña → nueva Caja A.
+ *   5. FIX: Se genera un nuevo PUK y una nueva Caja B para que el PUK
+ *      original quede completamente invalidado (no solo "marcado").
+ *   6. Se sube la nueva Caja A + nueva Caja B + nuevo salt-puk a Firebase.
+ *   7. El nuevo PUK se muestra una sola vez en ShowPukActivity.
+ *   8. La sesión se guarda en SessionManager y se navega a MainActivity.
  */
 public class RecoverVaultActivity extends AppCompatActivity {
 
@@ -80,7 +84,9 @@ public class RecoverVaultActivity extends AppCompatActivity {
         tilNewPassword    .setError(null);
         tilConfirmPassword.setError(null);
 
-        String puk        = text(etPuk).replace(" ", ""); // tolerar espacios al teclear
+        String puk        = text(etPuk).replace(" ", "").replace("-", "");
+        // Toleramos que el usuario escriba con o sin guiones
+        String pukConGuiones = formatearPukConGuiones(text(etPuk).replace(" ", ""));
         String newPwd     = text(etNewPassword);
         String confirmPwd = text(etConfirmPassword);
 
@@ -99,10 +105,11 @@ public class RecoverVaultActivity extends AppCompatActivity {
 
         setLoading(true);
 
-        char[] pukChars = puk.toCharArray();
+        // Normalizar el PUK: si el usuario lo escribió sin guiones, añadirlos
+        String pukNormalizado = pukConGuiones.isEmpty() ? text(etPuk).replace(" ", "") : pukConGuiones;
+        char[] pukChars = pukNormalizado.toCharArray();
         char[] newPasswordChars = newPwd.toCharArray();
 
-        // 1. Descargar datos de Firebase
         VaultRepository repo = new VaultRepository(this);
         repo.loadUserData(new VaultRepository.Callback<FirebaseManager.UserData>() {
             @Override
@@ -113,20 +120,21 @@ public class RecoverVaultActivity extends AppCompatActivity {
                             "No se encontraron datos de recuperación.", Toast.LENGTH_LONG).show();
                     return;
                 }
-                // 2. Ejecutar la crypto en hilo de fondo
-                cryptoExecutor.execute(() -> recoverInBackground(userData, pukChars, newPasswordChars, repo));
+                cryptoExecutor.execute(() ->
+                        recoverInBackground(userData, pukChars, newPasswordChars, repo));
             }
 
             @Override
             public void onError(Exception e) {
-                // Si es offline, intentar con caché local
                 FirebaseManager.UserData cached = repo.loadOfflineUserData();
                 if (cached != null && cached.cajaB != null) {
-                    cryptoExecutor.execute(() -> recoverInBackground(cached, pukChars, newPasswordChars, repo));
+                    cryptoExecutor.execute(() ->
+                            recoverInBackground(cached, pukChars, newPasswordChars, repo));
                 } else {
                     setLoading(false);
                     Toast.makeText(RecoverVaultActivity.this,
-                            "Sin conexión y sin datos locales. Conéctate a internet.", Toast.LENGTH_LONG).show();
+                            "Sin conexión y sin datos locales. Conéctate a internet.",
+                            Toast.LENGTH_LONG).show();
                 }
             }
         });
@@ -134,7 +142,19 @@ public class RecoverVaultActivity extends AppCompatActivity {
 
     /**
      * Ejecuta el proceso criptográfico de recuperación en un hilo de fondo.
-     * PBKDF2 x2 → ~800ms.
+     *
+     * FIX CRÍTICO — Regeneración del PUK:
+     * El flujo anterior solo actualizaba la Caja A. Eso dejaba la Caja B
+     * (cifrada con el PUK viejo) intacta en Firebase, permitiendo que el PUK
+     * original siguiera siendo válido indefinidamente.
+     *
+     * Ahora:
+     *   1. Se abre Caja B con el PUK viejo → DEK.
+     *   2. Se genera un nuevo PUK aleatorio.
+     *   3. Se deriva KEK-PUK-nuevo del nuevo PUK.
+     *   4. Se cifra la DEK con KEK-PUK-nuevo → nueva Caja B.
+     *   5. Se sube nueva Caja A + nueva Caja B a Firebase.
+     *   6. El nuevo PUK se muestra una sola vez al usuario.
      */
     private void recoverInBackground(FirebaseManager.UserData userData,
                                      char[] pukChars,
@@ -150,41 +170,70 @@ public class RecoverVaultActivity extends AppCompatActivity {
                     userData.vault
             );
 
-            // 3. Subir la nueva Caja A a Firebase
-            repo.updateCajaA(result.nuevaCajaABase64, new VaultRepository.Callback<Void>() {
-                @Override
-                public void onSuccess(Void r) {
-                    // 4. Guardar sesión y navegar
-                    SessionManager.getInstance().unlock(result.dek, result.vault);
-                    mainHandler.post(() -> {
-                        Toast.makeText(RecoverVaultActivity.this,
-                                "Contraseña restablecida correctamente", Toast.LENGTH_SHORT).show();
-                        Intent intent = new Intent(RecoverVaultActivity.this,
-                                com.example.clef.ui.dashboard.MainActivity.class);
-                        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-                        startActivity(intent);
-                        finish();
-                    });
-                }
+            // Generar nuevo PUK y nueva Caja B
+            KeyManager.NuevoPukBundle nuevoPukBundle = km.generarNuevoCajaB(
+                    result.dek,
+                    userData.salt
+            );
 
-                @Override
-                public void onError(Exception e) {
-                    mainHandler.post(() -> {
-                        setLoading(false);
-                        Toast.makeText(RecoverVaultActivity.this,
-                                "Error al guardar la nueva contraseña. Inténtalo de nuevo.",
-                                Toast.LENGTH_LONG).show();
+            // Subir nueva Caja A + nueva Caja B atomicamente
+            repo.updateCajaAyB(
+                    result.nuevaCajaABase64,
+                    nuevoPukBundle.cajaBBase64,
+                    new VaultRepository.Callback<Void>() {
+                        @Override
+                        public void onSuccess(Void r) {
+                            SessionManager.getInstance().unlock(result.dek, result.vault);
+                            mainHandler.post(() -> {
+                                Toast.makeText(RecoverVaultActivity.this,
+                                        "Contraseña restablecida. Guarda tu nuevo código PUK.",
+                                        Toast.LENGTH_SHORT).show();
+                                // Mostrar nuevo PUK antes de ir al dashboard
+                                Intent i = new Intent(RecoverVaultActivity.this,
+                                        ShowPukActivity.class);
+                                i.putExtra("extra_puk", nuevoPukBundle.puk);
+                                i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP |
+                                        Intent.FLAG_ACTIVITY_NEW_TASK);
+                                startActivity(i);
+                                finish();
+                            });
+                        }
+
+                        @Override
+                        public void onError(Exception e) {
+                            mainHandler.post(() -> {
+                                setLoading(false);
+                                Toast.makeText(RecoverVaultActivity.this,
+                                        "Error al guardar la nueva contraseña. Inténtalo de nuevo.",
+                                        Toast.LENGTH_LONG).show();
+                            });
+                        }
                     });
-                }
-            });
 
         } catch (Exception e) {
-            // AEADBadTagException → PUK incorrecto
             mainHandler.post(() -> {
                 setLoading(false);
                 tilPuk.setError("Código PUK incorrecto");
             });
         }
+    }
+
+    // ── Helpers ────────────────────────────────────────────────────────────────
+
+    /**
+     * Si el usuario escribió el PUK sin guiones (32 hex chars), los añade.
+     * Si ya los tiene, los devuelve tal cual.
+     */
+    private String formatearPukConGuiones(String raw) {
+        // Quitar guiones existentes para normalizar
+        String hex = raw.replace("-", "").toUpperCase();
+        if (hex.length() != 32) return raw; // no es un PUK válido, pasar tal cual
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 32; i += 4) {
+            if (sb.length() > 0) sb.append('-');
+            sb.append(hex, i, i + 4);
+        }
+        return sb.toString();
     }
 
     private String text(TextInputEditText et) {

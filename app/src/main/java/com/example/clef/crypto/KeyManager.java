@@ -35,7 +35,7 @@ public class KeyManager {
         public final String cajaABase64;
         public final String cajaBBase64;
         public final String bovedaCifradaBase64;
-        public final String puk; // Se muestra UNA VEZ al usuario, nunca se persiste
+        public final String puk;
 
         public RegistrationBundle(String saltBase64, String cajaABase64, String cajaBBase64,
                                   String bovedaCifradaBase64, String puk) {
@@ -49,7 +49,7 @@ public class KeyManager {
 
     /** DEK activa y Vault descifrado tras un login correcto. */
     public static class LoginResult {
-        public final byte[] dek; // Sensible — guardar en SessionManager y zerizar al cerrar
+        public final byte[] dek;
         public final Vault vault;
 
         public LoginResult(byte[] dek, Vault vault) {
@@ -71,6 +71,20 @@ public class KeyManager {
         }
     }
 
+    /**
+     * FIX: Nuevo PUK + nueva Caja B generados tras la recuperación.
+     * Necesario para invalidar completamente el PUK viejo.
+     */
+    public static class NuevoPukBundle {
+        public final String cajaBBase64;
+        public final String puk; // Nuevo PUK que se mostrará una sola vez
+
+        public NuevoPukBundle(String cajaBBase64, String puk) {
+            this.cajaBBase64 = cajaBBase64;
+            this.puk         = puk;
+        }
+    }
+
 
     // ── Registro ───────────────────────────────────────────────────────────────
 
@@ -84,7 +98,7 @@ public class KeyManager {
         byte[] pukBytes  = null;
         byte[] kekMaster = null;
         byte[] kekPuk    = null;
-        char[] pukChars  = null; // Declarado aquí para que el finally siempre pueda zeroisarlo
+        char[] pukChars  = null;
 
         try {
             salt     = CryptoUtils.generateSalt();
@@ -108,7 +122,7 @@ public class KeyManager {
             CryptoUtils.zeroise(salt);
             CryptoUtils.zeroise(dek);
             CryptoUtils.zeroise(pukBytes);
-            CryptoUtils.zeroise(pukChars);  // Garantizado aunque falle deriveKey(masterPassword)
+            CryptoUtils.zeroise(pukChars);
             CryptoUtils.zeroise(kekMaster);
             CryptoUtils.zeroise(kekPuk);
             CryptoUtils.zeroise(masterPassword);
@@ -133,7 +147,8 @@ public class KeyManager {
             kekMaster   = CryptoUtils.deriveKey(masterPassword, salt);
             dek         = CryptoUtils.decrypt(cajaABase64, kekMaster);
 
-            Vault vault = gson.fromJson(CryptoUtils.decryptToString(bovedaCifradaBase64, dek), Vault.class);
+            Vault vault = gson.fromJson(
+                    CryptoUtils.decryptToString(bovedaCifradaBase64, dek), Vault.class);
 
             CryptoUtils.zeroise(kekMaster);
             CryptoUtils.zeroise(masterPassword);
@@ -159,7 +174,6 @@ public class KeyManager {
      * Abre la Caja B con el PUK, descifra la Bóveda y genera una nueva Caja A.
      * Si el PUK es incorrecto, lanza AEADBadTagException.
      * Llama a PBKDF2 dos veces (~800ms) — ejecutar siempre en hilo de fondo.
-     * La Caja B queda obsoleta tras la recuperación.
      */
     public RecoveryResult recoverWithPuk(char[] pukChars, char[] nuevaContrasena,
                                          String saltBase64, String cajaBBase64,
@@ -174,7 +188,8 @@ public class KeyManager {
             kekPuk = CryptoUtils.deriveKey(pukChars, salt);
             dek    = CryptoUtils.decrypt(cajaBBase64, kekPuk);
 
-            Vault vault = gson.fromJson(CryptoUtils.decryptToString(bovedaCifradaBase64, dek), Vault.class);
+            Vault vault = gson.fromJson(
+                    CryptoUtils.decryptToString(bovedaCifradaBase64, dek), Vault.class);
 
             nuevaKekMaster    = CryptoUtils.deriveKey(nuevaContrasena, salt);
             String nuevaCajaA = CryptoUtils.encrypt(dek, nuevaKekMaster);
@@ -200,6 +215,44 @@ public class KeyManager {
         }
     }
 
+    /**
+     * FIX: Genera un nuevo PUK y una nueva Caja B a partir de la DEK activa.
+     *
+     * Debe llamarse justo después de recoverWithPuk() para invalidar
+     * completamente el PUK viejo. El PUK antiguo deja de funcionar
+     * porque la nueva Caja B ya no está cifrada con él.
+     *
+     * @param dekActiva  La DEK ya descifrada (en claro, desde RecoveryResult).
+     * @param saltBase64 El salt del usuario (mismo que se usó al registrarse).
+     * @return NuevoPukBundle con la nueva Caja B y el nuevo PUK para mostrar al usuario.
+     */
+    public NuevoPukBundle generarNuevoCajaB(byte[] dekActiva, String saltBase64) throws Exception {
+        byte[] salt      = null;
+        byte[] pukBytes  = null;
+        byte[] kekPuk    = null;
+        char[] pukChars  = null;
+
+        try {
+            salt     = Base64.decode(saltBase64, Base64.NO_WRAP);
+            pukBytes = CryptoUtils.generateRandomBytes(16);
+
+            String pukFormateado = formatearPuk(pukBytes);
+            pukChars = pukFormateado.toCharArray();
+
+            kekPuk = CryptoUtils.deriveKey(pukChars, salt);
+            String nuevaCajaB = CryptoUtils.encrypt(dekActiva, kekPuk);
+
+            return new NuevoPukBundle(nuevaCajaB, pukFormateado);
+
+        } finally {
+            CryptoUtils.zeroise(salt);
+            CryptoUtils.zeroise(pukBytes);
+            CryptoUtils.zeroise(pukChars);
+            CryptoUtils.zeroise(kekPuk);
+            // dekActiva NO se zerisa aquí — el llamador la sigue necesitando para la sesión
+        }
+    }
+
 
     // ── Operaciones de Bóveda ──────────────────────────────────────────────────
 
@@ -210,25 +263,22 @@ public class KeyManager {
 
     /** Descifra la Bóveda y reconstruye el Vault. */
     public Vault descifrarVault(String bovedaCifradaBase64, byte[] dekActiva) throws Exception {
-        return gson.fromJson(CryptoUtils.decryptToString(bovedaCifradaBase64, dekActiva), Vault.class);
+        return gson.fromJson(
+                CryptoUtils.decryptToString(bovedaCifradaBase64, dekActiva), Vault.class);
     }
 
 
     // ── Utilidades internas ────────────────────────────────────────────────────
 
-    /**
-     * Convierte 16 bytes en un código PUK legible: XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX
-     * Hex en mayúsculas — sin caracteres ambiguos, fácil de anotar en papel.
-     */
     private static String formatearPuk(byte[] pukBytes) {
         StringBuilder hex = new StringBuilder(32);
         for (byte b : pukBytes) {
             hex.append(String.format("%02X", b));
         }
         String h = hex.toString();
-        return h.substring(0,4)  + "-" + h.substring(4,8)   + "-" +
-                h.substring(8,12) + "-" + h.substring(12,16) + "-" +
-                h.substring(16,20)+ "-" + h.substring(20,24) + "-" +
-                h.substring(24,28)+ "-" + h.substring(28,32);
+        return h.substring(0, 4)  + "-" + h.substring(4, 8)   + "-" +
+                h.substring(8, 12) + "-" + h.substring(12, 16) + "-" +
+                h.substring(16, 20)+ "-" + h.substring(20, 24) + "-" +
+                h.substring(24, 28)+ "-" + h.substring(28, 32);
     }
 }
