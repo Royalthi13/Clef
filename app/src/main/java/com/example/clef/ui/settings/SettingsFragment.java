@@ -33,7 +33,8 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
 import java.io.File;
-import java.util.Arrays;
+
+// FIX: Eliminado import no usado java.util.Arrays
 
 public class SettingsFragment extends Fragment {
 
@@ -96,18 +97,14 @@ public class SettingsFragment extends Fragment {
         SharedPreferences prefs = requireContext()
                 .getSharedPreferences(ProfileEditDialog.PREFS_NAME, Context.MODE_PRIVATE);
 
-        // Intentar primero con la clave nueva (por UID).
-        // Si no hay foto guardada aún con la clave nueva, buscar con la clave
-        // antigua para no romper a usuarios que tenían foto antes de la actualización.
         String uid       = user.getUid();
         String localPath = prefs.getString(ProfileEditDialog.photoPathKey(uid), null);
         long   signature = prefs.getLong(ProfileEditDialog.photoSigKey(uid), 0L);
 
-        // Fallback de migración: clave antigua sin UID
+        // Migración: clave antigua sin UID
         if (localPath == null) {
             localPath = prefs.getString("local_photo_path", null);
             signature = prefs.getLong("photo_signature", 0L);
-            // Si encontramos foto con la clave antigua, migrarla a la nueva
             if (localPath != null) {
                 prefs.edit()
                         .putString(ProfileEditDialog.photoPathKey(uid), localPath)
@@ -181,15 +178,20 @@ public class SettingsFragment extends Fragment {
                 }
                 BiometricHelper.enable(requireActivity(), dek, new BiometricHelper.EnableCallback() {
                     @Override public void onSuccess() {
+                        if (!isAdded()) return;
                         Toast.makeText(requireContext(),
                                 getString(R.string.settings_biometrics_enabled),
                                 Toast.LENGTH_SHORT).show();
                     }
                     @Override public void onError(String message) {
+                        if (!isAdded()) return;
                         Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show();
                         switchBiometrics.setChecked(false);
                     }
-                    @Override public void onCancelled() { switchBiometrics.setChecked(false); }
+                    @Override public void onCancelled() {
+                        if (!isAdded()) return;
+                        switchBiometrics.setChecked(false);
+                    }
                 });
             } else {
                 BiometricHelper.disable(requireContext());
@@ -289,44 +291,20 @@ public class SettingsFragment extends Fragment {
                 Toast.makeText(requireContext(), "Próximamente", Toast.LENGTH_SHORT).show());
     }
 
-    /**
-     * Cierre de sesión limpio y seguro.
-     *
-     * IMPORTANTE — orden de operaciones muy concreto:
-     *
-     * El crash anterior ocurría porque SessionManager.lock() dispara
-     * OnLockListener, que lanza UnlockActivity con FLAG_ACTIVITY_CLEAR_TASK,
-     * que destruye MainActivity y el Fragment. El código que seguía después
-     * (requireContext(), VaultRepository, etc.) fallaba con
-     * IllegalStateException porque el Fragment ya no estaba adjunto.
-     *
-     * Solución: desconectar el listener ANTES de limpiar la sesión, hacer
-     * toda la limpieza a mano, y navegar nosotros mismos al final.
-     */
     private void performSignOut() {
-        // 1. Desconectar el listener de bloqueo para que lock() no lance
-        //    UnlockActivity y destruya el Fragment mientras seguimos ejecutando
+        // Desconectar el listener ANTES de limpiar la sesión
         SessionManager.getInstance().setOnLockListener(null);
-
-        // 2. Limpiar la DEK de memoria (zeroise + null)
         SessionManager.getInstance().lock();
-
-        // 3. Borrar biometría del usuario actual (DEK cifrada en disco)
         BiometricHelper.disable(requireContext());
 
-        // 4. Borrar caché de claves criptográficas (salt, cajaA, cajaB)
         VaultRepository repo = new VaultRepository(requireContext());
         repo.clearKeyCache();
-
-        // 5. Borrar vault local (vault.enc)
         repo.clearLocalVault();
 
-        // 6. Borrar prefs de foto de perfil
         requireContext()
                 .getSharedPreferences(ProfileEditDialog.PREFS_NAME, Context.MODE_PRIVATE)
                 .edit().clear().apply();
 
-        // 7. Cerrar sesión en Firebase + Google y navegar a Login
         authManager.signOut(requireActivity(), () -> {
             if (!isAdded()) return;
             startActivity(new Intent(requireActivity(), LoginActivity.class)
