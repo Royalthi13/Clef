@@ -18,12 +18,10 @@ public class VaultRepository {
         void onError(Exception e);
     }
 
-    // Nombre base de las prefs — se añade el UID para aislar usuarios
     private static final String KEY_PREFS_BASE = "clef_key_cache";
     private static final String KEY_SALT        = "salt";
     private static final String KEY_CAJA_A      = "caja_a";
     private static final String KEY_CAJA_B      = "caja_b";
-    // Campo que guarda el UID propietario del caché — para detección de cambio de cuenta
     private static final String KEY_OWNER_UID   = "owner_uid";
 
     private final Context         context;
@@ -38,12 +36,6 @@ public class VaultRepository {
 
     // ── SharedPreferences con UID ──────────────────────────────────────────────
 
-    /**
-     * Devuelve el SharedPreferences específico del usuario actual.
-     * Antes era siempre "clef_key_cache" → los datos de usuario A eran
-     * visibles para usuario B en el mismo dispositivo.
-     * Ahora cada usuario tiene su propio archivo de prefs.
-     */
     private SharedPreferences getKeyPrefs() {
         FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();
         String suffix = (u != null) ? "_" + u.getUid() : "_anon";
@@ -79,7 +71,7 @@ public class VaultRepository {
         }
     }
 
-    // ── Cargar datos del usuario ───────────────────────────────────────────────
+    // ── Cargar datos ──────────────────────────────────────────────────────────
 
     public void loadUserData(Callback<UserData> callback) {
         firebaseManager.downloadUserData()
@@ -102,13 +94,43 @@ public class VaultRepository {
         return Base64.encodeToString(bytes, Base64.NO_WRAP);
     }
 
-    // ── Cambio de Contraseña Maestra ──────────────────────────────────────────
+    // ── Cambio de Caja A (sin regenerar PUK) ──────────────────────────────────
 
     public void updateCajaA(String nuevaCajaABase64, Callback<Void> callback) {
         firebaseManager.uploadCajaA(nuevaCajaABase64)
                 .addOnSuccessListener(unused -> {
-                    // Actualizar también el caché local
                     getKeyPrefs().edit().putString(KEY_CAJA_A, nuevaCajaABase64).apply();
+                    callback.onSuccess(null);
+                })
+                .addOnFailureListener(callback::onError);
+    }
+
+    /**
+     * Actualiza Caja A y Caja B en una sola escritura atómica a Firestore.
+     *
+     * Se usa tras la recuperación con PUK para invalidar el PUK viejo:
+     * la nueva Caja B ya está cifrada con un nuevo PUK aleatorio, por lo que
+     * el PUK anterior queda criptográficamente inutilizable.
+     *
+     * IMPORTANTE: Esta operación también actualiza el caché local de SharedPreferences
+     * para que UnlockActivity pueda funcionar en modo offline tras la recuperación.
+     *
+     * ESTE ERA EL MÉTODO QUE FALTABA Y CAUSABA EL ERROR DE COMPILACIÓN.
+     *
+     * @param nuevaCajaABase64 Nueva Caja A (DEK cifrada con la nueva contraseña maestra).
+     * @param nuevaCajaBBase64 Nueva Caja B (DEK cifrada con el nuevo PUK generado).
+     * @param callback         Resultado de la operación.
+     */
+    public void updateCajaAyB(String nuevaCajaABase64,
+                              String nuevaCajaBBase64,
+                              Callback<Void> callback) {
+        firebaseManager.uploadCajaAyB(nuevaCajaABase64, nuevaCajaBBase64)
+                .addOnSuccessListener(unused -> {
+                    // Actualizar el caché local con las dos cajas nuevas
+                    getKeyPrefs().edit()
+                            .putString(KEY_CAJA_A, nuevaCajaABase64)
+                            .putString(KEY_CAJA_B, nuevaCajaBBase64)
+                            .apply();
                     callback.onSuccess(null);
                 })
                 .addOnFailureListener(callback::onError);
@@ -122,24 +144,12 @@ public class VaultRepository {
                 .addOnFailureListener(callback::onError);
     }
 
-    /**
-     * Carga el caché local de claves.
-     *
-     * SEGURIDAD: Verifica que el UID guardado en el caché coincide con el
-     * usuario actual antes de devolver datos. Si hay un cambio de cuenta,
-     * devuelve null en lugar de entregar claves de otro usuario.
-     */
     public UserData loadOfflineUserData() {
         SharedPreferences prefs = getKeyPrefs();
-
-        // Verificación de propietario: el caché tiene el UID que lo creó
         String ownerUid = prefs.getString(KEY_OWNER_UID, null);
         FirebaseUser current = FirebaseAuth.getInstance().getCurrentUser();
         if (current == null) return null;
-        if (ownerUid != null && !ownerUid.equals(current.getUid())) {
-            // Caché de otro usuario — no usar
-            return null;
-        }
+        if (ownerUid != null && !ownerUid.equals(current.getUid())) return null;
 
         String salt  = prefs.getString(KEY_SALT,   null);
         String cajaA = prefs.getString(KEY_CAJA_A, null);
@@ -184,10 +194,6 @@ public class VaultRepository {
 
     public void clearLocalVault() { fileManager.deleteVault(); }
 
-    /**
-     * Limpia el caché de claves del usuario actual.
-     * Llamar al cerrar sesión para no dejar material criptográfico en disco.
-     */
     public void clearKeyCache() {
         getKeyPrefs().edit().clear().apply();
     }
@@ -224,7 +230,6 @@ public class VaultRepository {
         }
     }
 
-    /** Guarda salt, cajaA, cajaB y el UID del propietario en las prefs del usuario actual. */
     private void cacheKeys(String salt, String cajaA, String cajaB) {
         FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();
         SharedPreferences.Editor editor = getKeyPrefs().edit()
