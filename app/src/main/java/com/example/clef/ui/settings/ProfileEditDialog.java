@@ -46,31 +46,15 @@ import java.util.concurrent.Executors;
 
 public class ProfileEditDialog extends BottomSheetDialogFragment {
 
-    // ── Constantes SharedPreferences ───────────────────────────────────────────
-
     public static final String PREFS_NAME = "profile_prefs";
 
-    // Las claves de foto son por UID para evitar que la foto de un usuario
-    // aparezca al cambiar de cuenta en el mismo dispositivo.
-
-    /** Clave para la ruta local de la foto del usuario con el UID dado. */
-    public static String photoPathKey(String uid) {
-        return "local_photo_path_" + uid;
-    }
-
-    /** Clave para la signatura de caché de Glide del usuario con el UID dado. */
-    public static String photoSigKey(String uid) {
-        return "photo_signature_" + uid;
-    }
-
-    // ── Listener ───────────────────────────────────────────────────────────────
+    public static String photoPathKey(String uid) { return "local_photo_path_" + uid; }
+    public static String photoSigKey(String uid)  { return "photo_signature_" + uid; }
 
     public interface OnProfileUpdatedListener {
         void onProfileUpdated(String newName, File localPhoto);
     }
     private OnProfileUpdatedListener listener;
-
-    // ── Vistas ─────────────────────────────────────────────────────────────────
 
     private ImageView         ivProfilePhoto;
     private TextInputLayout   tilDisplayName;
@@ -79,8 +63,6 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
     private MaterialButton    btnCancelProfile;
     private View              loadingOverlay;
     private View              btnChangePhoto;
-
-    // ── Estado ─────────────────────────────────────────────────────────────────
 
     private File selectedPhotoFile = null;
     private Uri  cameraUri         = null;
@@ -106,17 +88,13 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
     private final ActivityResultLauncher<String> permissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {
                 if (granted) launchCamera();
-                else Toast.makeText(requireContext(),
+                else if (isAdded()) Toast.makeText(requireContext(),
                         "Se necesita permiso de cámara", Toast.LENGTH_SHORT).show();
             });
-
-    // ── Factory ────────────────────────────────────────────────────────────────
 
     public static ProfileEditDialog newInstance() { return new ProfileEditDialog(); }
 
     public void setOnProfileUpdatedListener(OnProfileUpdatedListener l) { this.listener = l; }
-
-    // ── Ciclo de vida ──────────────────────────────────────────────────────────
 
     @Nullable
     @Override
@@ -178,7 +156,6 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null) { ivProfilePhoto.setImageResource(R.drawable.ic_person_24); return; }
 
-        // Leer con clave específica del UID actual
         SharedPreferences prefs = requireContext()
                 .getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE);
         String localPath = prefs.getString(photoPathKey(user.getUid()), null);
@@ -214,6 +191,7 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
     // ── Selección de foto ──────────────────────────────────────────────────────
 
     private void showPhotoOptions() {
+        if (!isAdded()) return;
         new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
                 .setTitle("Cambiar foto de perfil")
                 .setItems(new String[]{"Cámara", "Galería"}, (d, which) -> {
@@ -224,6 +202,7 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
     }
 
     private void requestCameraPermission() {
+        if (!isAdded()) return;
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA)
                 == PackageManager.PERMISSION_GRANTED) {
             launchCamera();
@@ -233,6 +212,7 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
     }
 
     private void launchCamera() {
+        if (!isAdded()) return;
         try {
             File tmp = File.createTempFile("cam_", ".jpg",
                     requireContext().getExternalFilesDir(Environment.DIRECTORY_PICTURES));
@@ -240,12 +220,13 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
                     requireContext().getPackageName() + ".provider", tmp);
             cameraLauncher.launch(cameraUri);
         } catch (IOException e) {
-            Toast.makeText(requireContext(), "Error al abrir la cámara", Toast.LENGTH_SHORT).show();
+            if (isAdded()) Toast.makeText(requireContext(),
+                    "Error al abrir la cámara", Toast.LENGTH_SHORT).show();
         }
     }
 
     private void openGallery() {
-        Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+        Intent intent = new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
         intent.setType("image/*");
         galleryLauncher.launch(intent);
     }
@@ -263,6 +244,7 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
                 }
                 selectedPhotoFile = dest;
 
+                if (!isAdded()) return; // FIX: guardia antes de tocar la UI
                 requireActivity().runOnUiThread(() -> {
                     if (!isAdded()) return;
                     ivProfilePhoto.clearColorFilter();
@@ -275,9 +257,12 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
                     btnSaveProfile.setEnabled(true);
                 });
             } catch (Exception e) {
-                requireActivity().runOnUiThread(() ->
-                        Toast.makeText(requireContext(),
-                                "No se pudo cargar la imagen", Toast.LENGTH_SHORT).show());
+                if (!isAdded()) return;
+                requireActivity().runOnUiThread(() -> {
+                    if (!isAdded()) return;
+                    Toast.makeText(requireContext(),
+                            "No se pudo cargar la imagen", Toast.LENGTH_SHORT).show();
+                });
             }
         });
     }
@@ -285,6 +270,8 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
     // ── Guardar ────────────────────────────────────────────────────────────────
 
     private void onSave() {
+        if (!isAdded()) return;
+
         String newName = etDisplayName.getText() != null
                 ? etDisplayName.getText().toString().trim() : "";
         if (newName.length() < 2) {
@@ -297,9 +284,9 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
 
         setLoading(true);
 
-        // Persistir foto antes de Firebase, con clave específica del UID.
-        // Si Firebase falla o la Activity se recrea por cambio de tema,
-        // la foto ya está guardada con su signatura correcta.
+        // FIX: Borrar foto antigua antes de guardar la nueva para evitar fuga de datos
+        deleteOldPhotoIfNeeded(user.getUid());
+
         if (selectedPhotoFile != null && selectedPhotoFile.exists()) {
             long newSig = System.currentTimeMillis();
             requireContext()
@@ -318,12 +305,14 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
 
         user.updateProfile(builder.build())
                 .addOnSuccessListener(unused -> {
+                    if (!isAdded()) return; // FIX: guardia — el diálogo puede haberse cerrado
                     setLoading(false);
                     Toast.makeText(requireContext(), "Perfil actualizado", Toast.LENGTH_SHORT).show();
                     if (listener != null) listener.onProfileUpdated(newName, selectedPhotoFile);
                     dismiss();
                 })
                 .addOnFailureListener(e -> {
+                    if (!isAdded()) return; // FIX: guardia
                     setLoading(false);
                     Toast.makeText(requireContext(),
                             "Guardado localmente. Sin conexión con el servidor.",
@@ -335,10 +324,28 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
 
     // ── Helpers ────────────────────────────────────────────────────────────────
 
+    /**
+     * FIX: Borra el fichero de foto anterior del usuario si existe y es distinto
+     * del que se va a guardar. Evita que avatares_<uid>.jpg antiguos se acumulen.
+     */
+    private void deleteOldPhotoIfNeeded(String uid) {
+        if (!isAdded()) return;
+        SharedPreferences prefs = requireContext()
+                .getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE);
+        String oldPath = prefs.getString(photoPathKey(uid), null);
+        if (oldPath != null && selectedPhotoFile != null
+                && !oldPath.equals(selectedPhotoFile.getAbsolutePath())) {
+            File old = new File(oldPath);
+            if (old.exists()) {
+                //noinspection ResultOfMethodCallIgnored
+                old.delete();
+            }
+        }
+    }
+
     private File getProfilePhotoFile() {
         FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();
         String uid = (u != null) ? u.getUid() : "anon";
-        // Cada usuario tiene su propio archivo de foto para no solaparse
         File dir = new File(requireContext().getFilesDir(), "profile");
         //noinspection ResultOfMethodCallIgnored
         dir.mkdirs();
@@ -346,6 +353,7 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
     }
 
     private void setLoading(boolean loading) {
+        if (!isAdded()) return;
         if (loadingOverlay != null)
             loadingOverlay.setVisibility(loading ? View.VISIBLE : View.GONE);
         btnSaveProfile  .setEnabled(!loading);
