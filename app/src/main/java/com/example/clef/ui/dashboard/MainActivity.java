@@ -7,63 +7,76 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 
 import com.example.clef.R;
+import com.example.clef.ui.auth.UnlockActivity;
 import com.example.clef.ui.settings.SettingsFragment;
 import com.example.clef.utils.SessionManager;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 public class MainActivity extends AppCompatActivity {
 
-    private VaultFragment vaultFragment;
+    private VaultFragment    vaultFragment;
     private SettingsFragment settingsFragment;
-    private Fragment generatorFragment;
-    private Fragment activeFragment;
+    private Fragment         generatorFragment;
+    private Fragment         activeFragment;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
         SessionManager.getInstance().setOnLockListener(() -> {
-            startActivity(new android.content.Intent(this, com.example.clef.ui.auth.UnlockActivity.class)
-                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK | android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            startActivity(new android.content.Intent(this, UnlockActivity.class)
+                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK |
+                            android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
                     .putExtra("session_expired", true));
         });
-        long savedMs = getSharedPreferences("settings", 0).getLong("auto_lock_ms", 60_000);
+
+        long savedMs = getSharedPreferences("settings", 0)
+                .getLong("auto_lock_ms", 60_000);
         SessionManager.getInstance().setLockTimeout(savedMs);
         SessionManager.getInstance().resetTimer();
 
         FragmentManager fm = getSupportFragmentManager();
 
         if (savedInstanceState == null) {
-            // Es la primera vez que se abre la app, creamos los 3 fragmentos
-            vaultFragment = new VaultFragment();
-            settingsFragment = new SettingsFragment();
+            vaultFragment     = new VaultFragment();
+            settingsFragment  = new SettingsFragment();
             generatorFragment = new GeneratorFragment();
 
-            // Los añadimos todos al contenedor, pero ocultamos los de Ajustes y Generador
             fm.beginTransaction()
-                    .add(R.id.fragmentContainer, settingsFragment, "settings").hide(settingsFragment)
+                    .add(R.id.fragmentContainer, settingsFragment,  "settings") .hide(settingsFragment)
                     .add(R.id.fragmentContainer, generatorFragment, "generator").hide(generatorFragment)
-                    .add(R.id.fragmentContainer, vaultFragment, "vault")
+                    .add(R.id.fragmentContainer, vaultFragment,     "vault")
                     .commit();
-            // La Bóveda es la que se queda visible por defecto
+
             activeFragment = vaultFragment;
         } else {
-            // Recuperar fragments existentes tras recreación (ej. cambio de tema)
-            vaultFragment = (VaultFragment) fm.findFragmentByTag("vault");
-            generatorFragment = (GeneratorFragment) fm.findFragmentByTag("generator");
-            settingsFragment = (SettingsFragment) fm.findFragmentByTag("settings");
+            // FIX: null-checks en todos los fragments — pueden ser null si el back-stack
+            // estaba en un estado inesperado (cambio de tema, recreación por sistema).
+            vaultFragment     = (VaultFragment)    fm.findFragmentByTag("vault");
+            generatorFragment =                    fm.findFragmentByTag("generator");
+            settingsFragment  = (SettingsFragment) fm.findFragmentByTag("settings");
 
-            // Averiguamos cuál estaba activo antes de girar la pantalla
-            if (vaultFragment != null && !vaultFragment.isHidden()) activeFragment = vaultFragment;
-            else if (settingsFragment != null && !settingsFragment.isHidden()) activeFragment = settingsFragment;
-            else if (generatorFragment != null && !generatorFragment.isHidden()) activeFragment = generatorFragment;
+            // Si algún fragment es null por algún motivo, recrearlo
+            if (vaultFragment == null)     vaultFragment     = new VaultFragment();
+            if (generatorFragment == null) generatorFragment = new GeneratorFragment();
+            if (settingsFragment == null)  settingsFragment  = new SettingsFragment();
+
+            // Determinar cuál era el activo
+            if (!vaultFragment.isAdded() || !vaultFragment.isHidden()) {
+                activeFragment = vaultFragment;
+            } else if (generatorFragment.isAdded() && !generatorFragment.isHidden()) {
+                activeFragment = generatorFragment;
+            } else if (settingsFragment.isAdded() && !settingsFragment.isHidden()) {
+                activeFragment = settingsFragment;
+            } else {
+                activeFragment = vaultFragment; // fallback seguro
+            }
         }
 
         BottomNavigationView bottomNav = findViewById(R.id.bottomNav);
-        // Escuchamos qué botón toca el usuario en la barra inferior
         bottomNav.setOnItemSelectedListener(item -> {
             int id = item.getItemId();
-
             if (id == R.id.nav_vault) {
                 switchTo(vaultFragment);
                 return true;
@@ -84,7 +97,6 @@ public class MainActivity extends AppCompatActivity {
         overridePendingTransition(0, 0);
     }
 
-    // Este es el truco de magia: oculta el actual y muestra el nuevo
     private void switchTo(Fragment target) {
         if (target == null || target == activeFragment) return;
         getSupportFragmentManager().beginTransaction()

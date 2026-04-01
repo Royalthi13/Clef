@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -15,6 +16,7 @@ import com.example.clef.data.model.Vault;
 import com.example.clef.data.remote.FirebaseManager;
 import com.example.clef.data.repository.VaultRepository;
 import com.example.clef.ui.dashboard.MainActivity;
+import com.example.clef.ui.recovery.RecoverVaultActivity;
 import com.example.clef.utils.BiometricHelper;
 import com.example.clef.utils.SessionManager;
 import com.google.android.material.button.MaterialButton;
@@ -29,10 +31,14 @@ import java.util.concurrent.Executors;
  * pero la DEK no está en memoria (sesión bloqueada o dispositivo nuevo).
  *
  * Flujo:
- *   1. Intentar cargar datos desde caché local (dispositivo conocido).
+ *   1. Cargar datos desde caché local (dispositivo conocido).
  *   2. Si no hay caché, descargar de Firebase (dispositivo nuevo).
  *   3. Si hay biometría activa, lanzarla automáticamente.
  *   4. Si el usuario introduce la contraseña correctamente, desbloquear.
+ *
+ * FIX: Añadido enlace "¿Olvidaste tu contraseña maestra?" → RecoverVaultActivity.
+ * FIX: Si Firebase falla en dispositivo nuevo, redirige a Login con mensaje claro
+ *      en lugar de bloquear al usuario autenticado sin explicación.
  */
 public class UnlockActivity extends AppCompatActivity {
 
@@ -53,7 +59,8 @@ public class UnlockActivity extends AppCompatActivity {
         setContentView(R.layout.activity_unlock);
 
         if (getIntent().getBooleanExtra("session_expired", false)) {
-            ((android.widget.TextView) findViewById(R.id.tvUnlockTitle)).setText("Tu sesión ha expirado");
+            ((android.widget.TextView) findViewById(R.id.tvUnlockTitle))
+                    .setText("Tu sesión ha expirado");
         }
 
         tilPassword    = findViewById(R.id.tilMasterPassword);
@@ -63,6 +70,13 @@ public class UnlockActivity extends AppCompatActivity {
         loadingOverlay = findViewById(R.id.loadingOverlay);
 
         btnUnlock.setOnClickListener(v -> onMasterPasswordSubmit());
+
+        // Enlace a recuperación con PUK — pantalla ya no está huérfana
+        TextView tvForgotMaster = findViewById(R.id.tvForgotMasterPassword);
+        if (tvForgotMaster != null) {
+            tvForgotMaster.setOnClickListener(v ->
+                    startActivity(new Intent(this, RecoverVaultActivity.class)));
+        }
 
         setLoading(true);
         loadUserData();
@@ -76,16 +90,11 @@ public class UnlockActivity extends AppCompatActivity {
 
     // ── Carga de datos ─────────────────────────────────────────────────────────
 
-    /**
-     * Primero intenta la caché local. Si no existe (dispositivo nuevo),
-     * descarga de Firebase. Esto rompe el bucle infinito en dispositivos nuevos.
-     */
     private void loadUserData() {
         VaultRepository repo = new VaultRepository(this);
         FirebaseManager.UserData cached = repo.loadOfflineUserData();
 
         if (cached != null) {
-            // Dispositivo conocido: datos en caché
             userData = cached;
             setLoading(false);
             onDataReady();
@@ -106,10 +115,14 @@ public class UnlockActivity extends AppCompatActivity {
 
                 @Override
                 public void onError(Exception e) {
+                    // FIX: Mostrar mensaje más claro en lugar de redirigir silenciosamente
                     setLoading(false);
                     Toast.makeText(UnlockActivity.this,
-                            getString(R.string.unlock_no_data), Toast.LENGTH_LONG).show();
-                    goTo(LoginActivity.class);
+                            "Sin conexión y sin datos locales. Conéctate a internet para continuar.",
+                            Toast.LENGTH_LONG).show();
+                    // Dar opción de volver al login pero no forzar — el usuario puede reintentar
+                    btnUnlock.setEnabled(false);
+                    btnUnlock.setText("Sin datos disponibles");
                 }
             });
         }

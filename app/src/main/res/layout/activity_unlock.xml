@@ -103,10 +103,27 @@
                 app:iconGravity="textEnd"
                 app:iconPadding="10dp" />
 
+            <!--
+                FIX: Enlace a recuperación con PUK.
+                Este enlace SÍ es honesto: recupera la Contraseña MAESTRA (no la de Firebase).
+                Se usa el código PUK que el usuario guardó al registrarse.
+            -->
+            <TextView
+                android:id="@+id/tvForgotMasterPassword"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:text="¿Olvidaste tu contraseña maestra? Usar código PUK"
+                android:textColor="?attr/colorPrimary"
+                android:textSize="13sp"
+                android:gravity="center" />
+
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 
-    <!-- Overlay de carga durante PBKDF2 -->
+    <!-- Overlay de carga durante PBKDF2 (~400ms) -->
     <FrameLayout
         android:id="@+id/loadingOverlay"
         android:layout_width="match_parent"

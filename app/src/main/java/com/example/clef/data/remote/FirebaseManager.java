@@ -1,247 +1,156 @@
-package com.example.clef.ui.dashboard;
+package com.example.clef.data.remote;
 
-import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
-import android.text.Editable;
-import android.text.TextWatcher;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FirebaseFirestore;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.fragment.app.Fragment;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
+import java.util.HashMap;
+import java.util.Map;
 
-import com.example.clef.R;
-import com.example.clef.crypto.KeyManager;
-import com.example.clef.data.model.Credential;
-import com.example.clef.data.model.Vault;
-import com.example.clef.data.repository.VaultRepository;
-import com.example.clef.utils.SessionManager;
-import com.google.android.material.chip.Chip;
-import com.google.android.material.chip.ChipGroup;
-import com.google.android.material.textfield.TextInputEditText;
+/**
+ * Comunicación con Firebase Firestore.
+ *
+ * Cada usuario tiene un documento en /users/{uid} con 4 campos en Base64:
+ * salt, cajaA, cajaB, vault.
+ */
+public class FirebaseManager {
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+    // ── DTO ────────────────────────────────────────────────────────────────────
 
-public class VaultFragment extends Fragment {
+    public static class UserData {
+        public final String salt;
+        public final String cajaA;
+        public final String cajaB;
+        public final String vault;
 
-    private VaultAdapter      adapter;
-    private RecyclerView      recyclerView;
-    private View              layoutEmpty;
-    private TextInputEditText etSearch;
-    private ChipGroup         chipGroupCategories;
-
-    private final ExecutorService executor    = Executors.newSingleThreadExecutor();
-    private final Handler         mainHandler = new Handler(Looper.getMainLooper());
-
-    @Nullable
-    @Override
-    public View onCreateView(@NonNull LayoutInflater inflater,
-                             @Nullable ViewGroup container,
-                             @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_vault, container, false);
-    }
-
-    @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
-
-        recyclerView        = view.findViewById(R.id.recyclerViewVault);
-        layoutEmpty         = view.findViewById(R.id.layoutEmpty);
-        etSearch            = view.findViewById(R.id.etSearch);
-        chipGroupCategories = view.findViewById(R.id.chipGroupCategories);
-
-        for (Credential.Category cat : Credential.Category.values()) {
-            Chip chip = new Chip(requireContext());
-            chip.setText(getString(cat.getLabelRes()));
-            chip.setCheckable(true);
-            chip.setClickable(true);
-            chip.setTag(cat);
-            chipGroupCategories.addView(chip);
+        public UserData(String salt, String cajaA, String cajaB, String vault) {
+            this.salt  = salt;
+            this.cajaA = cajaA;
+            this.cajaB = cajaB;
+            this.vault = vault;
         }
 
-        // FIX UX: Chip "Todos" seleccionado por defecto
-        Chip chipAll = view.findViewById(R.id.chipAll);
-        if (chipAll != null) chipAll.setChecked(true);
+        public boolean hasMasterPassword() {
+            return cajaA != null && !cajaA.isEmpty();
+        }
+    }
 
-        chipGroupCategories.setOnCheckedStateChangeListener((group, checkedIds) -> applyFilters());
+    // ── Constantes ─────────────────────────────────────────────────────────────
 
-        adapter = new VaultAdapter(requireContext());
-        adapter.setOnDeleteListener((position, credential) ->
-                new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                        .setTitle("Eliminar credencial")
-                        .setMessage("¿Eliminar \"" + credential.getTitle() + "\"?\nEsta acción no se puede deshacer.")
-                        .setPositiveButton("Eliminar", (dialog, which) -> deleteCredential(credential))
-                        .setNegativeButton("Cancelar", null)
-                        .show()
-        );
+    private static final String COLLECTION_USERS = "users";
+    private static final String FIELD_SALT        = "salt";
+    private static final String FIELD_CAJA_A      = "cajaA";
+    private static final String FIELD_CAJA_B      = "cajaB";
+    private static final String FIELD_VAULT        = "vault";
 
-        recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
-        recyclerView.setAdapter(adapter);
+    private final FirebaseFirestore db;
+    private final FirebaseAuth      auth;
 
-        // FIX UX: FAB y botón del estado vacío abren el mismo diálogo
-        view.findViewById(R.id.fabAdd).setOnClickListener(v -> openAddDialog());
-        View btnEmptyAdd = view.findViewById(R.id.btnEmptyAddFirst);
-        if (btnEmptyAdd != null) btnEmptyAdd.setOnClickListener(v -> openAddDialog());
+    public FirebaseManager() {
+        this.db   = FirebaseFirestore.getInstance();
+        this.auth = FirebaseAuth.getInstance();
+    }
 
-        etSearch.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int i, int c, int a) {}
-            @Override public void onTextChanged(CharSequence s, int i, int b, int c) {}
-            @Override public void afterTextChanged(Editable s) { applyFilters(); }
+    // ── Subida ────────────────────────────────────────────────────────────────
+
+    /** Crea el documento completo del usuario. Solo se llama al registrarse. */
+    public Task<Void> uploadAll(String salt, String cajaA, String cajaB, String vault) {
+        Map<String, Object> data = new HashMap<>();
+        data.put(FIELD_SALT,   salt);
+        data.put(FIELD_CAJA_A, cajaA);
+        data.put(FIELD_CAJA_B, cajaB);
+        data.put(FIELD_VAULT,  vault);
+        return userDoc().set(data);
+    }
+
+    /** Actualiza solo el vault. Se llama cada vez que cambian las credenciales. */
+    public Task<Void> uploadVault(String vault) {
+        Map<String, Object> data = new HashMap<>();
+        data.put(FIELD_VAULT, vault);
+        return userDoc().update(data);
+    }
+
+    /** Actualiza solo la cajaA. Se llama cuando el usuario cambia su Contraseña Maestra. */
+    public Task<Void> uploadCajaA(String cajaA) {
+        Map<String, Object> data = new HashMap<>();
+        data.put(FIELD_CAJA_A, cajaA);
+        return userDoc().update(data);
+    }
+
+    /**
+     * FIX: Actualiza cajaA y cajaB en la misma operación.
+     *
+     * Necesario tras recuperación con PUK para invalidar el PUK viejo
+     * de forma atómica — nunca puede quedar un estado donde la Caja A
+     * sea nueva pero la Caja B siga siendo la antigua.
+     */
+    public Task<Void> uploadCajaAyB(String cajaA, String cajaB) {
+        Map<String, Object> data = new HashMap<>();
+        data.put(FIELD_CAJA_A, cajaA);
+        data.put(FIELD_CAJA_B, cajaB);
+        return userDoc().update(data);
+    }
+
+    // ── Descarga ──────────────────────────────────────────────────────────────
+
+    public Task<UserData> downloadUserData() {
+        return userDoc().get().continueWith(task -> {
+            if (!task.isSuccessful() || task.getResult() == null) {
+                throw task.getException() != null
+                        ? task.getException()
+                        : new Exception("Error desconocido al descargar datos.");
+            }
+            DocumentSnapshot doc = task.getResult();
+            if (!doc.exists()) return null;
+
+            return new UserData(
+                    doc.getString(FIELD_SALT),
+                    doc.getString(FIELD_CAJA_A),
+                    doc.getString(FIELD_CAJA_B),
+                    doc.getString(FIELD_VAULT)
+            );
         });
     }
 
-    @Override
-    public void onDestroyView() {
-        super.onDestroyView();
-        executor.shutdownNow();
-    }
+    // ── Estado ────────────────────────────────────────────────────────────────
 
-    @Override
-    public void onResume() {
-        super.onResume();
-        applyFilters();
-    }
-
-    // ── Borrado ────────────────────────────────────────────────────────────────
-
-    private void deleteCredential(Credential credential) {
-        SessionManager session = SessionManager.getInstance();
-        byte[] dek = session.getDek();
-        if (dek == null) return;
-
-        executor.execute(() -> {
-            try {
-                VaultRepository repo = new VaultRepository(requireContext());
-                String freshVaultB64 = repo.loadLocalVault();
-
-                Vault vault;
-                if (freshVaultB64 != null) {
-                    vault = new KeyManager().descifrarVault(freshVaultB64, dek);
-                    session.updateVault(vault);
-                } else {
-                    vault = session.getVault();
-                }
-
-                if (vault == null) return;
-
-                List<Credential> list = vault.getCredentials();
-                int idx = findCredentialIndex(list, credential);
-
-                if (idx < 0) {
-                    mainHandler.post(() -> {
-                        if (!isAdded()) return;
-                        applyFilters();
-                        android.widget.Toast.makeText(requireContext(),
-                                "Esta credencial ya no existe en tu bóveda",
-                                android.widget.Toast.LENGTH_SHORT).show();
-                    });
-                    return;
-                }
-
-                final Credential removed = list.get(idx);
-                vault.removeCredential(idx);
-
-                String encrypted = new KeyManager().cifrarVault(vault, dek);
-                repo.saveVault(encrypted, new VaultRepository.Callback<Void>() {
-                    @Override
-                    public void onSuccess(Void r) {
-                        session.updateVault(vault);
-                        mainHandler.post(() -> { if (isAdded()) applyFilters(); });
-                    }
-
-                    @Override
-                    public void onError(Exception e) {
-                        vault.getCredentials().add(idx, removed);
-                        mainHandler.post(() -> {
-                            if (!isAdded()) return;
-                            applyFilters();
-                            android.widget.Toast.makeText(requireContext(),
-                                    "Error al eliminar. Inténtalo de nuevo.",
-                                    android.widget.Toast.LENGTH_SHORT).show();
-                        });
-                    }
-                });
-
-            } catch (Exception e) {
-                mainHandler.post(() -> {
-                    if (!isAdded()) return;
-                    android.widget.Toast.makeText(requireContext(),
-                            "Error al acceder a la bóveda",
-                            android.widget.Toast.LENGTH_SHORT).show();
-                });
-            }
+    public Task<Boolean> userHasMasterPassword() {
+        return userDoc().get().continueWith(task -> {
+            if (!task.isSuccessful()) return false;
+            DocumentSnapshot doc = task.getResult();
+            if (doc == null || !doc.exists()) return false;
+            String cajaA = doc.getString(FIELD_CAJA_A);
+            return cajaA != null && !cajaA.isEmpty();
         });
     }
 
-    private int findCredentialIndex(List<Credential> list, Credential target) {
-        for (int i = 0; i < list.size(); i++) {
-            if (list.get(i) == target) return i;
-        }
-        for (int i = 0; i < list.size(); i++) {
-            Credential c = list.get(i);
-            if (safeEquals(c.getTitle(),    target.getTitle()) &&
-                    safeEquals(c.getUsername(), target.getUsername())) {
-                return i;
-            }
-        }
-        return -1;
+    public Task<Boolean> userExists() {
+        return userDoc().get().continueWith(task -> {
+            if (!task.isSuccessful()) return false;
+            DocumentSnapshot doc = task.getResult();
+            return doc != null && doc.exists();
+        });
     }
 
-    private boolean safeEquals(String a, String b) {
-        if (a == null && b == null) return true;
-        if (a == null || b == null) return false;
-        return a.equals(b);
+    // ── Borrado ───────────────────────────────────────────────────────────────
+
+    public Task<Void> deleteUserData() {
+        return userDoc().delete();
     }
 
-    // ── Filtrado ──────────────────────────────────────────────────────────────
-
-    private void applyFilters() {
-        Vault vault = SessionManager.getInstance().getVault();
-        if (vault == null) { showList(Collections.emptyList()); return; }
-
-        List<Credential> list = new ArrayList<>(vault.getCredentials());
-
-        int checkedId = chipGroupCategories.getCheckedChipId();
-        if (checkedId != View.NO_ID && checkedId != R.id.chipAll) {
-            Chip chip = chipGroupCategories.findViewById(checkedId);
-            if (chip != null && chip.getTag() instanceof Credential.Category) {
-                Credential.Category cat = (Credential.Category) chip.getTag();
-                list.removeIf(c -> c.getCategory() != cat);
-            }
-        }
-
-        String query = etSearch.getText() != null
-                ? etSearch.getText().toString().trim().toLowerCase() : "";
-        if (!query.isEmpty()) {
-            list.removeIf(c -> {
-                String t = c.getTitle()    != null ? c.getTitle()   .toLowerCase() : "";
-                String u = c.getUsername() != null ? c.getUsername().toLowerCase() : "";
-                return !t.contains(query) && !u.contains(query);
-            });
-        }
-
-        showList(list);
+    public Task<Void> deleteAuthAccount() {
+        return auth.getCurrentUser().delete();
     }
 
-    private void showList(List<Credential> credentials) {
-        adapter.setCredentials(credentials);
-        boolean empty = credentials.isEmpty();
-        layoutEmpty .setVisibility(empty ? View.VISIBLE : View.GONE);
-        recyclerView.setVisibility(empty ? View.GONE    : View.VISIBLE);
+    // ── Privado ───────────────────────────────────────────────────────────────
+
+    private String getUid() {
+        return auth.getCurrentUser().getUid();
     }
 
-    private void openAddDialog() {
-        AddItemDialog dialog = AddItemDialog.newInstance();
-        dialog.setOnCredentialSavedListener(this::applyFilters);
-        dialog.show(getChildFragmentManager(), "add_item");
+    private DocumentReference userDoc() {
+        return db.collection(COLLECTION_USERS).document(getUid());
     }
 }
