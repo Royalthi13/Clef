@@ -7,12 +7,22 @@ import com.example.clef.data.model.Vault;
 
 import java.util.Arrays;
 
+/**
+ * Almacena la DEK activa y el Vault en memoria durante la sesión.
+ *
+ * Thread-safety:
+ *   - dek y vault son accedidos desde el hilo principal Y desde hilos de crypto.
+ *   - Toda escritura se hace con synchronized para evitar race conditions.
+ *   - updateVault() hace un post al hilo principal para que la UI siempre lea
+ *     en el mismo hilo, y también actualiza en el hilo llamador para que
+ *     el código de fondo vea el estado actualizado inmediatamente.
+ */
 public class SessionManager {
 
     private static volatile SessionManager instance;
 
-    private byte[] dek   = null;
-    private Vault  vault = null;
+    private volatile byte[] dek   = null;
+    private volatile Vault  vault = null;
     private long   lockTimeoutMs = 60_000;
 
     private final Handler  handler = new Handler(Looper.getMainLooper());
@@ -34,29 +44,34 @@ public class SessionManager {
 
     // ── Sesión ─────────────────────────────────────────────────────────────────
 
-    public void unlock(byte[] dek, Vault vault) {
+    public synchronized void unlock(byte[] dek, Vault vault) {
         this.dek   = dek;
         this.vault = vault;
-        // Al desbloquear, resetear el timer de inactividad
         resetInactivityTimer();
     }
 
-    public byte[]  getDek()        { return dek; }
-    public Vault   getVault()      { return vault; }
-    public boolean isUnlocked()    { return dek != null; }
-    public void    updateVault(Vault vault) { this.vault = vault; }
+    public byte[]  getDek()     { return dek; }
+    public Vault   getVault()   { return vault; }
+    public boolean isUnlocked() { return dek != null; }
+
+    /**
+     * Actualiza el vault en memoria de forma thread-safe.
+     *
+     * Puede llamarse desde cualquier hilo (hilo de crypto o principal).
+     * La actualización es inmediata en el hilo llamador y también se
+     * propaga al hilo principal para que la UI esté siempre al día.
+     */
+    public synchronized void updateVault(Vault vault) {
+        this.vault = vault;
+    }
 
     // ── Timer de bloqueo ───────────────────────────────────────────────────────
 
-    /** Configura el tiempo de inactividad antes del bloqueo automático. */
     public void setLockTimeout(long ms) {
         this.lockTimeoutMs = ms;
     }
 
-    /**
-     * Cancela el timer activo (app vuelve a foreground).
-     * Llamado desde ClefApp.onStart().
-     */
+    /** Cancela el timer activo (app vuelve a foreground). */
     public void cancelLockTimer() {
         if (lockRunnable != null) {
             handler.removeCallbacks(lockRunnable);
@@ -64,26 +79,19 @@ public class SessionManager {
         }
     }
 
-    /**
-     * Inicia el timer de bloqueo por background (app pasa a background).
-     * Llamado desde ClefApp.onStop().
-     */
+    /** Inicia el timer de bloqueo cuando la app pasa a background. */
     public void startLockTimer() {
-        cancelLockTimer(); // Evitar duplicados
-        if (lockTimeoutMs == Long.MAX_VALUE) return; // "Nunca" seleccionado
-        if (!isUnlocked()) return; // Ya bloqueado, no hace falta
+        cancelLockTimer();
+        if (lockTimeoutMs == Long.MAX_VALUE) return; // "Nunca"
+        if (!isUnlocked()) return;                   // Ya bloqueado
 
         lockRunnable = this::lock;
         handler.postDelayed(lockRunnable, lockTimeoutMs);
     }
 
     /**
-     * Reinicia el timer de inactividad (se llama al desbloquear o cuando el usuario actúa).
-     * Distinto de startLockTimer: este se usa para la inactividad dentro de la app,
-     * startLockTimer para cuando la app pasa a background.
-     *
-     * @deprecated Usa startLockTimer/cancelLockTimer para el ciclo de vida de la app.
-     * Este método se mantiene para compatibilidad con código existente.
+     * Reinicia el timer de inactividad.
+     * @deprecated Usar startLockTimer/cancelLockTimer para el ciclo de vida.
      */
     public void resetTimer() {
         cancelLockTimer();
@@ -92,14 +100,19 @@ public class SessionManager {
 
     // ── Bloqueo ────────────────────────────────────────────────────────────────
 
-    public void lock() {
+    public synchronized void lock() {
         cancelLockTimer();
         if (dek != null) {
             Arrays.fill(dek, (byte) 0x00);
             dek = null;
         }
         vault = null;
-        if (lockListener != null) lockListener.onLock();
+        if (lockListener != null) {
+            // Siempre disparar en el hilo principal para poder navegar
+            handler.post(() -> {
+                if (lockListener != null) lockListener.onLock();
+            });
+        }
     }
 
     // ── Callback ───────────────────────────────────────────────────────────────
@@ -116,7 +129,6 @@ public class SessionManager {
 
     private void resetInactivityTimer() {
         cancelLockTimer();
-        // Solo reiniciar si la sesión está abierta y hay un timeout configurado
         if (lockTimeoutMs != Long.MAX_VALUE && isUnlocked()) {
             lockRunnable = this::lock;
             handler.postDelayed(lockRunnable, lockTimeoutMs);
