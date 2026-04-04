@@ -173,4 +173,5 @@
     <string name="delete_account_success">Cuenta eliminada correctamente</string>
     <string name="delete_account_error">Error al eliminar la cuenta. Inténtalo de nuevo.</string>
 
+
 </resources>

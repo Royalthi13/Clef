@@ -124,7 +124,6 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
             });
 
     public static ProfileEditDialog newInstance() { return new ProfileEditDialog(); }
-
     public void setOnProfileUpdatedListener(OnProfileUpdatedListener l) { this.listener = l; }
 
     @Nullable

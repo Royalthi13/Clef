@@ -8,19 +8,9 @@ import com.example.clef.crypto.KeyManager;
 import com.example.clef.data.local.FileManager;
 import com.example.clef.data.remote.FirebaseManager;
 import com.example.clef.data.remote.FirebaseManager.UserData;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
-/**
- * Puerta de entrada a todos los datos de la bóveda.
- *
- * Coordina FileManager (disco local) y FirebaseManager (nube).
- * Trabaja con el DTO UserData — nunca toca DocumentSnapshot
- * ni los nombres de campo internos de Firebase.
- *
- * Reglas:
- *   - Guardar:   primero disco (instantáneo), luego Firebase.
- *   - Cargar:    primero Firebase (datos frescos); si falla, disco local.
- *   - Registrar: sube todo en una sola llamada a Firebase.
- */
 public class VaultRepository {
 
     public interface Callback<T> {
@@ -28,28 +18,32 @@ public class VaultRepository {
         void onError(Exception e);
     }
 
-    private static final String KEY_PREFS  = "clef_key_cache";
-    private static final String KEY_SALT   = "salt";
-    private static final String KEY_CAJA_A = "caja_a";
-    private static final String KEY_CAJA_B = "caja_b";
-    private final Context context;
+    private static final String KEY_PREFS_BASE = "clef_key_cache";
+    private static final String KEY_SALT        = "salt";
+    private static final String KEY_CAJA_A      = "caja_a";
+    private static final String KEY_CAJA_B      = "caja_b";
+    private static final String KEY_OWNER_UID   = "owner_uid";
+
+    private final Context         context;
     private final FileManager     fileManager;
     private final FirebaseManager firebaseManager;
-    private final SharedPreferences keyPrefs;
 
     public VaultRepository(Context context) {
         this.fileManager     = new FileManager(context);
         this.firebaseManager = new FirebaseManager();
-        this.context = context;
-        this.keyPrefs        = context.getSharedPreferences(KEY_PREFS, Context.MODE_PRIVATE);
+        this.context         = context;
+    }
+
+    // ── SharedPreferences con UID ──────────────────────────────────────────────
+
+    private SharedPreferences getKeyPrefs() {
+        FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();
+        String suffix = (u != null) ? "_" + u.getUid() : "_anon";
+        return context.getSharedPreferences(KEY_PREFS_BASE + suffix, Context.MODE_PRIVATE);
     }
 
     // ── Registro ──────────────────────────────────────────────────────────────
 
-    /**
-     * Sube todos los datos del registro a Firebase en una sola llamada.
-     * Recibe el RegistrationBundle directamente de KeyManager.
-     */
     public void registerUser(KeyManager.RegistrationBundle bundle, Callback<Void> callback) {
         firebaseManager.uploadAll(
                         bundle.saltBase64,
@@ -58,12 +52,7 @@ public class VaultRepository {
                         bundle.bovedaCifradaBase64)
                 .addOnSuccessListener(unused -> {
                     saveLocalVault(bundle.bovedaCifradaBase64);
-                    // Cacheamos las claves para que el desbloqueo offline funcione desde el principio
-                    keyPrefs.edit()
-                            .putString(KEY_SALT,   bundle.saltBase64)
-                            .putString(KEY_CAJA_A, bundle.cajaABase64)
-                            .putString(KEY_CAJA_B, bundle.cajaBBase64)
-                            .apply();
+                    cacheKeys(bundle.saltBase64, bundle.cajaABase64, bundle.cajaBBase64);
                     callback.onSuccess(null);
                 })
                 .addOnFailureListener(callback::onError);
@@ -71,10 +60,6 @@ public class VaultRepository {
 
     // ── Guardar bóveda ────────────────────────────────────────────────────────
 
-    /**
-     * Guarda el vault cifrado en disco.
-     * Recibe el String Base64 que devuelve KeyManager.cifrarVault().
-     */
     public void saveVault(String encryptedVaultBase64, Callback<Void> callback) {
         saveLocalVault(encryptedVaultBase64);
         boolean syncEnabled = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
@@ -86,25 +71,15 @@ public class VaultRepository {
         }
     }
 
-    // ── Cargar datos del usuario ───────────────────────────────────────────────
+    // ── Cargar datos ──────────────────────────────────────────────────────────
 
-    /**
-     * Descarga los datos del usuario desde Firebase como UserData tipado.
-     * Si falla la red, llama a onError con "offline_fallback" para que
-     * la UI sepa que debe usar loadLocalVault().
-     */
     public void loadUserData(Callback<UserData> callback) {
         firebaseManager.downloadUserData()
                 .addOnSuccessListener(userData -> {
                     if (userData != null) {
                         if (userData.vault != null) saveLocalVault(userData.vault);
-                        // Guardamos salt y cajaA para el modo offline
                         if (userData.salt != null && userData.cajaA != null) {
-                            keyPrefs.edit()
-                                    .putString(KEY_SALT,   userData.salt)
-                                    .putString(KEY_CAJA_A, userData.cajaA)
-                                    .putString(KEY_CAJA_B, userData.cajaB)
-                                    .apply();
+                            cacheKeys(userData.salt, userData.cajaA, userData.cajaB);
                         }
                     }
                     callback.onSuccess(userData);
@@ -113,27 +88,18 @@ public class VaultRepository {
                         callback.onError(new Exception("offline_fallback", e)));
     }
 
-    /**
-     * Lee el vault cifrado del disco y lo devuelve en Base64.
-     * Usar solo cuando loadUserData() falla por falta de red.
-     * Devuelve null si nunca se guardó nada en disco.
-     */
     public String loadLocalVault() {
         byte[] bytes = readLocalVaultBytes();
         if (bytes == null) return null;
         return Base64.encodeToString(bytes, Base64.NO_WRAP);
     }
 
-    // ── Cambio de Contraseña Maestra ──────────────────────────────────────────
+    // ── Cambio de Caja A (sin regenerar PUK) ──────────────────────────────────
 
-    /**
-     * Actualiza la cajaA en Firebase tras un cambio de Contraseña Maestra.
-     * Recibe el String Base64 de RecoveryResult.nuevaCajaABase64.
-     */
     public void updateCajaA(String nuevaCajaABase64, Callback<Void> callback) {
         firebaseManager.uploadCajaA(nuevaCajaABase64)
                 .addOnSuccessListener(unused -> {
-                    keyPrefs.edit().putString(KEY_CAJA_A, nuevaCajaABase64).apply();
+                    getKeyPrefs().edit().putString(KEY_CAJA_A, nuevaCajaABase64).apply();
                     callback.onSuccess(null);
                 })
                 .addOnFailureListener(callback::onError);
@@ -142,7 +108,7 @@ public class VaultRepository {
     public void updateCajaAyB(String nuevaCajaABase64, String nuevaCajaBBase64, Callback<Void> callback) {
         firebaseManager.uploadCajaAyB(nuevaCajaABase64, nuevaCajaBBase64)
                 .addOnSuccessListener(unused -> {
-                    keyPrefs.edit()
+                    getKeyPrefs().edit()
                             .putString(KEY_CAJA_A, nuevaCajaABase64)
                             .putString(KEY_CAJA_B, nuevaCajaBBase64)
                             .apply();
@@ -153,36 +119,32 @@ public class VaultRepository {
 
     // ── Estado ────────────────────────────────────────────────────────────────
 
-    /**
-     * Comprueba si el usuario ya tiene Contraseña Maestra configurada en Firebase.
-     */
     public void userHasMasterPassword(Callback<Boolean> callback) {
         firebaseManager.userHasMasterPassword()
                 .addOnSuccessListener(callback::onSuccess)
                 .addOnFailureListener(callback::onError);
     }
 
-    /**
-     * Carga los datos de clave (salt + cajaA) cacheados para el modo offline.
-     * Devuelve un UserData con el vault local, o null si no hay nada cacheado.
-     */
     public UserData loadOfflineUserData() {
-        String salt  = keyPrefs.getString(KEY_SALT,   null);
-        String cajaA = keyPrefs.getString(KEY_CAJA_A, null);
-        String cajaB = keyPrefs.getString(KEY_CAJA_B, null);
+        SharedPreferences prefs = getKeyPrefs();
+        String ownerUid = prefs.getString(KEY_OWNER_UID, null);
+        FirebaseUser current = FirebaseAuth.getInstance().getCurrentUser();
+        if (current == null) return null;
+        if (ownerUid != null && !ownerUid.equals(current.getUid())) return null;
+
+        String salt  = prefs.getString(KEY_SALT,   null);
+        String cajaA = prefs.getString(KEY_CAJA_A, null);
+        String cajaB = prefs.getString(KEY_CAJA_B, null);
         String vault = loadLocalVault();
         if (salt == null || cajaA == null || vault == null) return null;
         return new UserData(salt, cajaA, cajaB, vault);
     }
 
-    /**
-     * Sube todos los datos locales a Firebase como copia de seguridad.
-     * Se llama desde el botón "Exportar" en Ajustes.
-     */
     public void exportToFirebase(Callback<Void> callback) {
-        String salt  = keyPrefs.getString(KEY_SALT,   null);
-        String cajaA = keyPrefs.getString(KEY_CAJA_A, null);
-        String cajaB = keyPrefs.getString(KEY_CAJA_B, null);
+        SharedPreferences prefs = getKeyPrefs();
+        String salt  = prefs.getString(KEY_SALT,   null);
+        String cajaA = prefs.getString(KEY_CAJA_A, null);
+        String cajaB = prefs.getString(KEY_CAJA_B, null);
         String vault = loadLocalVault();
 
         if (salt == null || cajaA == null || cajaB == null || vault == null) {
@@ -195,21 +157,13 @@ public class VaultRepository {
                 .addOnFailureListener(callback::onError);
     }
 
-    /**
-     * Descarga todos los datos de Firebase y los guarda localmente.
-     * Se llama desde el botón "Importar" en Ajustes antes de descifrar.
-     */
     public void downloadAndCacheFromFirebase(Callback<UserData> callback) {
         firebaseManager.downloadUserData()
                 .addOnSuccessListener(userData -> {
                     if (userData != null) {
                         if (userData.vault != null) saveLocalVault(userData.vault);
                         if (userData.salt != null) {
-                            keyPrefs.edit()
-                                    .putString(KEY_SALT,   userData.salt)
-                                    .putString(KEY_CAJA_A, userData.cajaA)
-                                    .putString(KEY_CAJA_B, userData.cajaB)
-                                    .apply();
+                            cacheKeys(userData.salt, userData.cajaA, userData.cajaB);
                         }
                     }
                     callback.onSuccess(userData);
@@ -217,19 +171,16 @@ public class VaultRepository {
                 .addOnFailureListener(callback::onError);
     }
 
-    /** true si hay un vault guardado en disco. */
-    public boolean hasLocalVault() {
-        return fileManager.vaultExists();
-    }
+    public boolean hasLocalVault() { return fileManager.vaultExists(); }
 
     public void saveLocalVaultOnly(String encryptedVaultBase64) {
         saveLocalVault(encryptedVaultBase64);
     }
 
     public void uploadSpecificVaultToFirebase(String encryptedVault, Callback<Void> callback) {
-        String salt  = keyPrefs.getString(KEY_SALT,   null);
-        String cajaA = keyPrefs.getString(KEY_CAJA_A, null);
-        String cajaB = keyPrefs.getString(KEY_CAJA_B, null);
+        String salt  = getKeyPrefs().getString(KEY_SALT,   null);
+        String cajaA = getKeyPrefs().getString(KEY_CAJA_A, null);
+        String cajaB = getKeyPrefs().getString(KEY_CAJA_B, null);
 
         if (salt == null || cajaA == null || cajaB == null) {
             callback.onError(new Exception("no_local_data"));
@@ -241,21 +192,14 @@ public class VaultRepository {
                 .addOnFailureListener(callback::onError);
     }
 
-    /** Borra el vault del disco. Llamar al cerrar sesión o borrar cuenta. */
-    public void clearLocalVault() {
-        fileManager.deleteVault();
-    }
+    public void clearLocalVault() { fileManager.deleteVault(); }
 
     public void clearKeyCache() {
-        keyPrefs.edit().clear().apply();
+        getKeyPrefs().edit().clear().apply();
     }
 
     // ── Borrado de cuenta ─────────────────────────────────────────────────────
 
-    /**
-     * Borra el documento de Firestore, la cuenta de Auth y el vault local.
-     * Operación irreversible.
-     */
     public void deleteAccount(Callback<Void> callback) {
         firebaseManager.deleteUserData()
                 .addOnSuccessListener(unused ->
@@ -277,7 +221,6 @@ public class VaultRepository {
 
     // ── Privado ───────────────────────────────────────────────────────────────
 
-    /** La única conversión Base64→byte[] del proyecto. Solo ocurre aquí para FileManager. */
     private void saveLocalVault(String encryptedVaultBase64) {
         try {
             byte[] bytes = Base64.decode(encryptedVaultBase64, Base64.NO_WRAP);
@@ -291,5 +234,17 @@ public class VaultRepository {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private void cacheKeys(String salt, String cajaA, String cajaB) {
+        FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();
+        SharedPreferences.Editor editor = getKeyPrefs().edit()
+                .putString(KEY_SALT,   salt)
+                .putString(KEY_CAJA_A, cajaA)
+                .putString(KEY_CAJA_B, cajaB);
+        if (u != null) {
+            editor.putString(KEY_OWNER_UID, u.getUid());
+        }
+        editor.apply();
     }
 }
