@@ -21,6 +21,7 @@ import com.example.clef.R;
 import com.example.clef.crypto.KeyManager;
 import com.example.clef.data.model.Credential;
 import com.example.clef.data.remote.FirebaseManager;
+import com.example.clef.utils.BiometricHelper;
 import com.example.clef.utils.ExpiryHelper;
 import com.example.clef.data.model.Vault;
 import com.example.clef.workers.PasswordExpiryWorker;
@@ -38,11 +39,15 @@ import java.util.concurrent.Executors;
 
 public class VaultFragment extends Fragment {
 
+    private enum SortOrder { RECENT, ALPHABETICAL, EXPIRY }
+
     private VaultAdapter      adapter;
     private RecyclerView      recyclerView;
     private View              layoutEmpty;
     private TextInputEditText etSearch;
     private ChipGroup         chipGroupCategories;
+    private com.google.android.material.button.MaterialButton btnSort;
+    private SortOrder         currentSort = SortOrder.RECENT;
 
     private final ExecutorService executor      = Executors.newSingleThreadExecutor();
     private final Handler         mainHandler   = new Handler(Looper.getMainLooper());
@@ -74,6 +79,7 @@ public class VaultFragment extends Fragment {
         layoutEmpty         = view.findViewById(R.id.layoutEmpty);
         etSearch            = view.findViewById(R.id.etSearch);
         chipGroupCategories = view.findViewById(R.id.chipGroupCategories);
+        btnSort             = view.findViewById(R.id.btnSort);
 
         for (Credential.Category cat : Credential.Category.values()) {
             Chip chip = new Chip(requireContext());
@@ -99,10 +105,21 @@ public class VaultFragment extends Fragment {
 
             @Override
             public void onDelete(Credential credential) {
+                String titulo = credential.getTitle() != null ? credential.getTitle() : "esta credencial";
                 new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
                         .setTitle("Eliminar credencial")
-                        .setMessage("¿Eliminar \"" + credential.getTitle() + "\"?\nEsta acción no se puede deshacer.")
-                        .setPositiveButton("Eliminar", (dialog, which) -> deleteCredential(credential))
+                        .setMessage("¿Eliminar \"" + titulo + "\"?")
+                        .setPositiveButton("Eliminar", (dialog, which) ->
+                                BiometricHelper.confirmIdentity(
+                                        requireActivity(),
+                                        "Confirmar eliminación",
+                                        "Verifica tu identidad para eliminar \"" + titulo + "\"",
+                                        new BiometricHelper.ConfirmCallback() {
+                                            @Override public void onConfirmed() {
+                                                deleteCredential(credential);
+                                            }
+                                            @Override public void onCancelled() {}
+                                        }))
                         .setNegativeButton("Cancelar", null)
                         .show();
             }
@@ -110,6 +127,12 @@ public class VaultFragment extends Fragment {
 
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
         recyclerView.setAdapter(adapter);
+
+        // Evitar el fade por defecto al notifyItemChanged (causa parpadeo al expandir)
+        androidx.recyclerview.widget.RecyclerView.ItemAnimator animator = recyclerView.getItemAnimator();
+        if (animator instanceof androidx.recyclerview.widget.SimpleItemAnimator) {
+            ((androidx.recyclerview.widget.SimpleItemAnimator) animator).setSupportsChangeAnimations(false);
+        }
 
         // FIX UX: FAB y botón del estado vacío abren el mismo diálogo
         view.findViewById(R.id.fabAdd).setOnClickListener(v -> openAddDialog());
@@ -120,6 +143,23 @@ public class VaultFragment extends Fragment {
             @Override public void beforeTextChanged(CharSequence s, int i, int c, int a) {}
             @Override public void onTextChanged(CharSequence s, int i, int b, int c) {}
             @Override public void afterTextChanged(Editable s) { applyFilters(); }
+        });
+
+        btnSort.setOnClickListener(v -> {
+            String[] options = {"Más reciente", "Alfabético", "Por caducidad"};
+            int checked = currentSort == SortOrder.RECENT ? 0
+                        : currentSort == SortOrder.ALPHABETICAL ? 1 : 2;
+            new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                    .setTitle("Ordenar por")
+                    .setSingleChoiceItems(options, checked, (dialog, which) -> {
+                        currentSort = which == 0 ? SortOrder.RECENT
+                                    : which == 1 ? SortOrder.ALPHABETICAL
+                                    : SortOrder.EXPIRY;
+                        btnSort.setText(options[which] + " ▾");
+                        dialog.dismiss();
+                        applyFilters();
+                    })
+                    .show();
         });
     }
 
@@ -344,71 +384,65 @@ public class VaultFragment extends Fragment {
 
     private void deleteCredential(Credential credential) {
         SessionManager session = SessionManager.getInstance();
-        byte[] dek = session.getDek();
-        if (dek == null) return;
+        byte[] dek   = session.getDek();
+        Vault  vault = session.getVault();
+        if (dek == null || vault == null) return;
 
-        executor.execute(() -> {
-            try {
-                VaultRepository repo = new VaultRepository(requireContext());
-                String freshVaultB64 = repo.loadLocalVault();
+        List<Credential> list = vault.getCredentials();
+        int idx = findCredentialIndex(list, credential);
+        if (idx < 0) { applyFilters(); return; }
 
-                Vault vault;
-                if (freshVaultB64 != null) {
-                    vault = new KeyManager().descifrarVault(freshVaultB64, dek);
+        // Borrar de memoria inmediatamente y refrescar UI
+        list.remove(idx);
+        session.updateVault(vault);
+        applyFilters();
+
+        View root = getView();
+        if (root == null) return;
+
+        String titulo = credential.getTitle() != null ? credential.getTitle() : "Credencial";
+
+        com.google.android.material.snackbar.Snackbar
+                .make(root, "\"" + titulo + "\" eliminada", 5000)
+                .setAction("Deshacer", v -> {
+                    // Restaurar en memoria
+                    list.add(idx, credential);
                     session.updateVault(vault);
-                } else {
-                    vault = session.getVault();
-                }
-
-                if (vault == null) return;
-
-                List<Credential> list = vault.getCredentials();
-                int idx = findCredentialIndex(list, credential);
-
-                if (idx < 0) {
-                    mainHandler.post(() -> {
-                        if (!isAdded()) return;
-                        applyFilters();
-                        android.widget.Toast.makeText(requireContext(),
-                                "Esta credencial ya no existe en tu bóveda",
-                                android.widget.Toast.LENGTH_SHORT).show();
-                    });
-                    return;
-                }
-
-                final Credential removed = list.get(idx);
-                vault.removeCredential(idx);
-
-                String encrypted = new KeyManager().cifrarVault(vault, dek);
-                repo.saveVault(encrypted, new VaultRepository.Callback<Void>() {
+                    applyFilters();
+                })
+                .addCallback(new com.google.android.material.snackbar.Snackbar.Callback() {
                     @Override
-                    public void onSuccess(Void r) {
-                        session.updateVault(vault);
-                        mainHandler.post(() -> { if (isAdded()) applyFilters(); });
-                    }
-
-                    @Override
-                    public void onError(Exception e) {
-                        vault.getCredentials().add(idx, removed);
-                        mainHandler.post(() -> {
-                            if (!isAdded()) return;
-                            applyFilters();
-                            android.widget.Toast.makeText(requireContext(),
-                                    "Error al eliminar. Inténtalo de nuevo.",
-                                    android.widget.Toast.LENGTH_SHORT).show();
+                    public void onDismissed(com.google.android.material.snackbar.Snackbar sb, int event) {
+                        // Solo persistir si no se pulsó "Deshacer"
+                        if (event == DISMISS_EVENT_ACTION) return;
+                        executor.execute(() -> {
+                            try {
+                                String encrypted = new KeyManager().cifrarVault(vault, dek);
+                                VaultRepository repo = new VaultRepository(
+                                        getContext() != null ? getContext() : root.getContext());
+                                repo.saveVault(encrypted, new VaultRepository.Callback<Void>() {
+                                    @Override public void onSuccess(Void r) {}
+                                    @Override public void onError(Exception e) {
+                                        list.add(idx, credential);
+                                        session.updateVault(vault);
+                                        mainHandler.post(() -> {
+                                            if (!isAdded()) return;
+                                            applyFilters();
+                                            android.widget.Toast.makeText(requireContext(),
+                                                    "Error al eliminar. Inténtalo de nuevo.",
+                                                    android.widget.Toast.LENGTH_SHORT).show();
+                                        });
+                                    }
+                                });
+                            } catch (Exception e) {
+                                list.add(idx, credential);
+                                session.updateVault(vault);
+                                mainHandler.post(() -> { if (isAdded()) applyFilters(); });
+                            }
                         });
                     }
-                });
-
-            } catch (Exception e) {
-                mainHandler.post(() -> {
-                    if (!isAdded()) return;
-                    android.widget.Toast.makeText(requireContext(),
-                            "Error al acceder a la bóveda",
-                            android.widget.Toast.LENGTH_SHORT).show();
-                });
-            }
-        });
+                })
+                .show();
     }
 
     private int findCredentialIndex(List<Credential> list, Credential target) {
@@ -459,6 +493,37 @@ public class VaultFragment extends Fragment {
                 String u = c.getUsername() != null ? c.getUsername().toLowerCase() : "";
                 return !t.contains(query) && !u.contains(query);
             });
+        }
+
+        // Ordenación
+        android.content.SharedPreferences prefs =
+                requireContext().getSharedPreferences(ExpiryHelper.PREFS_NAME, Context.MODE_PRIVATE);
+        long periodMs = prefs.getLong(ExpiryHelper.PREF_PERIOD, ExpiryHelper.PERIOD_ONE_YEAR);
+
+        switch (currentSort) {
+            case ALPHABETICAL:
+                list.sort((a, b) -> {
+                    String ta = a.getTitle() != null ? a.getTitle().toLowerCase() : "";
+                    String tb = b.getTitle() != null ? b.getTitle().toLowerCase() : "";
+                    return ta.compareTo(tb);
+                });
+                break;
+            case EXPIRY:
+                list.sort((a, b) -> {
+                    ExpiryHelper.Status sa = ExpiryHelper.getStatus(a.getUpdatedAt(), periodMs);
+                    ExpiryHelper.Status sb = ExpiryHelper.getStatus(b.getUpdatedAt(), periodMs);
+                    // Expiradas primero, luego warning, luego ok, luego sin período
+                    return sb.ordinal() - sa.ordinal();
+                });
+                break;
+            case RECENT:
+            default:
+                list.sort((a, b) -> {
+                    long ta = a.getLastUsedAt() > 0 ? a.getLastUsedAt() : a.getUpdatedAt();
+                    long tb = b.getLastUsedAt() > 0 ? b.getLastUsedAt() : b.getUpdatedAt();
+                    return Long.compare(tb, ta);
+                });
+                break;
         }
 
         showList(list);

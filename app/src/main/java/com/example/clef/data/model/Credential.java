@@ -52,6 +52,7 @@ public class Credential {
     private Category category;
     private boolean synced;
     private long updatedAt;
+    private long lastUsedAt;
 
     /**
      * Constructor vacío necesario para que GSON pueda reconstruir
@@ -135,5 +136,8 @@ public class Credential {
     public void setSynced(boolean synced) { this.synced = synced; }
     public long getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(long updatedAt) { this.updatedAt = updatedAt; }
+
+    public long getLastUsedAt() { return lastUsedAt; }
+    public void setLastUsedAt(long lastUsedAt) { this.lastUsedAt = lastUsedAt; }
 
 }

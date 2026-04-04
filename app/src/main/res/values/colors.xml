@@ -28,4 +28,5 @@
     <!-- Caducidad de contraseñas -->
     <color name="expiry_warning">#FFB74D</color>
     <color name="expiry_expired">#EF4444</color>
+    <color name="strength_strong">#4CAF50</color>
 </resources>

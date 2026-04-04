@@ -93,6 +93,20 @@ public class AddItemDialog extends BottomSheetDialogFragment {
             etPassword.setSelection(generated.length());
         });
 
+        android.widget.LinearLayout sBar1 = view.findViewById(R.id.strengthBar1);
+        android.widget.LinearLayout sBar2 = view.findViewById(R.id.strengthBar2);
+        android.widget.LinearLayout sBar3 = view.findViewById(R.id.strengthBar3);
+        android.widget.TextView     sLabel = view.findViewById(R.id.tvStrengthLabel);
+
+        etPassword.addTextChangedListener(new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int i, int c, int a) {}
+            @Override public void onTextChanged(CharSequence s, int i, int b, int c) {}
+            @Override public void afterTextChanged(android.text.Editable s) {
+                com.example.clef.utils.PasswordStrengthHelper.update(
+                        requireContext(), s.toString(), sBar1, sBar2, sBar3, sLabel);
+            }
+        });
+
         btnSave.setOnClickListener(v -> onSave());
     }
 

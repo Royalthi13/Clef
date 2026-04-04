@@ -103,8 +103,11 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
 
         loadServiceIcon(holder, credential, title);
 
-        holder.btnCopy.setOnClickListener(v ->
-                ClipboardHelper.copySensitive(context, title, credential.getPassword()));
+        holder.btnCopy.setOnClickListener(v -> {
+            ClipboardHelper.copySensitive(context, title, credential.getPassword());
+            credential.setLastUsedAt(System.currentTimeMillis());
+            if (actionListener != null) actionListener.onSave(credential);
+        });
 
         // ── Expandir / colapsar al pulsar la card ─────────────────────────────
         holder.itemView.setOnClickListener(v -> {
@@ -117,10 +120,16 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
         });
 
         // ── Sección expandida ─────────────────────────────────────────────────
-        boolean expanded = (position == expandedPosition);
-        holder.expandedSection.setVisibility(expanded ? View.VISIBLE : View.GONE);
+        boolean expanded    = (position == expandedPosition);
+        boolean wasVisible  = holder.expandedSection.getVisibility() == View.VISIBLE;
 
-        if (expanded) {
+        if (expanded && !wasVisible) {
+            bindExpandedSection(holder, credential);
+            animateExpand(holder.expandedSection);
+        } else if (!expanded && wasVisible) {
+            animateCollapse(holder.expandedSection);
+        } else if (expanded) {
+            // Ya visible (p.ej. refresh tras guardar): rebind sin animar
             bindExpandedSection(holder, credential);
         }
     }
@@ -218,6 +227,23 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
                     dialogView.findViewById(R.id.etNewPassword);
             android.widget.ImageButton btnShowNew =
                     dialogView.findViewById(R.id.btnShowNewPassword);
+            android.widget.LinearLayout sBar1 =
+                    dialogView.findViewById(R.id.strengthBar1);
+            android.widget.LinearLayout sBar2 =
+                    dialogView.findViewById(R.id.strengthBar2);
+            android.widget.LinearLayout sBar3 =
+                    dialogView.findViewById(R.id.strengthBar3);
+            android.widget.TextView sLabel =
+                    dialogView.findViewById(R.id.tvStrengthLabel);
+
+            etNew.addTextChangedListener(new android.text.TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int i, int c, int a) {}
+                @Override public void onTextChanged(CharSequence s, int i, int b, int c) {}
+                @Override public void afterTextChanged(android.text.Editable s) {
+                    com.example.clef.utils.PasswordStrengthHelper.update(
+                            context, s.toString(), sBar1, sBar2, sBar3, sLabel);
+                }
+            });
 
             // Dado → generar contraseña
             tilNew.setStartIconOnClickListener(gen -> {
@@ -494,6 +520,55 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
             case "caixabank": case "caixa":     return "caixabank.es";
             default:                            return null;
         }
+    }
+
+    private void animateExpand(View view) {
+        view.setVisibility(View.VISIBLE);
+        view.measure(
+                android.view.View.MeasureSpec.makeMeasureSpec(
+                        ((android.view.View) view.getParent()).getWidth(),
+                        android.view.View.MeasureSpec.EXACTLY),
+                android.view.View.MeasureSpec.makeMeasureSpec(0,
+                        android.view.View.MeasureSpec.UNSPECIFIED));
+        int targetH = view.getMeasuredHeight();
+        view.getLayoutParams().height = 0;
+        view.requestLayout();
+
+        android.animation.ValueAnimator anim = android.animation.ValueAnimator.ofInt(0, targetH);
+        anim.setDuration(250);
+        anim.setInterpolator(new android.view.animation.DecelerateInterpolator());
+        anim.addUpdateListener(va -> {
+            view.getLayoutParams().height = (int) va.getAnimatedValue();
+            view.requestLayout();
+        });
+        anim.addListener(new android.animation.AnimatorListenerAdapter() {
+            @Override public void onAnimationEnd(android.animation.Animator a) {
+                view.getLayoutParams().height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT;
+                view.requestLayout();
+            }
+        });
+        anim.start();
+    }
+
+    private void animateCollapse(View view) {
+        int initH = view.getMeasuredHeight();
+        if (initH == 0) { view.setVisibility(View.GONE); return; }
+
+        android.animation.ValueAnimator anim = android.animation.ValueAnimator.ofInt(initH, 0);
+        anim.setDuration(250);
+        anim.setInterpolator(new android.view.animation.DecelerateInterpolator());
+        anim.addUpdateListener(va -> {
+            view.getLayoutParams().height = (int) va.getAnimatedValue();
+            view.requestLayout();
+        });
+        anim.addListener(new android.animation.AnimatorListenerAdapter() {
+            @Override public void onAnimationEnd(android.animation.Animator a) {
+                view.setVisibility(View.GONE);
+                view.getLayoutParams().height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT;
+                view.requestLayout();
+            }
+        });
+        anim.start();
     }
 
     @Override

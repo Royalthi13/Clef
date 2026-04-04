@@ -126,6 +126,47 @@ public class BiometricHelper {
         }
     }
 
+    // ── Confirmar identidad (sin descifrar DEK) ────────────────────────────────
+
+    public interface ConfirmCallback {
+        void onConfirmed();
+        void onCancelled();
+    }
+
+    /**
+     * Muestra un BiometricPrompt de solo confirmación (sin CryptoObject).
+     * Usa biometría fuerte + credencial del dispositivo (PIN/patrón/contraseña) como fallback.
+     */
+    public static void confirmIdentity(FragmentActivity activity, String title, String subtitle,
+                                       ConfirmCallback callback) {
+        BiometricPrompt.PromptInfo info = new BiometricPrompt.PromptInfo.Builder()
+                .setTitle(title)
+                .setSubtitle(subtitle)
+                .setAllowedAuthenticators(
+                        BiometricManager.Authenticators.BIOMETRIC_STRONG |
+                        BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+                .build();
+
+        BiometricPrompt prompt = new BiometricPrompt(
+                activity,
+                ContextCompat.getMainExecutor(activity),
+                new BiometricPrompt.AuthenticationCallback() {
+                    @Override
+                    public void onAuthenticationSucceeded(BiometricPrompt.AuthenticationResult r) {
+                        callback.onConfirmed();
+                    }
+
+                    @Override
+                    public void onAuthenticationError(int errorCode, CharSequence errString) {
+                        callback.onCancelled();
+                    }
+
+                    @Override public void onAuthenticationFailed() {}
+                });
+
+        prompt.authenticate(info);
+    }
+
     // ── Desactivar biometría ───────────────────────────────────────────────────
 
     /** Borra SOLO la entrada del usuario actual, no las de otros usuarios. */

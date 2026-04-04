@@ -142,6 +142,16 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        // Reiniciar el timer cada vez que la app vuelve a primer plano,
+        // así también bloquea si el usuario se queda N minutos sin salir.
+        if (SessionManager.getInstance().isUnlocked()) {
+            SessionManager.getInstance().startLockTimer();
+        }
+    }
+
+    @Override
     protected void onStop() {
         super.onStop();
         SessionManager.getInstance().startLockTimer();
