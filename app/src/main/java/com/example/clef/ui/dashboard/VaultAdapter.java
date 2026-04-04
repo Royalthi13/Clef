@@ -129,8 +129,10 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
         // Eliminar watchers anteriores para evitar disparos al setear texto
         holder.removeWatchers();
 
+        holder.etExpandedTitle   .setText(credential.getTitle()    != null ? credential.getTitle()    : "");
+        holder.etExpandedUsername.setText(credential.getUsername() != null ? credential.getUsername() : "");
         holder.etPassword.setText(credential.getPassword());
-        holder.etUrl.setText(credential.getUrl() != null ? credential.getUrl() : "");
+        holder.etUrl.setText(credential.getUrl()    != null ? credential.getUrl()    : "");
         holder.etNotes.setText(credential.getNotes() != null ? credential.getNotes() : "");
         holder.btnSave.setEnabled(false);
 
@@ -140,7 +142,17 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
         holder.tilPassword.setStartIconOnClickListener(null);
         holder.tilPassword.setStartIconDrawable(null);
 
-        // Solo URL y notas activan el botón Guardar
+        // Título, usuario, URL y notas activan el botón Guardar
+        holder.titleWatcher = new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int i, int c, int a) {}
+            @Override public void onTextChanged(CharSequence s, int i, int b, int c) {}
+            @Override public void afterTextChanged(Editable s) { holder.btnSave.setEnabled(true); }
+        };
+        holder.usernameWatcher = new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int i, int c, int a) {}
+            @Override public void onTextChanged(CharSequence s, int i, int b, int c) {}
+            @Override public void afterTextChanged(Editable s) { holder.btnSave.setEnabled(true); }
+        };
         holder.urlWatcher = new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int i, int c, int a) {}
             @Override public void onTextChanged(CharSequence s, int i, int b, int c) {}
@@ -151,8 +163,10 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
             @Override public void onTextChanged(CharSequence s, int i, int b, int c) {}
             @Override public void afterTextChanged(Editable s) { holder.btnSave.setEnabled(true); }
         };
-        holder.etUrl  .addTextChangedListener(holder.urlWatcher);
-        holder.etNotes.addTextChangedListener(holder.notesWatcher);
+        holder.etExpandedTitle   .addTextChangedListener(holder.titleWatcher);
+        holder.etExpandedUsername.addTextChangedListener(holder.usernameWatcher);
+        holder.etUrl             .addTextChangedListener(holder.urlWatcher);
+        holder.etNotes           .addTextChangedListener(holder.notesWatcher);
 
         // Ojo → mantener pulsado para ver, soltar para ocultar
         holder.btnShowPassword.setOnTouchListener((v, event) -> {
@@ -280,16 +294,25 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
 
         // Guardar cambios
         holder.btnSave.setOnClickListener(v -> {
+            String newTitle    = text(holder.etExpandedTitle);
+            String newUsername = text(holder.etExpandedUsername);
             String newPassword = text(holder.etPassword);
             boolean passwordChanged = !newPassword.equals(
                     credential.getPassword() != null ? credential.getPassword() : "");
 
+            if (!newTitle.isEmpty()) credential.setTitle(newTitle);
+            credential.setUsername(newUsername);
             credential.setPassword(newPassword);
             credential.setUrl(text(holder.etUrl));
             credential.setNotes(text(holder.etNotes));
             if (passwordChanged) {
                 credential.setUpdatedAt(System.currentTimeMillis());
             }
+
+            // Actualizar header sin colapsar
+            holder.tvTitle   .setText(newTitle.isEmpty() ? "Sin Título" : newTitle);
+            holder.tvUsername.setText(newUsername);
+
             holder.btnSave.setEnabled(false);
             if (actionListener != null) actionListener.onSave(credential);
         });
@@ -488,6 +511,10 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
 
         // Sección expandida
         final View              expandedSection;
+        final TextInputLayout   tilExpandedTitle;
+        final TextInputEditText etExpandedTitle;
+        final TextInputLayout   tilExpandedUsername;
+        final TextInputEditText etExpandedUsername;
         final TextInputLayout   tilPassword;
         final TextInputEditText etPassword;
         final ImageButton       btnShowPassword;
@@ -503,7 +530,8 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
         final MaterialButton    btnSave;
         final MaterialButton    btnDelete;
 
-        TextWatcher passwordWatcher;
+        TextWatcher titleWatcher;
+        TextWatcher usernameWatcher;
         TextWatcher urlWatcher;
         TextWatcher notesWatcher;
         String previousPassword = null;
@@ -518,6 +546,10 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
             btnCopy        = itemView.findViewById(R.id.btnCopyPassword);
 
             expandedSection        = itemView.findViewById(R.id.expandedSection);
+            tilExpandedTitle       = itemView.findViewById(R.id.tilExpandedTitle);
+            etExpandedTitle        = itemView.findViewById(R.id.etExpandedTitle);
+            tilExpandedUsername    = itemView.findViewById(R.id.tilExpandedUsername);
+            etExpandedUsername     = itemView.findViewById(R.id.etExpandedUsername);
             tilPassword            = itemView.findViewById(R.id.tilPassword);
             etPassword             = itemView.findViewById(R.id.etPassword);
             btnShowPassword        = itemView.findViewById(R.id.btnShowPassword);
@@ -535,10 +567,11 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
         }
 
         void removeWatchers() {
-            if (passwordWatcher != null) etPassword.removeTextChangedListener(passwordWatcher);
-            if (urlWatcher      != null) etUrl     .removeTextChangedListener(urlWatcher);
-            if (notesWatcher    != null) etNotes   .removeTextChangedListener(notesWatcher);
-            passwordWatcher = urlWatcher = notesWatcher = null;
+            if (titleWatcher    != null) etExpandedTitle   .removeTextChangedListener(titleWatcher);
+            if (usernameWatcher != null) etExpandedUsername.removeTextChangedListener(usernameWatcher);
+            if (urlWatcher      != null) etUrl             .removeTextChangedListener(urlWatcher);
+            if (notesWatcher    != null) etNotes           .removeTextChangedListener(notesWatcher);
+            titleWatcher = usernameWatcher = urlWatcher = notesWatcher = null;
         }
     }
 }
