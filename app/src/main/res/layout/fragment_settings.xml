@@ -35,7 +35,19 @@
             android:padding="16dp"
             android:paddingBottom="96dp">
 
-            <!-- ── Card de perfil ──────────────────────────────────────────── -->
+            <!-- ── Perfil ──────────────────────────────────────────────────── -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:paddingStart="8dp"
+                android:text="Perfil"
+                android:textAllCaps="true"
+                android:letterSpacing="0.12"
+                android:textStyle="bold"
+                android:textSize="12sp"
+                android:textColor="@color/clef_primary" />
+
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/cardProfile"
                 android:layout_width="match_parent"
@@ -445,11 +457,23 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- ── Soporte + logout ────────────────────────────────────────── -->
-            <com.google.android.material.card.MaterialCardView
+            <!-- ── Cuenta ─────────────────────────────────────────────────── -->
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="18dp"
+                android:layout_marginBottom="8dp"
+                android:paddingStart="8dp"
+                android:text="Cuenta"
+                android:textAllCaps="true"
+                android:letterSpacing="0.12"
+                android:textStyle="bold"
+                android:textSize="12sp"
+                android:textColor="@color/clef_primary" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 app:cardBackgroundColor="@color/clef_card_surface"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="1dp"
