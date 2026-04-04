@@ -75,14 +75,22 @@ public class VaultFragment extends Fragment {
         chipGroupCategories.setOnCheckedStateChangeListener((group, checkedIds) -> applyFilters());
 
         adapter = new VaultAdapter(requireContext());
-        adapter.setOnDeleteListener((position, credential) ->
+        adapter.setOnCredentialActionListener(new VaultAdapter.OnCredentialActionListener() {
+            @Override
+            public void onSave(Credential credential) {
+                saveCredential(credential);
+            }
+
+            @Override
+            public void onDelete(Credential credential) {
                 new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
                         .setTitle("Eliminar credencial")
                         .setMessage("¿Eliminar \"" + credential.getTitle() + "\"?\nEsta acción no se puede deshacer.")
                         .setPositiveButton("Eliminar", (dialog, which) -> deleteCredential(credential))
                         .setNegativeButton("Cancelar", null)
-                        .show()
-        );
+                        .show();
+            }
+        });
 
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
         recyclerView.setAdapter(adapter);
@@ -115,6 +123,56 @@ public class VaultFragment extends Fragment {
     public void onHiddenChanged(boolean hidden) {
         super.onHiddenChanged(hidden);
         if (!hidden) applyFilters();
+    }
+
+    // ── Guardado ───────────────────────────────────────────────────────────────
+
+    private void saveCredential(Credential credential) {
+        SessionManager session = SessionManager.getInstance();
+        byte[] dek  = session.getDek();
+        Vault  vault = session.getVault();
+        if (dek == null || vault == null) return;
+
+        executor.execute(() -> {
+            try {
+                String encrypted = new KeyManager().cifrarVault(vault, dek);
+                VaultRepository repo = new VaultRepository(requireContext());
+
+                if (credential.isSynced()) {
+                    repo.uploadSpecificVaultToFirebase(encrypted, new VaultRepository.Callback<Void>() {
+                        @Override
+                        public void onSuccess(Void r) {
+                            repo.saveLocalVaultOnly(encrypted);
+                            session.updateVault(vault);
+                            mainHandler.post(() -> { if (isAdded()) adapter.refreshWithoutCollapse(); });
+                        }
+
+                        @Override
+                        public void onError(Exception e) {
+                            repo.saveLocalVaultOnly(encrypted);
+                            session.updateVault(vault);
+                            mainHandler.post(() -> {
+                                if (!isAdded()) return;
+                                adapter.refreshWithoutCollapse();
+                                android.widget.Toast.makeText(requireContext(),
+                                        "Guardado local. Error al sincronizar.",
+                                        android.widget.Toast.LENGTH_SHORT).show();
+                            });
+                        }
+                    });
+                } else {
+                    repo.saveLocalVaultOnly(encrypted);
+                    session.updateVault(vault);
+                    mainHandler.post(() -> { if (isAdded()) adapter.refreshWithoutCollapse(); });
+                }
+            } catch (Exception e) {
+                mainHandler.post(() -> {
+                    if (!isAdded()) return;
+                    android.widget.Toast.makeText(requireContext(),
+                            "Error al guardar", android.widget.Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
     }
 
     // ── Borrado ────────────────────────────────────────────────────────────────

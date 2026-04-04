@@ -1,6 +1,8 @@
 package com.example.clef.ui.dashboard;
 
 import android.content.Context;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -18,40 +20,50 @@ import com.bumptech.glide.request.RequestOptions;
 import com.example.clef.R;
 import com.example.clef.data.model.Credential;
 import com.example.clef.utils.ClipboardHelper;
+import com.example.clef.utils.PasswordGenerator;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> {
 
-    public interface OnDeleteListener {
-        void onDelete(int position, Credential credential);
+    public interface OnCredentialActionListener {
+        void onSave(Credential credential);
+        void onDelete(Credential credential);
     }
 
-    private final List<Credential> allItems = new ArrayList<>();
     private final List<Credential> displayedItems = new ArrayList<>();
     private final Context context;
-    private OnDeleteListener deleteListener;
+    private OnCredentialActionListener actionListener;
+    private int expandedPosition = -1;
 
     public VaultAdapter(Context context) {
         this.context = context;
     }
 
-    public void setOnDeleteListener(OnDeleteListener listener) {
-        this.deleteListener = listener;
+    public void setOnCredentialActionListener(OnCredentialActionListener listener) {
+        this.actionListener = listener;
     }
 
     public void setCredentials(List<Credential> credentials) {
-        allItems.clear();
-        allItems.addAll(credentials);
+        expandedPosition = -1;
         displayedItems.clear();
         displayedItems.addAll(credentials);
         notifyDataSetChanged();
     }
 
     public void filterList(List<Credential> filteredList) {
+        expandedPosition = -1;
         displayedItems.clear();
         displayedItems.addAll(filteredList);
+        notifyDataSetChanged();
+    }
+
+    /** Refresca los datos visibles sin colapsar el item expandido. */
+    public void refreshWithoutCollapse() {
         notifyDataSetChanged();
     }
 
@@ -74,30 +86,201 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
         holder.tvUsername.setText(credential.getUsername());
         holder.ivSyncStatus.setVisibility(credential.isSynced() ? View.VISIBLE : View.GONE);
 
-        // Intentar cargar favicon del servicio basándonos en el título o URL
         loadServiceIcon(holder, credential, title);
 
         holder.btnCopy.setOnClickListener(v ->
-                ClipboardHelper.copySensitive(context, title, credential.getPassword())
-        );
+                ClipboardHelper.copySensitive(context, title, credential.getPassword()));
 
-        holder.btnDelete.setOnClickListener(v -> {
-            if (deleteListener != null) {
-                deleteListener.onDelete(holder.getAdapterPosition(), credential);
+        // ── Expandir / colapsar al pulsar la card ─────────────────────────────
+        holder.itemView.setOnClickListener(v -> {
+            int prev = expandedPosition;
+            expandedPosition = (holder.getAdapterPosition() == expandedPosition)
+                    ? -1
+                    : holder.getAdapterPosition();
+            if (prev != -1) notifyItemChanged(prev);
+            notifyItemChanged(holder.getAdapterPosition());
+        });
+
+        // ── Sección expandida ─────────────────────────────────────────────────
+        boolean expanded = (position == expandedPosition);
+        holder.expandedSection.setVisibility(expanded ? View.VISIBLE : View.GONE);
+
+        if (expanded) {
+            bindExpandedSection(holder, credential);
+        } else {
+            holder.previousPassword = null;
+        }
+    }
+
+    private void bindExpandedSection(ViewHolder holder, Credential credential) {
+        // Eliminar watchers anteriores para evitar disparos al setear texto
+        holder.removeWatchers();
+
+        holder.etPassword.setText(credential.getPassword());
+        holder.etUrl.setText(credential.getUrl() != null ? credential.getUrl() : "");
+        holder.etNotes.setText(credential.getNotes() != null ? credential.getNotes() : "");
+        holder.btnSave.setEnabled(false);
+
+        // Watcher único que activa el botón Guardar al detectar cambios
+        TextWatcher dirtyWatcher = new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int i, int c, int a) {}
+            @Override public void onTextChanged(CharSequence s, int i, int b, int c) {}
+            @Override public void afterTextChanged(Editable s) {
+                holder.btnSave.setEnabled(true);
             }
+        };
+        holder.passwordWatcher = dirtyWatcher;
+        holder.urlWatcher      = new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int i, int c, int a) {}
+            @Override public void onTextChanged(CharSequence s, int i, int b, int c) {}
+            @Override public void afterTextChanged(Editable s) { holder.btnSave.setEnabled(true); }
+        };
+        holder.notesWatcher = new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int i, int c, int a) {}
+            @Override public void onTextChanged(CharSequence s, int i, int b, int c) {}
+            @Override public void afterTextChanged(Editable s) { holder.btnSave.setEnabled(true); }
+        };
+        holder.etPassword.addTextChangedListener(holder.passwordWatcher);
+        holder.etUrl     .addTextChangedListener(holder.urlWatcher);
+        holder.etNotes   .addTextChangedListener(holder.notesWatcher);
+
+        // Icono dado (start) → generar contraseña
+        holder.tilPassword.setStartIconOnClickListener(v -> {
+            String generated = PasswordGenerator.generateFromPrefs(context);
+            holder.etPassword.setText(generated);
+            holder.etPassword.setSelection(generated.length());
+        });
+
+        // Ojo → mantener pulsado para ver, soltar para ocultar
+        holder.btnShowPassword.setOnTouchListener((v, event) -> {
+            int len = holder.etPassword.getText() != null
+                    ? holder.etPassword.getText().length() : 0;
+            switch (event.getAction()) {
+                case android.view.MotionEvent.ACTION_DOWN:
+                    holder.etPassword.setInputType(
+                            android.text.InputType.TYPE_CLASS_TEXT |
+                            android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
+                    holder.etPassword.setSelection(len);
+                    break;
+                case android.view.MotionEvent.ACTION_UP:
+                case android.view.MotionEvent.ACTION_CANCEL:
+                    holder.etPassword.setInputType(
+                            android.text.InputType.TYPE_CLASS_TEXT |
+                            android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+                    holder.etPassword.setSelection(len);
+                    break;
+            }
+            return true;
+        });
+
+        // Solo inicializar previousPassword la primera vez que se expande
+        if (holder.previousPassword == null) {
+            holder.previousPassword = credential.getPassword() != null
+                    ? credential.getPassword() : "";
+        }
+        holder.etPreviousPassword.setText(holder.previousPassword);
+        holder.layoutPreviousPassword.setVisibility(View.VISIBLE);
+
+        // ℹ️ → aviso informativo
+        holder.btnPasswordInfo.setOnClickListener(v ->
+                new com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
+                        .setTitle("Cambiar contraseña")
+                        .setMessage("La contraseña anterior quedará visible abajo para que puedas usarla al cambiarla en el sitio web.")
+                        .setPositiveButton("Entendido", null)
+                        .show());
+
+        // Cambiar contraseña → diálogo con generador
+        holder.btnChangePassword.setOnClickListener(v -> {
+            android.view.View dialogView = android.view.LayoutInflater.from(context)
+                    .inflate(R.layout.dialog_change_password, null);
+            com.google.android.material.textfield.TextInputLayout tilNew =
+                    dialogView.findViewById(R.id.tilNewPassword);
+            com.google.android.material.textfield.TextInputEditText etNew =
+                    dialogView.findViewById(R.id.etNewPassword);
+
+            tilNew.setStartIconOnClickListener(gen -> {
+                String generated = PasswordGenerator.generateFromPrefs(context);
+                etNew.setText(generated);
+                etNew.setSelection(generated.length());
+            });
+
+            new com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
+                    .setTitle("Cambiar contraseña")
+                    .setView(dialogView)
+                    .setPositiveButton("Aceptar", (d, w) -> {
+                        String newPwd = etNew.getText() != null
+                                ? etNew.getText().toString() : "";
+                        if (newPwd.isEmpty()) return;
+
+                        String oldPwd = holder.etPassword.getText() != null
+                                ? holder.etPassword.getText().toString() : "";
+
+                        holder.previousPassword = oldPwd;
+                        holder.etPreviousPassword.setText(oldPwd);
+                        holder.layoutPreviousPassword.setVisibility(View.VISIBLE);
+
+                        holder.etPassword.setText(newPwd);
+                        holder.etPassword.setSelection(newPwd.length());
+                        holder.btnSave.setEnabled(true);
+                    })
+                    .setNegativeButton("Cancelar", null)
+                    .show();
+        });
+
+        // Ojo contraseña anterior → mantener pulsado para ver
+        holder.btnShowPreviousPassword.setOnTouchListener((v, event) -> {
+            int len = holder.etPreviousPassword.getText() != null
+                    ? holder.etPreviousPassword.getText().length() : 0;
+            switch (event.getAction()) {
+                case android.view.MotionEvent.ACTION_DOWN:
+                    holder.etPreviousPassword.setInputType(
+                            android.text.InputType.TYPE_CLASS_TEXT |
+                            android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
+                    holder.etPreviousPassword.setSelection(len);
+                    break;
+                case android.view.MotionEvent.ACTION_UP:
+                case android.view.MotionEvent.ACTION_CANCEL:
+                    holder.etPreviousPassword.setInputType(
+                            android.text.InputType.TYPE_CLASS_TEXT |
+                            android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+                    holder.etPreviousPassword.setSelection(len);
+                    break;
+            }
+            return true;
+        });
+
+        // Guardar cambios
+        holder.btnSave.setOnClickListener(v -> {
+            String newPassword = text(holder.etPassword);
+            boolean passwordChanged = !newPassword.equals(
+                    credential.getPassword() != null ? credential.getPassword() : "");
+
+            credential.setPassword(newPassword);
+            credential.setUrl(text(holder.etUrl));
+            credential.setNotes(text(holder.etNotes));
+            if (passwordChanged) {
+                credential.setUpdatedAt(System.currentTimeMillis());
+            }
+            holder.btnSave.setEnabled(false);
+            if (actionListener != null) actionListener.onSave(credential);
+        });
+
+        // Eliminar
+        holder.btnDelete.setOnClickListener(v -> {
+            if (actionListener != null) actionListener.onDelete(credential);
         });
     }
 
-    /**
-     * Intenta cargar el favicon del servicio.
-     * Primero intenta con la URL guardada, si no, construye el dominio desde el título.
-     * Si falla todo, muestra la inicial como fallback.
-     */
+    private String text(TextInputEditText et) {
+        return (et.getText() != null) ? et.getText().toString().trim() : "";
+    }
+
+    // ── Favicon ────────────────────────────────────────────────────────────────
+
     private void loadServiceIcon(ViewHolder holder, Credential credential, String title) {
         String faviconUrl = buildFaviconUrl(credential, title);
 
         if (faviconUrl != null) {
-            // Ocultar texto inicial, mostrar imagen
             holder.tvInitial.setVisibility(View.GONE);
             holder.ivServiceLogo.setVisibility(View.VISIBLE);
 
@@ -114,7 +297,6 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
                                                     Object model,
                                                     com.bumptech.glide.request.target.Target<android.graphics.drawable.Drawable> target,
                                                     boolean isFirstResource) {
-                            // Si falla el favicon, mostrar inicial
                             holder.ivServiceLogo.setVisibility(View.GONE);
                             holder.tvInitial.setVisibility(View.VISIBLE);
                             holder.tvInitial.setText(title.substring(0, 1).toUpperCase());
@@ -132,45 +314,25 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
                     })
                     .into(holder.ivServiceLogo);
         } else {
-            // Sin favicon: mostrar inicial
             holder.ivServiceLogo.setVisibility(View.GONE);
             holder.tvInitial.setVisibility(View.VISIBLE);
             holder.tvInitial.setText(title.substring(0, 1).toUpperCase());
         }
     }
 
-    /**
-     * Construye la URL del favicon de Google para el servicio.
-     * Prioridad: URL guardada → nombre del servicio conocido → título como dominio.
-     */
     private String buildFaviconUrl(Credential credential, String title) {
         String domain = null;
-
-        // 1. Intentar extraer dominio de la URL guardada
         if (credential.getUrl() != null && !credential.getUrl().trim().isEmpty()) {
             domain = extractDomain(credential.getUrl());
         }
-
-        // 2. Si no hay URL, mapear nombre del servicio a dominio conocido
-        if (domain == null) {
-            domain = guessKnownDomain(title.toLowerCase().trim());
-        }
-
-        // 3. Como último recurso, usar el título como si fuera un dominio
+        if (domain == null) domain = guessKnownDomain(title.toLowerCase().trim());
         if (domain == null && title.length() > 2) {
-            // Solo si parece un nombre de servicio razonable (sin espacios, etc.)
-            String cleaned = title.toLowerCase().replaceAll("\\s+", "");
-            domain = cleaned + ".com";
+            domain = title.toLowerCase().replaceAll("\\s+", "") + ".com";
         }
-
         if (domain == null) return null;
         return "https://www.google.com/s2/favicons?sz=64&domain=" + domain;
     }
 
-    /**
-     * Extrae el dominio de una URL completa.
-     * Ej: "https://www.instagram.com/login" → "instagram.com"
-     */
     private String extractDomain(String url) {
         try {
             String clean = url.trim();
@@ -178,22 +340,17 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
             java.net.URL parsed = new java.net.URL(clean);
             String host = parsed.getHost();
             if (host == null || host.isEmpty()) return null;
-            // Quitar "www."
             return host.startsWith("www.") ? host.substring(4) : host;
         } catch (Exception e) {
             return null;
         }
     }
 
-    /**
-     * Mapa de nombres populares a dominios reales.
-     * Así "instagram" → "instagram.com" funciona sin que el usuario escriba la URL.
-     */
     private String guessKnownDomain(String name) {
         switch (name) {
             case "instagram": case "ig":        return "instagram.com";
-            case "facebook": case "fb":         return "facebook.com";
-            case "twitter": case "x":           return "x.com";
+            case "facebook":  case "fb":        return "facebook.com";
+            case "twitter":   case "x":         return "x.com";
             case "google":                      return "google.com";
             case "gmail":                       return "gmail.com";
             case "youtube":                     return "youtube.com";
@@ -232,28 +389,67 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
     }
 
     @Override
-    public int getItemCount() {
-        return displayedItems.size();
-    }
+    public int getItemCount() { return displayedItems.size(); }
+
+    // ── ViewHolder ─────────────────────────────────────────────────────────────
 
     static class ViewHolder extends RecyclerView.ViewHolder {
-        final ImageView ivSyncStatus;
-        final ImageView ivServiceLogo;
-        final TextView  tvInitial;
-        final TextView  tvTitle;
-        final TextView  tvUsername;
-        final ImageButton btnCopy;
-        final ImageButton btnDelete;
+        final ImageView        ivSyncStatus;
+        final ImageView        ivServiceLogo;
+        final TextView         tvInitial;
+        final TextView         tvTitle;
+        final TextView         tvUsername;
+        final ImageButton      btnCopy;
+
+        // Sección expandida
+        final View              expandedSection;
+        final TextInputLayout   tilPassword;
+        final TextInputEditText etPassword;
+        final ImageButton       btnShowPassword;
+        final MaterialButton    btnChangePassword;
+        final ImageButton       btnPasswordInfo;
+        final View              layoutPreviousPassword;
+        final TextInputEditText etPreviousPassword;
+        final ImageButton       btnShowPreviousPassword;
+        final TextInputEditText etUrl;
+        final TextInputEditText etNotes;
+        final MaterialButton    btnSave;
+        final MaterialButton    btnDelete;
+
+        TextWatcher passwordWatcher;
+        TextWatcher urlWatcher;
+        TextWatcher notesWatcher;
+        String previousPassword = null;
 
         ViewHolder(@NonNull View itemView) {
             super(itemView);
-            tvInitial    = itemView.findViewById(R.id.tvInitial);
-            ivServiceLogo= itemView.findViewById(R.id.ivServiceLogo);
-            tvTitle      = itemView.findViewById(R.id.tvTitle);
-            tvUsername   = itemView.findViewById(R.id.tvUsername);
-            ivSyncStatus = itemView.findViewById(R.id.ivSyncStatus);
-            btnCopy      = itemView.findViewById(R.id.btnCopyPassword);
-            btnDelete    = itemView.findViewById(R.id.btnDelete);
+            tvInitial      = itemView.findViewById(R.id.tvInitial);
+            ivServiceLogo  = itemView.findViewById(R.id.ivServiceLogo);
+            tvTitle        = itemView.findViewById(R.id.tvTitle);
+            tvUsername     = itemView.findViewById(R.id.tvUsername);
+            ivSyncStatus   = itemView.findViewById(R.id.ivSyncStatus);
+            btnCopy        = itemView.findViewById(R.id.btnCopyPassword);
+
+            expandedSection        = itemView.findViewById(R.id.expandedSection);
+            tilPassword            = itemView.findViewById(R.id.tilPassword);
+            etPassword             = itemView.findViewById(R.id.etPassword);
+            btnShowPassword        = itemView.findViewById(R.id.btnShowPassword);
+            btnChangePassword      = itemView.findViewById(R.id.btnChangePassword);
+            btnPasswordInfo        = itemView.findViewById(R.id.btnPasswordInfo);
+            layoutPreviousPassword = itemView.findViewById(R.id.layoutPreviousPassword);
+            etPreviousPassword     = itemView.findViewById(R.id.etPreviousPassword);
+            btnShowPreviousPassword= itemView.findViewById(R.id.btnShowPreviousPassword);
+            etUrl                  = itemView.findViewById(R.id.etUrl);
+            etNotes                = itemView.findViewById(R.id.etNotes);
+            btnSave                = itemView.findViewById(R.id.btnSave);
+            btnDelete              = itemView.findViewById(R.id.btnDelete);
+        }
+
+        void removeWatchers() {
+            if (passwordWatcher != null) etPassword.removeTextChangedListener(passwordWatcher);
+            if (urlWatcher      != null) etUrl     .removeTextChangedListener(urlWatcher);
+            if (notesWatcher    != null) etNotes   .removeTextChangedListener(notesWatcher);
+            passwordWatcher = urlWatcher = notesWatcher = null;
         }
     }
 }
