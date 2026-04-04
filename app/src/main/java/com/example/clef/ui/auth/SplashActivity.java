@@ -47,15 +47,19 @@ public class SplashActivity extends AppCompatActivity {
 
         timeoutHandler.postDelayed(timeoutRunnable, TIMEOUT_MS);
 
-        firebaseManager.userHasMasterPassword()
-                .addOnSuccessListener(hasMaster -> {
-                    if (hasMaster) {
-                        goTo(UnlockActivity.class);
-                    } else {
-                        goTo(CreateMasterActivity.class);
-                    }
-                })
-                .addOnFailureListener(e -> goTo(LoginActivity.class));
+        authManager.getCurrentUser().reload()
+                .addOnSuccessListener(unused ->
+                        firebaseManager.userHasMasterPassword()
+                                .addOnSuccessListener(hasMaster -> {
+                                    if (hasMaster) goTo(UnlockActivity.class);
+                                    else goTo(CreateMasterActivity.class);
+                                })
+                                .addOnFailureListener(e -> goTo(LoginActivity.class)))
+                .addOnFailureListener(e -> {
+                    // El usuario fue eliminado de Firebase Auth — limpiar sesión local
+                    com.google.firebase.auth.FirebaseAuth.getInstance().signOut();
+                    goTo(LoginActivity.class);
+                });
     }
 
     @Override
