@@ -46,7 +46,7 @@ public class Credential {
     private String title;
     private String username;
     private String password;
-    private String previousPassword;
+    private java.util.List<String> passwordHistory;
     private String url;
     private String notes;
     private Category category;
@@ -101,11 +101,28 @@ public class Credential {
     /** Cambia la contraseña. */
     public void setPassword(String password) { this.password = password; }
 
-    /** Devuelve la contraseña anterior (antes del último cambio). */
-    public String getPreviousPassword() { return previousPassword; }
+    /** Devuelve el historial de contraseñas (la más reciente en el índice 0). */
+    public java.util.List<String> getPasswordHistory() {
+        return passwordHistory != null ? passwordHistory : new java.util.ArrayList<>();
+    }
 
-    /** Guarda la contraseña anterior. */
-    public void setPreviousPassword(String previousPassword) { this.previousPassword = previousPassword; }
+    /** Devuelve la contraseña inmediatamente anterior a la actual, o null si no hay historial. */
+    public String getPreviousPassword() {
+        java.util.List<String> h = getPasswordHistory();
+        return h.isEmpty() ? null : h.get(0);
+    }
+
+    /**
+     * Añade una contraseña al historial. La más reciente queda en el índice 0.
+     * Mantiene un máximo de 5 entradas.
+     */
+    public void addToHistory(String pwd) {
+        if (pwd == null || pwd.isEmpty()) return;
+        if (passwordHistory == null) passwordHistory = new java.util.ArrayList<>();
+        if (!passwordHistory.isEmpty() && passwordHistory.get(0).equals(pwd)) return;
+        passwordHistory.add(0, pwd);
+        if (passwordHistory.size() > 5) passwordHistory.remove(passwordHistory.size() - 1);
+    }
 
     /** Cambia la URL. */
     public void setUrl(String url)           { this.url = url; }

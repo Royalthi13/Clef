@@ -186,7 +186,7 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
             return true;
         });
 
-        // Mostrar contraseña anterior si existe (persiste en el modelo)
+        // Contraseña anterior (history[0]) y sección de historial
         String prevPwd = credential.getPreviousPassword();
         if (prevPwd != null && !prevPwd.isEmpty()) {
             holder.etPreviousPassword.setText(prevPwd);
@@ -194,6 +194,7 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
         } else {
             holder.layoutPreviousPassword.setVisibility(View.GONE);
         }
+        refreshHistorySection(holder, credential);
 
         // ℹ️ → aviso informativo
         holder.btnPasswordInfo.setOnClickListener(v ->
@@ -251,10 +252,11 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
                         String oldPwd = holder.etPassword.getText() != null
                                 ? holder.etPassword.getText().toString() : "";
 
-                        // Guardar en el modelo para que persista al cifrar el vault
-                        credential.setPreviousPassword(oldPwd);
+                        // Añadir al historial del modelo para que persista al cifrar el vault
+                        credential.addToHistory(oldPwd);
                         holder.etPreviousPassword.setText(oldPwd);
                         holder.layoutPreviousPassword.setVisibility(View.VISIBLE);
+                        refreshHistorySection(holder, credential);
 
                         holder.etPassword.setText(newPwd);
                         holder.etPassword.setSelection(newPwd.length());
@@ -305,6 +307,62 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
         // Eliminar
         holder.btnDelete.setOnClickListener(v -> {
             if (actionListener != null) actionListener.onDelete(credential);
+        });
+    }
+
+    /** Rellena el contenedor de historial con las entradas 1-4 (la 0 ya se muestra arriba). */
+    private void refreshHistorySection(ViewHolder holder, com.example.clef.data.model.Credential credential) {
+        java.util.List<String> history = credential.getPasswordHistory();
+        java.util.List<String> older = history.size() > 1
+                ? history.subList(1, history.size()) : new java.util.ArrayList<>();
+
+        if (older.isEmpty()) {
+            holder.btnToggleHistory.setVisibility(View.GONE);
+            holder.layoutPasswordHistory.setVisibility(View.GONE);
+            return;
+        }
+
+        holder.btnToggleHistory.setVisibility(View.VISIBLE);
+        holder.btnToggleHistory.setText("Ver historial (" + older.size() + ")");
+
+        // Reconstruir filas
+        holder.layoutPasswordHistory.removeAllViews();
+        android.view.LayoutInflater inflater = android.view.LayoutInflater.from(context);
+        for (String pwd : older) {
+            android.view.View row = inflater.inflate(R.layout.item_history_row, holder.layoutPasswordHistory, false);
+            com.google.android.material.textfield.TextInputEditText etHist =
+                    row.findViewById(R.id.etHistoryPassword);
+            android.widget.ImageButton btnEye = row.findViewById(R.id.btnShowHistoryPassword);
+
+            etHist.setText(pwd);
+
+            btnEye.setOnTouchListener((v, event) -> {
+                int len = etHist.getText() != null ? etHist.getText().length() : 0;
+                switch (event.getAction()) {
+                    case android.view.MotionEvent.ACTION_DOWN:
+                        etHist.setInputType(android.text.InputType.TYPE_CLASS_TEXT |
+                                android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
+                        etHist.setSelection(len);
+                        break;
+                    case android.view.MotionEvent.ACTION_UP:
+                    case android.view.MotionEvent.ACTION_CANCEL:
+                        etHist.setInputType(android.text.InputType.TYPE_CLASS_TEXT |
+                                android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+                        etHist.setSelection(len);
+                        break;
+                }
+                return true;
+            });
+
+            holder.layoutPasswordHistory.addView(row);
+        }
+
+        holder.btnToggleHistory.setOnClickListener(v -> {
+            boolean visible = holder.layoutPasswordHistory.getVisibility() == View.VISIBLE;
+            holder.layoutPasswordHistory.setVisibility(visible ? View.GONE : View.VISIBLE);
+            holder.btnToggleHistory.setText(visible
+                    ? "Ver historial (" + older.size() + ")"
+                    : "Ocultar historial");
         });
     }
 
@@ -448,6 +506,8 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
         final View              layoutPreviousPassword;
         final TextInputEditText etPreviousPassword;
         final ImageButton       btnShowPreviousPassword;
+        final MaterialButton    btnToggleHistory;
+        final android.widget.LinearLayout layoutPasswordHistory;
         final TextInputEditText etUrl;
         final TextInputEditText etNotes;
         final MaterialButton    btnSave;
@@ -476,6 +536,8 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
             layoutPreviousPassword = itemView.findViewById(R.id.layoutPreviousPassword);
             etPreviousPassword     = itemView.findViewById(R.id.etPreviousPassword);
             btnShowPreviousPassword= itemView.findViewById(R.id.btnShowPreviousPassword);
+            btnToggleHistory       = itemView.findViewById(R.id.btnToggleHistory);
+            layoutPasswordHistory  = itemView.findViewById(R.id.layoutPasswordHistory);
             etUrl                  = itemView.findViewById(R.id.etUrl);
             etNotes                = itemView.findViewById(R.id.etNotes);
             btnSave                = itemView.findViewById(R.id.btnSave);
