@@ -25,12 +25,14 @@ public class FirebaseManager {
         public final String cajaA;
         public final String cajaB;
         public final String vault;
+        public final long   version;
 
-        public UserData(String salt, String cajaA, String cajaB, String vault) {
-            this.salt  = salt;
-            this.cajaA = cajaA;
-            this.cajaB = cajaB;
-            this.vault = vault;
+        public UserData(String salt, String cajaA, String cajaB, String vault, long version) {
+            this.salt    = salt;
+            this.cajaA   = cajaA;
+            this.cajaB   = cajaB;
+            this.vault   = vault;
+            this.version = version;
         }
 
         public boolean hasMasterPassword() {
@@ -47,7 +49,7 @@ public class FirebaseManager {
     private static final String FIELD_VAULT        = "vault";
 
     public interface OnVaultChangedListener {
-        void onVaultChanged(String encryptedVault);
+        void onVaultChanged(String encryptedVault, long version);
     }
 
     private final FirebaseFirestore db;
@@ -65,7 +67,8 @@ public class FirebaseManager {
         vaultListener = userDoc().addSnapshotListener((snap, error) -> {
             if (error != null || snap == null || !snap.exists()) return;
             String vault = snap.getString(FIELD_VAULT);
-            if (vault != null) listener.onVaultChanged(vault);
+            long version = snap.contains(FIELD_VERSION) ? snap.getLong(FIELD_VERSION) : 0L;
+            if (vault != null) listener.onVaultChanged(vault, version);
         });
     }
 
@@ -89,11 +92,38 @@ public class FirebaseManager {
         return userDoc().set(data);
     }
 
+    public static final String CONFLICT_ERROR = "vault_conflict";
+    private static final String FIELD_VERSION = "version";
+
     /** Actualiza solo el vault. Se llama cada vez que cambian las credenciales. */
     public Task<Void> uploadVault(String vault) {
         Map<String, Object> data = new HashMap<>();
         data.put(FIELD_VAULT, vault);
         return userDoc().update(data);
+    }
+
+    /**
+     * Sube el vault solo si la versión en Firebase coincide con expectedVersion.
+     * Si otro dispositivo guardó antes, lanza una excepción con mensaje CONFLICT_ERROR.
+     */
+    public Task<Void> uploadVaultVersioned(String encryptedVault, long expectedVersion, long newVersion) {
+        return db.runTransaction(transaction -> {
+            DocumentSnapshot snap = transaction.get(userDoc());
+            long remoteVersion = snap.contains(FIELD_VERSION)
+                    ? snap.getLong(FIELD_VERSION) : 0L;
+
+            if (remoteVersion != expectedVersion) {
+                throw new com.google.firebase.firestore.FirebaseFirestoreException(
+                        CONFLICT_ERROR,
+                        com.google.firebase.firestore.FirebaseFirestoreException.Code.ABORTED);
+            }
+
+            Map<String, Object> data = new HashMap<>();
+            data.put(FIELD_VAULT,   encryptedVault);
+            data.put(FIELD_VERSION, newVersion);
+            transaction.update(userDoc(), data);
+            return null;
+        });
     }
 
     /** Actualiza solo la cajaA. Se llama cuando el usuario cambia su Contraseña Maestra. */
@@ -129,11 +159,13 @@ public class FirebaseManager {
             DocumentSnapshot doc = task.getResult();
             if (!doc.exists()) return null;
 
+            long version = doc.contains(FIELD_VERSION) ? doc.getLong(FIELD_VERSION) : 0L;
             return new UserData(
                     doc.getString(FIELD_SALT),
                     doc.getString(FIELD_CAJA_A),
                     doc.getString(FIELD_CAJA_B),
-                    doc.getString(FIELD_VAULT)
+                    doc.getString(FIELD_VAULT),
+                    version
             );
         });
     }

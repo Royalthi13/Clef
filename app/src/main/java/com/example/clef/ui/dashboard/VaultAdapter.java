@@ -134,16 +134,14 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
         holder.etNotes.setText(credential.getNotes() != null ? credential.getNotes() : "");
         holder.btnSave.setEnabled(false);
 
-        // Watcher único que activa el botón Guardar al detectar cambios
-        TextWatcher dirtyWatcher = new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int i, int c, int a) {}
-            @Override public void onTextChanged(CharSequence s, int i, int b, int c) {}
-            @Override public void afterTextChanged(Editable s) {
-                holder.btnSave.setEnabled(true);
-            }
-        };
-        holder.passwordWatcher = dirtyWatcher;
-        holder.urlWatcher      = new TextWatcher() {
+        // Contraseña solo lectura: solo se cambia desde el diálogo "Cambiar contraseña"
+        holder.etPassword.setFocusable(false);
+        holder.etPassword.setFocusableInTouchMode(false);
+        holder.tilPassword.setStartIconOnClickListener(null);
+        holder.tilPassword.setStartIconDrawable(null);
+
+        // Solo URL y notas activan el botón Guardar
+        holder.urlWatcher = new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int i, int c, int a) {}
             @Override public void onTextChanged(CharSequence s, int i, int b, int c) {}
             @Override public void afterTextChanged(Editable s) { holder.btnSave.setEnabled(true); }
@@ -153,16 +151,8 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
             @Override public void onTextChanged(CharSequence s, int i, int b, int c) {}
             @Override public void afterTextChanged(Editable s) { holder.btnSave.setEnabled(true); }
         };
-        holder.etPassword.addTextChangedListener(holder.passwordWatcher);
-        holder.etUrl     .addTextChangedListener(holder.urlWatcher);
-        holder.etNotes   .addTextChangedListener(holder.notesWatcher);
-
-        // Icono dado (start) → generar contraseña
-        holder.tilPassword.setStartIconOnClickListener(v -> {
-            String generated = PasswordGenerator.generateFromPrefs(context);
-            holder.etPassword.setText(generated);
-            holder.etPassword.setSelection(generated.length());
-        });
+        holder.etUrl  .addTextChangedListener(holder.urlWatcher);
+        holder.etNotes.addTextChangedListener(holder.notesWatcher);
 
         // Ojo → mantener pulsado para ver, soltar para ocultar
         holder.btnShowPassword.setOnTouchListener((v, event) -> {

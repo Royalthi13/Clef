@@ -127,10 +127,13 @@ public class ImportExportDialog extends BottomSheetDialogFragment {
                 repo.saveLocalVaultOnly(encryptedFull);
 
                 // Subir a Firebase solo los synced=true
-                repo.uploadSyncedOnly(vault, dek, new VaultRepository.Callback<Void>() {
+                SessionManager session = SessionManager.getInstance();
+                long expectedVersion = session.getCloudVaultVersion();
+                repo.uploadSyncedOnly(vault, dek, expectedVersion, new VaultRepository.Callback<Void>() {
                     @Override
                     public void onSuccess(Void result) {
-                        SessionManager.getInstance().updateVault(vault);
+                        session.setCloudVaultVersion(expectedVersion + 1);
+                        session.updateVault(vault);
                         mainHandler.post(() -> {
                             setFormEnabled(true);
                             Toast.makeText(requireContext(),

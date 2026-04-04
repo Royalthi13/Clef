@@ -139,7 +139,7 @@ public class VaultRepository {
         String cajaB = prefs.getString(KEY_CAJA_B, null);
         String vault = loadLocalVault();
         if (salt == null || cajaA == null || vault == null) return null;
-        return new UserData(salt, cajaA, cajaB, vault);
+        return new UserData(salt, cajaA, cajaB, vault, 0L);
     }
 
     public void exportToFirebase(Callback<Void> callback) {
@@ -198,14 +198,27 @@ public class VaultRepository {
      * Construye un vault solo con las credenciales synced=true, lo cifra y lo sube a Firebase.
      * El vault local completo NO se toca — llámalo después de saveLocalVaultOnly.
      */
-    public void uploadSyncedOnly(Vault fullVault, byte[] dek, Callback<Void> callback) {
+    /**
+     * Sube solo las credenciales synced=true a Firebase.
+     * Usa una transacción versionada si expectedVersion >= 0.
+     * Si la versión remota difiere → falla con FirebaseManager.CONFLICT_ERROR.
+     */
+    public void uploadSyncedOnly(Vault fullVault, byte[] dek, long expectedVersion, Callback<Void> callback) {
         try {
             Vault syncedVault = new Vault();
             for (Credential c : fullVault.getCredentials()) {
                 if (c.isSynced()) syncedVault.addCredential(c);
             }
             String encryptedSynced = new KeyManager().cifrarVault(syncedVault, dek);
-            uploadSpecificVaultToFirebase(encryptedSynced, callback);
+
+            if (expectedVersion >= 0) {
+                new FirebaseManager()
+                        .uploadVaultVersioned(encryptedSynced, expectedVersion, expectedVersion + 1)
+                        .addOnSuccessListener(unused -> callback.onSuccess(null))
+                        .addOnFailureListener(callback::onError);
+            } else {
+                uploadSpecificVaultToFirebase(encryptedSynced, callback);
+            }
         } catch (Exception e) {
             callback.onError(e);
         }

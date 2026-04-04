@@ -166,9 +166,11 @@ public class AddItemDialog extends BottomSheetDialogFragment {
 
                 if (syncEnabled) {
                     // Subir a Firebase solo las credenciales con synced=true
-                    repo.uploadSyncedOnly(vault, dek, new VaultRepository.Callback<Void>() {
+                    long expectedVersion = session.getCloudVaultVersion();
+                    repo.uploadSyncedOnly(vault, dek, expectedVersion, new VaultRepository.Callback<Void>() {
                         @Override
                         public void onSuccess(Void result) {
+                            session.setCloudVaultVersion(expectedVersion + 1);
                             session.updateVault(vault);
                             mainHandler.post(() -> {
                                 if (listener != null) listener.onCredentialSaved();

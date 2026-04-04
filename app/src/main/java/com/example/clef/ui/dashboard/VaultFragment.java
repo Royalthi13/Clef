@@ -158,17 +158,16 @@ public class VaultFragment extends Fragment {
     }
 
     private void startVaultListener() {
-        firebaseManager.addVaultListener(encryptedCloudVault ->
-                onCloudVaultChanged(encryptedCloudVault));
+        firebaseManager.addVaultListener((encryptedCloudVault, version) ->
+                onCloudVaultChanged(encryptedCloudVault, version));
     }
 
     /** Llamado en el hilo principal cuando Firebase detecta un cambio en el vault. */
-    private void onCloudVaultChanged(String encryptedCloudVault) {
+    private void onCloudVaultChanged(String encryptedCloudVault, long version) {
         SessionManager session = SessionManager.getInstance();
         byte[] dek = session.getDek();
         if (dek == null) return;
 
-        // Descifrar en background, mergear en main thread
         executor.execute(() -> {
             try {
                 Vault cloudVault = new KeyManager().descifrarVault(encryptedCloudVault, dek);
@@ -178,7 +177,7 @@ public class VaultFragment extends Fragment {
                     Vault localVault = session.getVault();
                     if (localVault == null) return;
 
-                    // Sustituir las credenciales synced locales con las de la nube
+                    // Sustituir credenciales synced locales con las de la nube
                     List<Credential> list = localVault.getCredentials();
                     list.removeIf(Credential::isSynced);
                     for (Credential c : cloudVault.getCredentials()) {
@@ -186,7 +185,9 @@ public class VaultFragment extends Fragment {
                         list.add(c);
                     }
 
-                    // Guardar vault actualizado en disco (background)
+                    // Actualizar versión conocida
+                    session.setCloudVaultVersion(version);
+
                     Context ctx = requireContext();
                     executor.execute(() -> {
                         try {
@@ -198,9 +199,7 @@ public class VaultFragment extends Fragment {
                     session.updateVault(localVault);
                     applyFilters();
                 });
-            } catch (Exception ignored) {
-                // Vault no descifrable — ignorar (cambio de claves o error de red)
-            }
+            } catch (Exception ignored) {}
         });
     }
 
@@ -212,6 +211,8 @@ public class VaultFragment extends Fragment {
         Vault  vault = session.getVault();
         if (dek == null || vault == null) return;
 
+        final long expectedVersion = session.getCloudVaultVersion();
+
         executor.execute(() -> {
             try {
                 String encrypted = new KeyManager().cifrarVault(vault, dek);
@@ -222,23 +223,28 @@ public class VaultFragment extends Fragment {
 
                 if (credential.isSynced()) {
                     // Subir a Firebase solo las credenciales con synced=true
-                    repo.uploadSyncedOnly(vault, dek, new VaultRepository.Callback<Void>() {
+                    repo.uploadSyncedOnly(vault, dek, expectedVersion, new VaultRepository.Callback<Void>() {
                         @Override
                         public void onSuccess(Void r) {
+                            session.setCloudVaultVersion(expectedVersion + 1);
                             session.updateVault(vault);
                             mainHandler.post(() -> { if (isAdded()) adapter.refreshWithoutCollapse(); });
                         }
 
                         @Override
                         public void onError(Exception e) {
-                            session.updateVault(vault);
-                            mainHandler.post(() -> {
-                                if (!isAdded()) return;
-                                adapter.refreshWithoutCollapse();
-                                android.widget.Toast.makeText(requireContext(),
-                                        "Guardado local. Error al sincronizar.",
-                                        android.widget.Toast.LENGTH_SHORT).show();
-                            });
+                            if (com.example.clef.data.remote.FirebaseManager.CONFLICT_ERROR.equals(e.getMessage())) {
+                                retryAfterConflict(credential, vault, dek);
+                            } else {
+                                session.updateVault(vault);
+                                mainHandler.post(() -> {
+                                    if (!isAdded()) return;
+                                    adapter.refreshWithoutCollapse();
+                                    android.widget.Toast.makeText(requireContext(),
+                                            "Guardado local. Error al sincronizar.",
+                                            android.widget.Toast.LENGTH_SHORT).show();
+                                });
+                            }
                         }
                     });
                 } else {
@@ -250,6 +256,85 @@ public class VaultFragment extends Fragment {
                     if (!isAdded()) return;
                     android.widget.Toast.makeText(requireContext(),
                             "Error al guardar", android.widget.Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
+    }
+
+    private void retryAfterConflict(Credential pendingCredential, Vault staleVault, byte[] dek) {
+        VaultRepository repo = new VaultRepository(requireContext());
+        repo.downloadAndCacheFromFirebase(new VaultRepository.Callback<com.example.clef.data.remote.FirebaseManager.UserData>() {
+            @Override
+            public void onSuccess(com.example.clef.data.remote.FirebaseManager.UserData userData) {
+                if (userData == null || userData.vault == null) return;
+                executor.execute(() -> {
+                    try {
+                        // Descifrar el vault fresco de Firebase
+                        Vault freshVault = new KeyManager().descifrarVault(userData.vault, dek);
+
+                        // Fusionar: credenciales cloud (synced=true) + locales no synced del vault en sesión
+                        java.util.List<Credential> merged = new java.util.ArrayList<>();
+                        for (Credential c : freshVault.getCredentials()) {
+                            c.setSynced(true);
+                            merged.add(c);
+                        }
+                        for (Credential c : staleVault.getCredentials()) {
+                            if (!c.isSynced()) merged.add(c);
+                        }
+                        freshVault.setCredentials(merged);
+
+                        // Aplicar el cambio pendiente encima del vault fresco
+                        java.util.List<Credential> list = freshVault.getCredentials();
+                        int idx = findCredentialIndex(list, pendingCredential);
+                        if (idx >= 0) {
+                            list.set(idx, pendingCredential);
+                        } else {
+                            list.add(pendingCredential);
+                        }
+
+                        // Guardar localmente y subir con la versión nueva
+                        String encLocal = new KeyManager().cifrarVault(freshVault, dek);
+                        repo.saveLocalVaultOnly(encLocal);
+
+                        final long newExpected = userData.version;
+                        repo.uploadSyncedOnly(freshVault, dek, newExpected, new VaultRepository.Callback<Void>() {
+                            @Override
+                            public void onSuccess(Void r) {
+                                SessionManager session = SessionManager.getInstance();
+                                session.setCloudVaultVersion(newExpected + 1);
+                                session.updateVault(freshVault);
+                                mainHandler.post(() -> { if (isAdded()) adapter.refreshWithoutCollapse(); });
+                            }
+
+                            @Override
+                            public void onError(Exception e) {
+                                SessionManager.getInstance().updateVault(freshVault);
+                                mainHandler.post(() -> {
+                                    if (!isAdded()) return;
+                                    adapter.refreshWithoutCollapse();
+                                    android.widget.Toast.makeText(requireContext(),
+                                            "Guardado local. Error al sincronizar.",
+                                            android.widget.Toast.LENGTH_SHORT).show();
+                                });
+                            }
+                        });
+                    } catch (Exception e) {
+                        mainHandler.post(() -> {
+                            if (!isAdded()) return;
+                            android.widget.Toast.makeText(requireContext(),
+                                    "Error al guardar", android.widget.Toast.LENGTH_SHORT).show();
+                        });
+                    }
+                });
+            }
+
+            @Override
+            public void onError(Exception e) {
+                mainHandler.post(() -> {
+                    if (!isAdded()) return;
+                    android.widget.Toast.makeText(requireContext(),
+                            "Guardado local. Error al sincronizar.",
+                            android.widget.Toast.LENGTH_SHORT).show();
                 });
             }
         });

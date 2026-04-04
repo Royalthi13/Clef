@@ -23,7 +23,8 @@ public class SessionManager {
 
     private volatile byte[] dek   = null;
     private volatile Vault  vault = null;
-    private long   lockTimeoutMs = 300_000;
+    private long   lockTimeoutMs    = 300_000;
+    private long   cloudVaultVersion = -1; // -1 = desconocido
 
     private final Handler  handler = new Handler(Looper.getMainLooper());
     private Runnable       lockRunnable;
@@ -53,6 +54,9 @@ public class SessionManager {
     public byte[]  getDek()     { return dek; }
     public Vault   getVault()   { return vault; }
     public boolean isUnlocked() { return dek != null; }
+
+    public long getCloudVaultVersion() { return cloudVaultVersion; }
+    public synchronized void setCloudVaultVersion(long version) { this.cloudVaultVersion = version; }
 
     /**
      * Actualiza el vault en memoria de forma thread-safe.

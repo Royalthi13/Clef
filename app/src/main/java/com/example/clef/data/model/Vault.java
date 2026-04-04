@@ -20,6 +20,7 @@ import java.util.List;
 public class Vault {
 
     private List<Credential> credentials;
+    private transient long version = -1; // -1 = desconocido (no cargado de Firebase aún)
 
     /**
      * Crea un Vault vacío con una lista de credenciales también vacía.
@@ -68,4 +69,9 @@ public class Vault {
     public void removeCredential(int index) {
         this.credentials.remove(index);
     }
+
+    public long getVersion() { return version; }
+
+    /** Incrementa la versión antes de cada subida a Firebase. */
+    public void incrementVersion() { this.version++; }
 }
