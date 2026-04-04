@@ -121,9 +121,13 @@ public class ImportExportDialog extends BottomSheetDialogFragment {
 
         executor.execute(() -> {
             try {
-                String encryptedVault = new KeyManager().cifrarVault(vault, dek);
+                // Guardar vault completo en local
+                String encryptedFull = new KeyManager().cifrarVault(vault, dek);
                 VaultRepository repo = new VaultRepository(requireContext());
-                repo.saveVault(encryptedVault, new VaultRepository.Callback<Void>() {
+                repo.saveLocalVaultOnly(encryptedFull);
+
+                // Subir a Firebase solo los synced=true
+                repo.uploadSyncedOnly(vault, dek, new VaultRepository.Callback<Void>() {
                     @Override
                     public void onSuccess(Void result) {
                         SessionManager.getInstance().updateVault(vault);
@@ -279,9 +283,16 @@ public class ImportExportDialog extends BottomSheetDialogFragment {
     private void decryptAndUnlock(FirebaseManager.UserData userData, byte[] dek) {
         try {
             Vault vault = new KeyManager().descifrarVault(userData.vault, dek);
+            // Marcar todas las credenciales descargadas como synced=true (vienen de Firebase)
+            for (Credential c : vault.getCredentials()) {
+                c.setSynced(true);
+            }
+            // Guardar en local con los flags correctos
+            String encryptedFull = new KeyManager().cifrarVault(vault, dek);
             SessionManager.getInstance().unlock(dek, vault);
             mainHandler.post(() -> {
                 if (!isAdded()) return;
+                new VaultRepository(requireContext()).saveLocalVaultOnly(encryptedFull);
                 Toast.makeText(requireContext(),
                         getString(R.string.import_success), Toast.LENGTH_SHORT).show();
                 dismiss();

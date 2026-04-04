@@ -162,18 +162,20 @@ public class VaultFragment extends Fragment {
                 String encrypted = new KeyManager().cifrarVault(vault, dek);
                 VaultRepository repo = new VaultRepository(requireContext());
 
+                // Siempre guardar el vault completo en local
+                repo.saveLocalVaultOnly(encrypted);
+
                 if (credential.isSynced()) {
-                    repo.uploadSpecificVaultToFirebase(encrypted, new VaultRepository.Callback<Void>() {
+                    // Subir a Firebase solo las credenciales con synced=true
+                    repo.uploadSyncedOnly(vault, dek, new VaultRepository.Callback<Void>() {
                         @Override
                         public void onSuccess(Void r) {
-                            repo.saveLocalVaultOnly(encrypted);
                             session.updateVault(vault);
                             mainHandler.post(() -> { if (isAdded()) adapter.refreshWithoutCollapse(); });
                         }
 
                         @Override
                         public void onError(Exception e) {
-                            repo.saveLocalVaultOnly(encrypted);
                             session.updateVault(vault);
                             mainHandler.post(() -> {
                                 if (!isAdded()) return;
@@ -185,7 +187,6 @@ public class VaultFragment extends Fragment {
                         }
                     });
                 } else {
-                    repo.saveLocalVaultOnly(encrypted);
                     session.updateVault(vault);
                     mainHandler.post(() -> { if (isAdded()) adapter.refreshWithoutCollapse(); });
                 }

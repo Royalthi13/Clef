@@ -159,28 +159,38 @@ public class AddItemDialog extends BottomSheetDialogFragment {
             try {
                 KeyManager km = new KeyManager();
                 String encryptedVault = km.cifrarVault(vault, dek);
-
                 VaultRepository repo = new VaultRepository(requireContext());
-                repo.saveVault(encryptedVault, new VaultRepository.Callback<Void>() {
-                    @Override
-                    public void onSuccess(Void result) {
-                        session.updateVault(vault);
-                        mainHandler.post(() -> {
-                            if (listener != null) listener.onCredentialSaved();
-                            dismiss();
-                        });
-                    }
 
-                    @Override
-                    public void onError(Exception e) {
-                        vault.removeCredential(vault.getCredentials().size() - 1);
-                        mainHandler.post(() -> {
-                            setFormEnabled(true);
-                            Toast.makeText(requireContext(),
-                                    getString(R.string.add_item_error_save), Toast.LENGTH_LONG).show();
-                        });
-                    }
-                });
+                // Siempre guardar el vault completo en local
+                repo.saveLocalVaultOnly(encryptedVault);
+
+                if (syncEnabled) {
+                    // Subir a Firebase solo las credenciales con synced=true
+                    repo.uploadSyncedOnly(vault, dek, new VaultRepository.Callback<Void>() {
+                        @Override
+                        public void onSuccess(Void result) {
+                            session.updateVault(vault);
+                            mainHandler.post(() -> {
+                                if (listener != null) listener.onCredentialSaved();
+                                dismiss();
+                            });
+                        }
+                        @Override
+                        public void onError(Exception e) {
+                            session.updateVault(vault);
+                            mainHandler.post(() -> {
+                                if (listener != null) listener.onCredentialSaved();
+                                dismiss();
+                            });
+                        }
+                    });
+                } else {
+                    session.updateVault(vault);
+                    mainHandler.post(() -> {
+                        if (listener != null) listener.onCredentialSaved();
+                        dismiss();
+                    });
+                }
             } catch (Exception e) {
                 vault.removeCredential(vault.getCredentials().size() - 1);
                 mainHandler.post(() -> {

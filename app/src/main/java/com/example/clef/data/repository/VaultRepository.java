@@ -6,6 +6,8 @@ import android.util.Base64;
 
 import com.example.clef.crypto.KeyManager;
 import com.example.clef.data.local.FileManager;
+import com.example.clef.data.model.Credential;
+import com.example.clef.data.model.Vault;
 import com.example.clef.data.remote.FirebaseManager;
 import com.example.clef.data.remote.FirebaseManager.UserData;
 import com.google.firebase.auth.FirebaseAuth;
@@ -190,6 +192,23 @@ public class VaultRepository {
         firebaseManager.uploadAll(salt, cajaA, cajaB, encryptedVault)
                 .addOnSuccessListener(unused -> callback.onSuccess(null))
                 .addOnFailureListener(callback::onError);
+    }
+
+    /**
+     * Construye un vault solo con las credenciales synced=true, lo cifra y lo sube a Firebase.
+     * El vault local completo NO se toca — llámalo después de saveLocalVaultOnly.
+     */
+    public void uploadSyncedOnly(Vault fullVault, byte[] dek, Callback<Void> callback) {
+        try {
+            Vault syncedVault = new Vault();
+            for (Credential c : fullVault.getCredentials()) {
+                if (c.isSynced()) syncedVault.addCredential(c);
+            }
+            String encryptedSynced = new KeyManager().cifrarVault(syncedVault, dek);
+            uploadSpecificVaultToFirebase(encryptedSynced, callback);
+        } catch (Exception e) {
+            callback.onError(e);
+        }
     }
 
     public void clearLocalVault() { fileManager.deleteVault(); }
