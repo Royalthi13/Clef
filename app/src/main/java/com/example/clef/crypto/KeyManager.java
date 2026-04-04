@@ -36,14 +36,16 @@ public class KeyManager {
         public final String cajaBBase64;
         public final String bovedaCifradaBase64;
         public final String puk;
+        public final byte[] dek;
 
         public RegistrationBundle(String saltBase64, String cajaABase64, String cajaBBase64,
-                                  String bovedaCifradaBase64, String puk) {
+                                  String bovedaCifradaBase64, String puk, byte[] dek) {
             this.saltBase64          = saltBase64;
             this.cajaABase64         = cajaABase64;
             this.cajaBBase64         = cajaBBase64;
             this.bovedaCifradaBase64 = bovedaCifradaBase64;
             this.puk                 = puk;
+            this.dek                 = dek;
         }
     }
 
@@ -116,7 +118,7 @@ public class KeyManager {
             String bovedaCifrada = CryptoUtils.encrypt(gson.toJson(new Vault()), dek);
             String saltBase64    = Base64.encodeToString(salt, Base64.NO_WRAP);
 
-            return new RegistrationBundle(saltBase64, cajaA, cajaB, bovedaCifrada, pukFormateado);
+            return new RegistrationBundle(saltBase64, cajaA, cajaB, bovedaCifrada, pukFormateado, dek.clone());
 
         } finally {
             CryptoUtils.zeroise(salt);

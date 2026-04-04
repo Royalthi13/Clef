@@ -232,7 +232,7 @@ public class SettingsFragment extends Fragment {
         TextView tvAutoLockValue = view.findViewById(R.id.tvAutoLockValue);
         SharedPreferences prefs = requireContext()
                 .getSharedPreferences("settings", Context.MODE_PRIVATE);
-        tvAutoLockValue.setText(msToLabel(prefs.getLong("auto_lock_ms", 60_000)));
+        tvAutoLockValue.setText(msToLabel(prefs.getLong("auto_lock_ms", 300_000)));
 
         view.findViewById(R.id.rowAutoLock).setOnClickListener(v -> {
             String[] opciones = {"1 minuto", "5 minutos", "15 minutos", "30 minutos", "Nunca"};
@@ -282,7 +282,7 @@ public class SettingsFragment extends Fragment {
         view.findViewById(R.id.btnSignOut).setOnClickListener(v ->
                 new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
                         .setTitle("Cerrar sesión")
-                        .setMessage("Se eliminarán el vault local y los datos biométricos de este dispositivo.")
+                        .setMessage("Se cerrará tu sesión en este dispositivo.")
                         .setPositiveButton("Cerrar sesión", (d, w) -> performSignOut())
                         .setNegativeButton("Cancelar", null)
                         .show());
@@ -292,18 +292,8 @@ public class SettingsFragment extends Fragment {
     }
 
     private void performSignOut() {
-        // Desconectar el listener ANTES de limpiar la sesión
         SessionManager.getInstance().setOnLockListener(null);
         SessionManager.getInstance().lock();
-        BiometricHelper.disable(requireContext());
-
-        VaultRepository repo = new VaultRepository(requireContext());
-        repo.clearKeyCache();
-        repo.clearLocalVault();
-
-        requireContext()
-                .getSharedPreferences(ProfileEditDialog.PREFS_NAME, Context.MODE_PRIVATE)
-                .edit().clear().apply();
 
         authManager.signOut(requireActivity(), () -> {
             if (!isAdded()) return;

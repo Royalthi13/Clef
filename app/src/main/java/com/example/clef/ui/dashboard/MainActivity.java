@@ -31,9 +31,8 @@ public class MainActivity extends AppCompatActivity {
                     .putExtra("session_expired", true));
         });
 
-        long savedMs = getSharedPreferences("settings", 0).getLong("auto_lock_ms", 60_000);
+        long savedMs = getSharedPreferences("settings", 0).getLong("auto_lock_ms", 300_000);
         SessionManager.getInstance().setLockTimeout(savedMs);
-        SessionManager.getInstance().resetTimer();
 
         FragmentManager fm = getSupportFragmentManager();
 
@@ -121,6 +120,24 @@ public class MainActivity extends AppCompatActivity {
             }
             return false;
         });
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        SessionManager.getInstance().cancelLockTimer();
+        if (!SessionManager.getInstance().isUnlocked()) {
+            startActivity(new android.content.Intent(this, UnlockActivity.class)
+                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK |
+                            android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                    .putExtra("session_expired", true));
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        SessionManager.getInstance().startLockTimer();
     }
 
     @Override

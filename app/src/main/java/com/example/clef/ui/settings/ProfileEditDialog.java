@@ -67,9 +67,40 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
     private File selectedPhotoFile = null;
     private Uri  cameraUri         = null;
 
+    private com.example.clef.data.remote.AuthManager authManager;
+
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
     // ── Launchers ──────────────────────────────────────────────────────────────
+
+    private final ActivityResultLauncher<Intent> reAuthLauncher =
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (result.getResultCode() != Activity.RESULT_OK || result.getData() == null) return;
+                authManager.handleSignInResult(result.getData(), (user, error) -> {
+                    if (error != null || user == null) {
+                        if (!isAdded()) return;
+                        Toast.makeText(requireContext(),
+                                "Autenticación fallida. Inténtalo de nuevo.", Toast.LENGTH_SHORT).show();
+                        setLoading(false);
+                        return;
+                    }
+                    // Reautenticación con Google completada — ahora sí borrar
+                    com.google.android.gms.auth.api.signin.GoogleSignInAccount account =
+                            com.google.android.gms.auth.api.signin.GoogleSignIn
+                                    .getLastSignedInAccount(requireContext());
+                    if (account == null) { setLoading(false); return; }
+                    authManager.reauthenticateWithGoogle(account.getIdToken(), (u, e) -> {
+                        if (e != null) {
+                            if (!isAdded()) return;
+                            setLoading(false);
+                            Toast.makeText(requireContext(),
+                                    getString(R.string.delete_account_error), Toast.LENGTH_LONG).show();
+                            return;
+                        }
+                        proceedDeleteAccount();
+                    });
+                });
+            });
 
     private final ActivityResultLauncher<Intent> galleryLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
@@ -138,10 +169,15 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
             }
         });
 
+        authManager = new com.example.clef.data.remote.AuthManager(
+                requireActivity(), getString(R.string.default_web_client_id));
+
         btnChangePhoto.setOnClickListener(v -> showPhotoOptions());
         ivProfilePhoto .setOnClickListener(v -> showPhotoOptions());
         btnSaveProfile .setOnClickListener(v -> onSave());
         btnCancelProfile.setOnClickListener(v -> dismiss());
+
+        view.findViewById(R.id.btnDeleteAccount).setOnClickListener(v -> confirmDeleteAccount());
     }
 
     @Override
@@ -263,6 +299,124 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
                     Toast.makeText(requireContext(),
                             "No se pudo cargar la imagen", Toast.LENGTH_SHORT).show();
                 });
+            }
+        });
+    }
+
+    // ── Eliminar cuenta ────────────────────────────────────────────────────────
+
+    private void confirmDeleteAccount() {
+        if (!isAdded()) return;
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                .setTitle(getString(R.string.delete_account_confirm_title))
+                .setMessage(getString(R.string.delete_account_confirm_message))
+                .setPositiveButton(getString(R.string.delete_account_confirm_action), (d, w) -> verifyIdentity())
+                .setNegativeButton(getString(R.string.cancel), null)
+                .show();
+    }
+
+    private void verifyIdentity() {
+        if (!isAdded()) return;
+        setLoading(true);
+        if (com.example.clef.utils.BiometricHelper.isAvailable(requireContext())
+                && com.example.clef.utils.BiometricHelper.isEnabled(requireContext())) {
+            com.example.clef.utils.BiometricHelper.unlock(
+                    (androidx.fragment.app.FragmentActivity) requireActivity(),
+                    new com.example.clef.utils.BiometricHelper.UnlockCallback() {
+                        @Override public void onSuccess(byte[] dek) { silentReauthAndDelete(); }
+                        @Override public void onCancelled()          { showPasswordDialog(); }
+                        @Override public void onError(String msg)    { showPasswordDialog(); }
+                    });
+        } else {
+            showPasswordDialog();
+        }
+    }
+
+    private void showPasswordDialog() {
+        if (!isAdded()) return;
+        android.view.View dialogView = android.view.LayoutInflater.from(requireContext())
+                .inflate(R.layout.dialog_verify_password, null);
+
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Confirma tu identidad")
+                .setView(dialogView)
+                .setPositiveButton("Confirmar", (d, w) -> {
+                    com.google.android.material.textfield.TextInputEditText et =
+                            dialogView.findViewById(R.id.etVerifyPassword);
+                    String pwd = et.getText() != null ? et.getText().toString() : "";
+                    if (pwd.isEmpty()) { setLoading(false); return; }
+                    verifyPassword(pwd);
+                })
+                .setNegativeButton(getString(R.string.cancel), (d, w) -> setLoading(false))
+                .show();
+    }
+
+    private void verifyPassword(String password) {
+        if (!isAdded()) return;
+        com.example.clef.data.repository.VaultRepository repo =
+                new com.example.clef.data.repository.VaultRepository(requireContext());
+        com.example.clef.data.remote.FirebaseManager.UserData data = repo.loadOfflineUserData();
+        if (data == null) { setLoading(false); return; }
+
+        executor.execute(() -> {
+            try {
+                new com.example.clef.crypto.KeyManager()
+                        .login(password.toCharArray(), data.salt, data.cajaA, data.vault);
+                if (isAdded()) silentReauthAndDelete();
+            } catch (Exception e) {
+                if (!isAdded()) return;
+                requireActivity().runOnUiThread(() -> {
+                    setLoading(false);
+                    Toast.makeText(requireContext(),
+                            "Contraseña incorrecta", Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
+    }
+
+    private void silentReauthAndDelete() {
+        if (!isAdded()) return;
+        authManager.silentReauthenticate((user, error) -> {
+            if (error == null && user != null) {
+                proceedDeleteAccount();
+            } else {
+                // Fallback: mostrar selector de Google
+                if (isAdded()) reAuthLauncher.launch(authManager.getGoogleSignInIntent());
+            }
+        });
+    }
+
+    private void deleteAccount() {
+        if (!isAdded()) return;
+        setLoading(true);
+        reAuthLauncher.launch(authManager.getGoogleSignInIntent());
+    }
+
+    private void proceedDeleteAccount() {
+        if (!isAdded()) return;
+        com.example.clef.data.repository.VaultRepository repo =
+                new com.example.clef.data.repository.VaultRepository(requireContext());
+        repo.deleteAccount(new com.example.clef.data.repository.VaultRepository.Callback<Void>() {
+            @Override
+            public void onSuccess(Void result) {
+                com.example.clef.utils.SessionManager.getInstance().lock();
+                com.google.firebase.auth.FirebaseAuth.getInstance().signOut();
+                if (!isAdded()) return;
+                Toast.makeText(requireContext(),
+                        getString(R.string.delete_account_success), Toast.LENGTH_SHORT).show();
+                requireActivity().startActivity(
+                        new android.content.Intent(requireContext(),
+                                com.example.clef.ui.auth.LoginActivity.class)
+                                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK |
+                                        android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK));
+            }
+
+            @Override
+            public void onError(Exception e) {
+                if (!isAdded()) return;
+                setLoading(false);
+                Toast.makeText(requireContext(),
+                        getString(R.string.delete_account_error), Toast.LENGTH_LONG).show();
             }
         });
     }

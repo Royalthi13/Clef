@@ -262,10 +262,17 @@ public class VaultRepository {
                         firebaseManager.deleteAuthAccount()
                                 .addOnSuccessListener(v -> {
                                     clearLocalVault();
+                                    clearKeyCache();
                                     callback.onSuccess(null);
                                 })
-                                .addOnFailureListener(callback::onError))
-                .addOnFailureListener(callback::onError);
+                                .addOnFailureListener(e -> {
+                                    android.util.Log.e("DeleteAccount", "deleteAuthAccount failed", e);
+                                    callback.onError(e);
+                                }))
+                .addOnFailureListener(e -> {
+                    android.util.Log.e("DeleteAccount", "deleteUserData failed", e);
+                    callback.onError(e);
+                });
     }
 
     // ── Privado ───────────────────────────────────────────────────────────────

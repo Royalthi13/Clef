@@ -176,6 +176,22 @@ public class AuthManager {
      * @param idToken  El token que nos dio Google al elegir la cuenta.
      * @param callback Se llama con el FirebaseUser si tuvo éxito, o con el error si falló.
      */
+    public void silentReauthenticate(AuthCallback callback) {
+        googleSignInClient.silentSignIn()
+                .addOnSuccessListener(account ->
+                        reauthenticateWithGoogle(account.getIdToken(), callback))
+                .addOnFailureListener(e -> callback.onResult(null, e));
+    }
+
+    public void reauthenticateWithGoogle(String idToken, AuthCallback callback) {
+        FirebaseUser user = auth.getCurrentUser();
+        if (user == null) { callback.onResult(null, new Exception("no_user")); return; }
+        AuthCredential credential = GoogleAuthProvider.getCredential(idToken, null);
+        user.reauthenticate(credential)
+                .addOnSuccessListener(unused -> callback.onResult(user, null))
+                .addOnFailureListener(e -> callback.onResult(null, e));
+    }
+
     private void firebaseAuthWithGoogle(String idToken, AuthCallback callback) {
         AuthCredential credential = GoogleAuthProvider.getCredential(idToken, null);
         auth.signInWithCredential(credential)

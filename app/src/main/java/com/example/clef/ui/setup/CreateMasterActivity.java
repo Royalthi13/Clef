@@ -113,6 +113,8 @@ public class CreateMasterActivity extends AppCompatActivity {
                 VaultRepository repo = new VaultRepository(this);
                 repo.registerUser(bundle, new VaultRepository.Callback<Void>() {
                     @Override public void onSuccess(Void result) {
+                        com.example.clef.utils.SessionManager.getInstance()
+                                .unlock(bundle.dek, new com.example.clef.data.model.Vault());
                         mainHandler.post(() -> {
                             setLoading(false);
                             Intent i = new Intent(CreateMasterActivity.this, ShowPukActivity.class);

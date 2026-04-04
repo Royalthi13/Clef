@@ -23,7 +23,7 @@ public class SessionManager {
 
     private volatile byte[] dek   = null;
     private volatile Vault  vault = null;
-    private long   lockTimeoutMs = 60_000;
+    private long   lockTimeoutMs = 300_000;
 
     private final Handler  handler = new Handler(Looper.getMainLooper());
     private Runnable       lockRunnable;

@@ -165,4 +165,12 @@
     <!-- Dialog añadir credencial -->
     <string name="add_item_hint_url">URL del sitio (opcional)</string>
 
+    <!-- Eliminar cuenta -->
+    <string name="profile_delete_account">Eliminar cuenta</string>
+    <string name="delete_account_confirm_title">¿Eliminar cuenta?</string>
+    <string name="delete_account_confirm_message">Se borrarán permanentemente tu cuenta, todas tus contraseñas y los datos de la nube. Esta acción no se puede deshacer.</string>
+    <string name="delete_account_confirm_action">Eliminar</string>
+    <string name="delete_account_success">Cuenta eliminada correctamente</string>
+    <string name="delete_account_error">Error al eliminar la cuenta. Inténtalo de nuevo.</string>
+
 </resources>
