@@ -9,13 +9,13 @@
     android:paddingTop="8dp"
     android:paddingBottom="32dp">
 
-    <!-- Tirador del BottomSheet -->
+    <!-- Tirador del BottomSheet — sin referencia a drawable externo -->
     <View
         android:layout_width="40dp"
         android:layout_height="4dp"
         android:layout_gravity="center_horizontal"
         android:layout_marginBottom="20dp"
-        android:background="@color/clef_border"
+        android:background="@drawable/bg_handle"
         android:backgroundTint="?attr/colorOutline" />
 
     <TextView
@@ -67,7 +67,11 @@
             android:maxLines="1" />
     </com.google.android.material.textfield.TextInputLayout>
 
-    <!-- Contraseña -->
+    <!--
+        Contraseña.
+        endIconMode="custom" para el icono generador (se asigna en AddItemDialog.java).
+        NO pongas android:hint en el TextInputEditText — solo en el TextInputLayout.
+    -->
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/tilPassword"
         style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
@@ -75,7 +79,9 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="12dp"
         android:hint="@string/add_item_hint_password"
-        app:endIconMode="password_toggle"
+        app:endIconMode="custom"
+        app:endIconDrawable="@drawable/ic_generator"
+        app:endIconContentDescription="Generar contraseña"
         app:startIconDrawable="@drawable/ic_lock_24"
         app:startIconTint="?attr/colorPrimary">
 
@@ -84,6 +90,30 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:inputType="textPassword"
+            android:imeOptions="actionNext"
+            android:maxLines="1" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!--
+        URL del sitio (opcional).
+        SOLO el hint en TextInputLayout — el EditText NO tiene android:hint.
+        Si pones hint en los dos, Material los solapa en el floating label.
+    -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/tilUrl"
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"
+        android:hint="@string/add_item_hint_url"
+        app:startIconDrawable="@drawable/ic_search_24"
+        app:startIconTint="?attr/colorPrimary">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etUrl"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textUri"
             android:imeOptions="actionNext"
             android:maxLines="1" />
     </com.google.android.material.textfield.TextInputLayout>
@@ -109,6 +139,7 @@
             android:maxLines="4"
             android:gravity="top" />
     </com.google.android.material.textfield.TextInputLayout>
+
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -123,6 +154,7 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="24dp"
         app:singleSelection="true" />
+
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnSave"
         android:layout_width="match_parent"

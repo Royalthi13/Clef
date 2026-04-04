@@ -7,7 +7,6 @@ import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -60,7 +59,7 @@ public class ImportExportDialog extends BottomSheetDialogFragment {
 
         btnExport.setOnClickListener(v -> onExport());
         btnRemoveFromCloud.setOnClickListener(v -> onRemoveFromCloud());
-        btnImport.setOnClickListener(v -> onImport());
+        btnImport.setOnClickListener(v -> confirmImport());
     }
 
     @Override
@@ -149,6 +148,7 @@ public class ImportExportDialog extends BottomSheetDialogFragment {
             } catch (Exception e) {
                 for (Credential c : seleccionadas) c.setSynced(false);
                 mainHandler.post(() -> {
+                    if (!isAdded()) return;
                     setFormEnabled(true);
                     Toast.makeText(requireContext(),
                             getString(R.string.export_error_network), Toast.LENGTH_LONG).show();
@@ -184,16 +184,13 @@ public class ImportExportDialog extends BottomSheetDialogFragment {
 
         executor.execute(() -> {
             try {
-                // Subir un vault vacío a Firebase
                 Vault emptyVault = new Vault();
                 String encryptedEmpty = new KeyManager().cifrarVault(emptyVault, dek);
                 VaultRepository repo = new VaultRepository(requireContext());
                 repo.uploadSpecificVaultToFirebase(encryptedEmpty, new VaultRepository.Callback<Void>() {
                     @Override
                     public void onSuccess(Void result) {
-                        // Marcar todas las credenciales locales como no sincronizadas
                         for (Credential c : vault.getCredentials()) c.setSynced(false);
-                        // Guardar vault local actualizado
                         try {
                             String encryptedLocal = new KeyManager().cifrarVault(vault, dek);
                             repo.saveLocalVaultOnly(encryptedLocal);
@@ -218,6 +215,7 @@ public class ImportExportDialog extends BottomSheetDialogFragment {
                 });
             } catch (Exception e) {
                 mainHandler.post(() -> {
+                    if (!isAdded()) return;
                     setFormEnabled(true);
                     Toast.makeText(requireContext(),
                             getString(R.string.delete_cloud_error), Toast.LENGTH_LONG).show();
@@ -227,6 +225,18 @@ public class ImportExportDialog extends BottomSheetDialogFragment {
     }
 
     // ── Importar ───────────────────────────────────────────────────────────────
+
+    private void confirmImport() {
+        if (!isAdded()) return;
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle("¿Importar desde la nube?")
+                .setMessage("Esto reemplazará las credenciales actuales del dispositivo " +
+                        "con las que están guardadas en la nube. " +
+                        "Los datos locales no sincronizados se perderán.")
+                .setPositiveButton("Importar", (d, w) -> onImport())
+                .setNegativeButton("Cancelar", null)
+                .show();
+    }
 
     private void onImport() {
         byte[] dek = SessionManager.getInstance().getDek();
@@ -243,9 +253,11 @@ public class ImportExportDialog extends BottomSheetDialogFragment {
             public void onSuccess(FirebaseManager.UserData userData) {
                 if (userData == null) {
                     mainHandler.post(() -> {
+                        if (!isAdded()) return;
                         setFormEnabled(true);
                         Toast.makeText(requireContext(),
-                                getString(R.string.import_error_no_cloud_data), Toast.LENGTH_LONG).show();
+                                getString(R.string.import_error_no_cloud_data),
+                                Toast.LENGTH_LONG).show();
                     });
                     return;
                 }
@@ -255,6 +267,7 @@ public class ImportExportDialog extends BottomSheetDialogFragment {
             @Override
             public void onError(Exception e) {
                 mainHandler.post(() -> {
+                    if (!isAdded()) return;
                     setFormEnabled(true);
                     Toast.makeText(requireContext(),
                             getString(R.string.import_error_network), Toast.LENGTH_LONG).show();
@@ -268,12 +281,14 @@ public class ImportExportDialog extends BottomSheetDialogFragment {
             Vault vault = new KeyManager().descifrarVault(userData.vault, dek);
             SessionManager.getInstance().unlock(dek, vault);
             mainHandler.post(() -> {
+                if (!isAdded()) return;
                 Toast.makeText(requireContext(),
                         getString(R.string.import_success), Toast.LENGTH_SHORT).show();
                 dismiss();
             });
         } catch (Exception e) {
             mainHandler.post(() -> {
+                if (!isAdded()) return;
                 setFormEnabled(true);
                 Toast.makeText(requireContext(),
                         getString(R.string.import_error_network), Toast.LENGTH_LONG).show();
@@ -281,9 +296,8 @@ public class ImportExportDialog extends BottomSheetDialogFragment {
         }
     }
 
-    // ── Helpers ────────────────────────────────────────────────────────────────
-
     private void setFormEnabled(boolean enabled) {
+        if (!isAdded()) return;
         btnExport.setEnabled(enabled);
         btnRemoveFromCloud.setEnabled(enabled);
         btnImport.setEnabled(enabled);

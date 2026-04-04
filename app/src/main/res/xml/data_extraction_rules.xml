@@ -1,19 +1,64 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample data extraction rules file; uncomment and customize as necessary.
-   See https://developer.android.com/about/versions/12/backup-restore#xml-changes
-   for details.
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Reglas de extracción de datos para Android 12+ (API 31+).
+    Android 12 dejó de respetar backup_rules.xml para cloud backup y
+    device-to-device transfer, y pasó a usar ESTE archivo.
+
+    Si este archivo está vacío o sin exclusiones, Android sube TODO el
+    contenido de la app a Google Drive / al nuevo dispositivo, incluyendo
+    el vault cifrado, las claves cacheadas y la DEK biométrica.
+
+    ANTES: este archivo tenía solo comentarios y TODO → CRÍTICO de seguridad.
+    AHORA: excluye explícitamente todos los datos sensibles.
 -->
 <data-extraction-rules>
+
+    <!-- ── BACKUP EN LA NUBE (Google Drive) ─────────────────────────────── -->
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
+        <!--
+            Excluir el vault cifrado (nombre legacy y nuevo con UID).
+            El dominio "file" corresponde a context.getFilesDir().
         -->
+        <exclude domain="file" path="vault.enc" />
+        <exclude domain="file" path="." />
+
+        <!--
+            Excluir todas las SharedPreferences sensibles:
+              - clef_key_cache_<uid>  → salt, cajaA, cajaB, owner_uid
+              - clef_biometric_prefs  → DEK cifrada con clave del Keystore
+              - profile_prefs         → rutas de foto de perfil
+              - generator_config      → configuración del generador
+              - settings              → auto-lock ms, sync_enabled
+              - clef_prefs            → tema guardado
+        -->
+        <exclude domain="sharedpref" path="." />
+
+        <!--
+            Excluir la carpeta de fotos de perfil.
+        -->
+        <exclude domain="file" path="profile" />
+
+        <!--
+            Excluir archivos temporales de cámara (fotos pendientes de guardar).
+        -->
+        <exclude domain="external" path="." />
     </cloud-backup>
+
+    <!-- ── TRANSFERENCIA ENTRE DISPOSITIVOS (Device-to-Device) ───────────── -->
     <!--
-    <device-transfer>
-        <include .../>
-        <exclude .../>
-    </device-transfer>
+        Mismas exclusiones para la transferencia directa entre dispositivos
+        (p.ej. configuración de dispositivo nuevo en Android 12+).
+        El material criptográfico está vinculado al Keystore del dispositivo
+        original y NO puede transferirse — si se intenta restaurar en otro
+        dispositivo, BiometricHelper fallaría con una excepción del Keystore
+        porque la clave AES del AndroidKeyStore no es exportable.
     -->
+    <device-transfer>
+        <exclude domain="file" path="vault.enc" />
+        <exclude domain="file" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="file" path="profile" />
+        <exclude domain="external" path="." />
+    </device-transfer>
+
 </data-extraction-rules>

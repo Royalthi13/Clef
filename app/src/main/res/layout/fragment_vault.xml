@@ -63,14 +63,19 @@
                 app:selectionRequired="true"
                 app:singleLine="true"
                 app:singleSelection="true">
+
+                <!--
+                    FIX UX: Chip "Todos" siempre visible y seleccionado por defecto.
+                    VaultFragment.java lo selecciona programáticamente en onViewCreated().
+                -->
                 <com.google.android.material.chip.Chip
                     android:id="@+id/chipAll"
                     style="@style/Widget.Material3.Chip.Filter"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/category_all"
-                    android:checkable="true" />
-
+                    android:checkable="true"
+                    android:checked="true" />
 
             </com.google.android.material.chip.ChipGroup>
         </HorizontalScrollView>
@@ -85,39 +90,61 @@
         app:layout_behavior="@string/appbar_scrolling_view_behavior"
         tools:listitem="@layout/item_credential" />
 
+    <!--
+        FIX UX: Estado vacío mejorado con CTA explícito.
+        El texto anterior ("Pulsa el botón +") era poco visible.
+        Ahora incluye un botón de acción directo además del FAB.
+    -->
     <LinearLayout
         android:id="@+id/layoutEmpty"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:gravity="center"
         android:orientation="vertical"
+        android:paddingHorizontal="40dp"
         android:visibility="gone"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
         <ImageView
-            android:layout_width="100dp"
-            android:layout_height="100dp"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
             android:src="@drawable/ic_vault"
-            app:tint="@color/clef_border" />
+            android:alpha="0.35"
+            app:tint="?attr/colorOnSurface"
+            android:contentDescription="@null" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="20dp"
             android:text="@string/vault_empty_title"
             android:textColor="?attr/colorOnSurface"
             android:textSize="20sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:gravity="center" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:paddingHorizontal="40dp"
+            android:layout_marginTop="10dp"
             android:text="@string/vault_empty_subtitle"
             android:textAlignment="center"
             android:textColor="@color/clef_text_muted"
-            android:textSize="14sp" />
+            android:textSize="14sp"
+            android:lineSpacingMultiplier="1.4" />
+
+        <!-- CTA explícito que abre el mismo diálogo que el FAB -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnEmptyAddFirst"
+            android:layout_width="wrap_content"
+            android:layout_height="52dp"
+            android:layout_marginTop="28dp"
+            android:text="Añadir primera cuenta"
+            android:textStyle="bold"
+            app:icon="@android:drawable/ic_input_add"
+            app:iconGravity="textStart"
+            app:iconPadding="8dp" />
+
     </LinearLayout>
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -133,4 +160,3 @@
         app:tint="?attr/colorOnPrimary" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
-

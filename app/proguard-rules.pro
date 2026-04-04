@@ -1,21 +1,40 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# ──────────────────────────────────────────────────────────────────
+# Clef — ProGuard / R8 rules
+# ──────────────────────────────────────────────────────────────────
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Conservar información de línea para stack traces en producción
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# ── GSON ──────────────────────────────────────────────────────────
+# Evita que R8 elimine los campos que GSON lee/escribe por reflexión
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+-keepclassmembers,allowobfuscation class * {
+    @com.google.gson.annotations.SerializedName <fields>;
+}
+
+# Modelos del Vault — CRÍTICO: sin esto GSON devuelve objetos vacíos en release
+-keep class com.example.clef.data.model.Credential { *; }
+-keep class com.example.clef.data.model.Vault { *; }
+-keep class com.example.clef.data.model.Credential$Category { *; }
+
+# ── Firebase ───────────────────────────────────────────────────────
+-keep class com.google.firebase.** { *; }
+-keep class com.google.android.gms.** { *; }
+
+# ── Lottie ────────────────────────────────────────────────────────
+-keep class com.airbnb.lottie.** { *; }
+
+# ── Glide ─────────────────────────────────────────────────────────
+-keep public class * implements com.bumptech.glide.module.GlideModule
+-keep class * extends com.bumptech.glide.module.AppGlideModule { *; }
+-keep public enum com.bumptech.glide.load.ImageHeaderParser$** {
+    **[] $VALUES;
+    public *;
+}
+
+# ── Biometría / Keystore ──────────────────────────────────────────
+-keep class androidx.biometric.** { *; }
+
+# ── Lifecycle (Auto-Lock) ─────────────────────────────────────────
+-keep class androidx.lifecycle.** { *; }

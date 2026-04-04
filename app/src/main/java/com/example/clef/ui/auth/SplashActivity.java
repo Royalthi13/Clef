@@ -11,6 +11,7 @@ import com.example.clef.R;
 import com.example.clef.data.remote.AuthManager;
 import com.example.clef.data.remote.FirebaseManager;
 import com.example.clef.ui.setup.CreateMasterActivity;
+import com.example.clef.utils.SessionManager;
 
 public class SplashActivity extends AppCompatActivity {
 
@@ -27,6 +28,13 @@ public class SplashActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // SEGURIDAD: Limpiar siempre la sesión en memoria al arrancar la app.
+        // Garantiza que no hay DEK residual de un usuario anterior si la app
+        // fue destruida sin pasar por signOut. Coste: ninguno — si el usuario
+        // era el mismo, UnlockActivity la recuperará enseguida.
+        SessionManager.getInstance().lock();
+
         setContentView(R.layout.activity_splash);
 
         authManager     = new AuthManager(this, getString(R.string.default_web_client_id));
@@ -37,11 +45,8 @@ public class SplashActivity extends AppCompatActivity {
             return;
         }
 
-        // Usuario autenticado en Firebase — verificar si ya tiene bóveda configurada
         timeoutHandler.postDelayed(timeoutRunnable, TIMEOUT_MS);
 
-        // Usamos userHasMasterPassword en lugar de userExists:
-        // un documento puede existir sin cajaA si el registro falló a mitad.
         firebaseManager.userHasMasterPassword()
                 .addOnSuccessListener(hasMaster -> {
                     if (hasMaster) {

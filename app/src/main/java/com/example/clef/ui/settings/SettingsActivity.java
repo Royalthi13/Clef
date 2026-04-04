@@ -1,4 +1,6 @@
 package com.example.clef.ui.settings;
 
-public class SettingsActivity {
+import androidx.appcompat.app.AppCompatActivity;
+
+public class SettingsActivity extends AppCompatActivity {
 }

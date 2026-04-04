@@ -1,24 +1,71 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:gravity="center"
     android:background="?attr/colorSurface">
+
+    <!--
+        El JSON de la animación va en:  res/raw/animation_lock.json
+        (el archivo que tienes, con el candado azul)
+        No hace falta internet ni DotLottie — Lottie clásico lo lee directamente.
+        Ya tienes la dependencia: implementation("com.airbnb.android:lottie:6.4.1")
+    -->
+    <com.airbnb.lottie.LottieAnimationView
+        android:id="@+id/lottieAnimation"
+        android:layout_width="220dp"
+        android:layout_height="220dp"
+        app:lottie_rawRes="@raw/animacion_login"
+        app:lottie_autoPlay="true"
+        app:lottie_loop="true"
+        app:lottie_speed="2.0"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/tvAppName"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintVertical_bias="0.38" />
 
     <TextView
         android:id="@+id/tvAppName"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
         android:text="@string/app_name"
-        android:textSize="48sp"
+        android:textSize="42sp"
         android:textStyle="bold"
-        android:textColor="?attr/colorOnSurface" />
+        android:letterSpacing="-0.02"
+        android:textColor="?attr/colorOnSurface"
+        app:layout_constraintTop_toBottomOf="@id/lottieAnimation"
+        app:layout_constraintBottom_toTopOf="@id/tvTagline"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <TextView
+        android:id="@+id/tvTagline"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text="@string/splash_tagline"
+        android:textSize="13sp"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:letterSpacing="0.03"
+        app:layout_constraintTop_toBottomOf="@id/tvAppName"
+        app:layout_constraintBottom_toTopOf="@id/progressBar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
     <ProgressBar
         android:id="@+id/progressBar"
-        android:layout_width="wrap_content"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="100dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="32dp" />
+        android:layout_marginTop="48dp"
+        android:layout_marginBottom="56dp"
+        android:indeterminate="true"
+        app:layout_constraintTop_toBottomOf="@id/tvTagline"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
-</LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

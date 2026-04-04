@@ -1,7 +1,6 @@
 package com.example.clef.data.remote;
 
 import com.google.android.gms.tasks.Task;
-import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
@@ -15,19 +14,11 @@ import java.util.Map;
  *
  * Cada usuario tiene un documento en /users/{uid} con 4 campos en Base64:
  * salt, cajaA, cajaB, vault.
- *
- * Esta clase es la única que conoce los nombres de esos campos.
- * El resto del proyecto trabaja con el DTO UserData, no con DocumentSnapshot.
- * No usar directamente desde UI. Usar a través de VaultRepository.
  */
 public class FirebaseManager {
 
-    // ── DTO de datos del usuario ───────────────────────────────────────────────
+    // ── DTO ────────────────────────────────────────────────────────────────────
 
-    /**
-     * Objeto tipado con los datos del usuario descargados de Firestore.
-     * Evita que las capas superiores dependan de los nombres de campo internos.
-     */
     public static class UserData {
         public final String salt;
         public final String cajaA;
@@ -41,13 +32,12 @@ public class FirebaseManager {
             this.vault = vault;
         }
 
-        /** true si el usuario tiene Contraseña Maestra configurada. */
         public boolean hasMasterPassword() {
             return cajaA != null && !cajaA.isEmpty();
         }
     }
 
-    // ── Constantes internas ────────────────────────────────────────────────────
+    // ── Constantes ─────────────────────────────────────────────────────────────
 
     private static final String COLLECTION_USERS = "users";
     private static final String FIELD_SALT        = "salt";
@@ -65,10 +55,7 @@ public class FirebaseManager {
 
     // ── Subida ────────────────────────────────────────────────────────────────
 
-    /**
-     * Crea el documento del usuario con todos los campos en una sola escritura.
-     * Solo se llama una vez, en el registro.
-     */
+    /** Crea el documento completo del usuario. Solo se llama al registrarse. */
     public Task<Void> uploadAll(String salt, String cajaA, String cajaB, String vault) {
         Map<String, Object> data = new HashMap<>();
         data.put(FIELD_SALT,   salt);
@@ -92,12 +79,22 @@ public class FirebaseManager {
         return userDoc().update(data);
     }
 
+    /**
+     * FIX: Actualiza cajaA y cajaB en la misma operación.
+     *
+     * Necesario tras recuperación con PUK para invalidar el PUK viejo
+     * de forma atómica — nunca puede quedar un estado donde la Caja A
+     * sea nueva pero la Caja B siga siendo la antigua.
+     */
+    public Task<Void> uploadCajaAyB(String cajaA, String cajaB) {
+        Map<String, Object> data = new HashMap<>();
+        data.put(FIELD_CAJA_A, cajaA);
+        data.put(FIELD_CAJA_B, cajaB);
+        return userDoc().update(data);
+    }
+
     // ── Descarga ──────────────────────────────────────────────────────────────
 
-    /**
-     * Descarga el documento del usuario y lo devuelve como UserData tipado.
-     * Si el documento no existe, devuelve null dentro del Task.
-     */
     public Task<UserData> downloadUserData() {
         return userDoc().get().continueWith(task -> {
             if (!task.isSuccessful() || task.getResult() == null) {
@@ -119,11 +116,6 @@ public class FirebaseManager {
 
     // ── Estado ────────────────────────────────────────────────────────────────
 
-    /**
-     * Comprueba si el usuario ya tiene Contraseña Maestra configurada.
-     * Verifica que cajaA existe y no está vacía — más fiable que solo
-     * comprobar si el documento existe.
-     */
     public Task<Boolean> userHasMasterPassword() {
         return userDoc().get().continueWith(task -> {
             if (!task.isSuccessful()) return false;
@@ -134,10 +126,6 @@ public class FirebaseManager {
         });
     }
 
-    /**
-     * Comprueba si el documento del usuario existe en Firestore.
-     * Útil para decidir si el usuario debe pasar por el setup inicial.
-     */
     public Task<Boolean> userExists() {
         return userDoc().get().continueWith(task -> {
             if (!task.isSuccessful()) return false;
@@ -148,12 +136,10 @@ public class FirebaseManager {
 
     // ── Borrado ───────────────────────────────────────────────────────────────
 
-    /** Borra el documento del usuario en Firestore. */
     public Task<Void> deleteUserData() {
         return userDoc().delete();
     }
 
-    /** Elimina la cuenta de Firebase Auth. Llamar después de deleteUserData(). */
     public Task<Void> deleteAuthAccount() {
         return auth.getCurrentUser().delete();
     }

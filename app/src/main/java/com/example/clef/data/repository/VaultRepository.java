@@ -132,7 +132,22 @@ public class VaultRepository {
      */
     public void updateCajaA(String nuevaCajaABase64, Callback<Void> callback) {
         firebaseManager.uploadCajaA(nuevaCajaABase64)
-                .addOnSuccessListener(unused -> callback.onSuccess(null))
+                .addOnSuccessListener(unused -> {
+                    keyPrefs.edit().putString(KEY_CAJA_A, nuevaCajaABase64).apply();
+                    callback.onSuccess(null);
+                })
+                .addOnFailureListener(callback::onError);
+    }
+
+    public void updateCajaAyB(String nuevaCajaABase64, String nuevaCajaBBase64, Callback<Void> callback) {
+        firebaseManager.uploadCajaAyB(nuevaCajaABase64, nuevaCajaBBase64)
+                .addOnSuccessListener(unused -> {
+                    keyPrefs.edit()
+                            .putString(KEY_CAJA_A, nuevaCajaABase64)
+                            .putString(KEY_CAJA_B, nuevaCajaBBase64)
+                            .apply();
+                    callback.onSuccess(null);
+                })
                 .addOnFailureListener(callback::onError);
     }
 
@@ -202,6 +217,15 @@ public class VaultRepository {
                 .addOnFailureListener(callback::onError);
     }
 
+    /** true si hay un vault guardado en disco. */
+    public boolean hasLocalVault() {
+        return fileManager.vaultExists();
+    }
+
+    public void saveLocalVaultOnly(String encryptedVaultBase64) {
+        saveLocalVault(encryptedVaultBase64);
+    }
+
     public void uploadSpecificVaultToFirebase(String encryptedVault, Callback<Void> callback) {
         String salt  = keyPrefs.getString(KEY_SALT,   null);
         String cajaA = keyPrefs.getString(KEY_CAJA_A, null);
@@ -217,18 +241,13 @@ public class VaultRepository {
                 .addOnFailureListener(callback::onError);
     }
 
-    public void saveLocalVaultOnly(String encryptedVaultBase64) {
-        saveLocalVault(encryptedVaultBase64);
-    }
-
-    /** true si hay un vault guardado en disco. */
-    public boolean hasLocalVault() {
-        return fileManager.vaultExists();
-    }
-
     /** Borra el vault del disco. Llamar al cerrar sesión o borrar cuenta. */
     public void clearLocalVault() {
         fileManager.deleteVault();
+    }
+
+    public void clearKeyCache() {
+        keyPrefs.edit().clear().apply();
     }
 
     // ── Borrado de cuenta ─────────────────────────────────────────────────────

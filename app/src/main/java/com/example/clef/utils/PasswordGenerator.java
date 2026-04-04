@@ -13,7 +13,7 @@ import java.security.SecureRandom;
  * AddItemDialog llama a generateFromPrefs() para rellenar el campo de contraseña.
  */
 public class PasswordGenerator {
-
+    private static final SecureRandom RNG = new SecureRandom();
     public static final String PREFS_NAME    = "generator_config";
     public static final String KEY_LENGTH    = "length";
     public static final String KEY_UPPERCASE = "upper";
@@ -45,25 +45,25 @@ public class PasswordGenerator {
         if (symbols) charset.append(SYMBOLS);
         if (charset.length() == 0) charset.append(LOWERCASE); // fallback
 
-        SecureRandom rng = new SecureRandom();
+
         char[] password = new char[length];
 
         // Insertar al menos un carácter de cada tipo activado (evita contraseñas sin números, etc.)
         int pos = 0;
-        if (upper   && pos < length) password[pos++] = UPPERCASE.charAt(rng.nextInt(UPPERCASE.length()));
-        if (lower   && pos < length) password[pos++] = LOWERCASE.charAt(rng.nextInt(LOWERCASE.length()));
-        if (numbers && pos < length) password[pos++] = NUMBERS  .charAt(rng.nextInt(NUMBERS.length()));
-        if (symbols && pos < length) password[pos++] = SYMBOLS  .charAt(rng.nextInt(SYMBOLS.length()));
+        if (upper   && pos < length) password[pos++] = UPPERCASE.charAt(RNG.nextInt(UPPERCASE.length()));
+        if (lower   && pos < length) password[pos++] = LOWERCASE.charAt(RNG.nextInt(LOWERCASE.length()));
+        if (numbers && pos < length) password[pos++] = NUMBERS  .charAt(RNG.nextInt(NUMBERS.length()));
+        if (symbols && pos < length) password[pos++] = SYMBOLS  .charAt(RNG.nextInt(SYMBOLS.length()));
 
         // Rellenar el resto aleatoriamente
         String charsetStr = charset.toString();
         for (int i = pos; i < length; i++) {
-            password[i] = charsetStr.charAt(rng.nextInt(charsetStr.length()));
+            password[i] = charsetStr.charAt(RNG.nextInt(charsetStr.length()));
         }
 
         // Mezclar para que los caracteres "garantizados" no estén siempre al principio
         for (int i = length - 1; i > 0; i--) {
-            int j = rng.nextInt(i + 1);
+            int j = RNG.nextInt(i + 1);
             char tmp = password[i];
             password[i] = password[j];
             password[j] = tmp;
