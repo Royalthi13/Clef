@@ -15,9 +15,12 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.content.Context;
+
 import com.example.clef.R;
 import com.example.clef.crypto.KeyManager;
 import com.example.clef.data.model.Credential;
+import com.example.clef.data.remote.FirebaseManager;
 import com.example.clef.utils.ExpiryHelper;
 import com.example.clef.data.model.Vault;
 import com.example.clef.workers.PasswordExpiryWorker;
@@ -41,8 +44,9 @@ public class VaultFragment extends Fragment {
     private TextInputEditText etSearch;
     private ChipGroup         chipGroupCategories;
 
-    private final ExecutorService executor    = Executors.newSingleThreadExecutor();
-    private final Handler         mainHandler = new Handler(Looper.getMainLooper());
+    private final ExecutorService executor      = Executors.newSingleThreadExecutor();
+    private final Handler         mainHandler   = new Handler(Looper.getMainLooper());
+    private final FirebaseManager firebaseManager = new FirebaseManager();
 
     private final Runnable expiryRefreshRunnable = new Runnable() {
         @Override public void run() {
@@ -130,12 +134,14 @@ public class VaultFragment extends Fragment {
         super.onResume();
         applyFilters();
         mainHandler.postDelayed(expiryRefreshRunnable, 60_000);
+        startVaultListener();
     }
 
     @Override
     public void onPause() {
         super.onPause();
         mainHandler.removeCallbacks(expiryRefreshRunnable);
+        firebaseManager.removeVaultListener();
     }
 
     @Override
@@ -144,9 +150,58 @@ public class VaultFragment extends Fragment {
         if (!hidden) {
             applyFilters();
             mainHandler.postDelayed(expiryRefreshRunnable, 60_000);
+            startVaultListener();
         } else {
             mainHandler.removeCallbacks(expiryRefreshRunnable);
+            firebaseManager.removeVaultListener();
         }
+    }
+
+    private void startVaultListener() {
+        firebaseManager.addVaultListener(encryptedCloudVault ->
+                onCloudVaultChanged(encryptedCloudVault));
+    }
+
+    /** Llamado en el hilo principal cuando Firebase detecta un cambio en el vault. */
+    private void onCloudVaultChanged(String encryptedCloudVault) {
+        SessionManager session = SessionManager.getInstance();
+        byte[] dek = session.getDek();
+        if (dek == null) return;
+
+        // Descifrar en background, mergear en main thread
+        executor.execute(() -> {
+            try {
+                Vault cloudVault = new KeyManager().descifrarVault(encryptedCloudVault, dek);
+
+                mainHandler.post(() -> {
+                    if (!isAdded()) return;
+                    Vault localVault = session.getVault();
+                    if (localVault == null) return;
+
+                    // Sustituir las credenciales synced locales con las de la nube
+                    List<Credential> list = localVault.getCredentials();
+                    list.removeIf(Credential::isSynced);
+                    for (Credential c : cloudVault.getCredentials()) {
+                        c.setSynced(true);
+                        list.add(c);
+                    }
+
+                    // Guardar vault actualizado en disco (background)
+                    Context ctx = requireContext();
+                    executor.execute(() -> {
+                        try {
+                            String enc = new KeyManager().cifrarVault(localVault, dek);
+                            new VaultRepository(ctx).saveLocalVaultOnly(enc);
+                        } catch (Exception ignored) {}
+                    });
+
+                    session.updateVault(localVault);
+                    applyFilters();
+                });
+            } catch (Exception ignored) {
+                // Vault no descifrable — ignorar (cambio de claves o error de red)
+            }
+        });
     }
 
     // ── Guardado ───────────────────────────────────────────────────────────────

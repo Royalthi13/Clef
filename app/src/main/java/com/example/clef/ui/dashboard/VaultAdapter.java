@@ -122,8 +122,6 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
 
         if (expanded) {
             bindExpandedSection(holder, credential);
-        } else {
-            holder.previousPassword = null;
         }
     }
 
@@ -188,13 +186,14 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
             return true;
         });
 
-        // Solo inicializar previousPassword la primera vez que se expande
-        if (holder.previousPassword == null) {
-            holder.previousPassword = credential.getPassword() != null
-                    ? credential.getPassword() : "";
+        // Mostrar contraseña anterior si existe (persiste en el modelo)
+        String prevPwd = credential.getPreviousPassword();
+        if (prevPwd != null && !prevPwd.isEmpty()) {
+            holder.etPreviousPassword.setText(prevPwd);
+            holder.layoutPreviousPassword.setVisibility(View.VISIBLE);
+        } else {
+            holder.layoutPreviousPassword.setVisibility(View.GONE);
         }
-        holder.etPreviousPassword.setText(holder.previousPassword);
-        holder.layoutPreviousPassword.setVisibility(View.VISIBLE);
 
         // ℹ️ → aviso informativo
         holder.btnPasswordInfo.setOnClickListener(v ->
@@ -252,7 +251,8 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
                         String oldPwd = holder.etPassword.getText() != null
                                 ? holder.etPassword.getText().toString() : "";
 
-                        holder.previousPassword = oldPwd;
+                        // Guardar en el modelo para que persista al cifrar el vault
+                        credential.setPreviousPassword(oldPwd);
                         holder.etPreviousPassword.setText(oldPwd);
                         holder.layoutPreviousPassword.setVisibility(View.VISIBLE);
 

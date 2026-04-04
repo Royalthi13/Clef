@@ -46,6 +46,7 @@ public class Credential {
     private String title;
     private String username;
     private String password;
+    private String previousPassword;
     private String url;
     private String notes;
     private Category category;
@@ -99,6 +100,12 @@ public class Credential {
 
     /** Cambia la contraseña. */
     public void setPassword(String password) { this.password = password; }
+
+    /** Devuelve la contraseña anterior (antes del último cambio). */
+    public String getPreviousPassword() { return previousPassword; }
+
+    /** Guarda la contraseña anterior. */
+    public void setPreviousPassword(String previousPassword) { this.previousPassword = previousPassword; }
 
     /** Cambia la URL. */
     public void setUrl(String url)           { this.url = url; }

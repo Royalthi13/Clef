@@ -5,6 +5,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -45,12 +46,35 @@ public class FirebaseManager {
     private static final String FIELD_CAJA_B      = "cajaB";
     private static final String FIELD_VAULT        = "vault";
 
+    public interface OnVaultChangedListener {
+        void onVaultChanged(String encryptedVault);
+    }
+
     private final FirebaseFirestore db;
     private final FirebaseAuth      auth;
+    private ListenerRegistration    vaultListener;
 
     public FirebaseManager() {
         this.db   = FirebaseFirestore.getInstance();
         this.auth = FirebaseAuth.getInstance();
+    }
+
+    /** Escucha cambios en tiempo real del vault en Firestore. */
+    public void addVaultListener(OnVaultChangedListener listener) {
+        removeVaultListener();
+        vaultListener = userDoc().addSnapshotListener((snap, error) -> {
+            if (error != null || snap == null || !snap.exists()) return;
+            String vault = snap.getString(FIELD_VAULT);
+            if (vault != null) listener.onVaultChanged(vault);
+        });
+    }
+
+    /** Elimina el listener activo. Llamar siempre al salir de la pantalla. */
+    public void removeVaultListener() {
+        if (vaultListener != null) {
+            vaultListener.remove();
+            vaultListener = null;
+        }
     }
 
     // ── Subida ────────────────────────────────────────────────────────────────
