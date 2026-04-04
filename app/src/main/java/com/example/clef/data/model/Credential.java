@@ -50,6 +50,7 @@ public class Credential {
     private String notes;
     private Category category;
     private boolean synced;
+    private long updatedAt;
 
     /**
      * Constructor vacío necesario para que GSON pueda reconstruir
@@ -108,5 +109,7 @@ public class Credential {
     public void setCategory(Category category) { this.category = category; }
     public boolean isSynced() { return synced; }
     public void setSynced(boolean synced) { this.synced = synced; }
+    public long getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(long updatedAt) { this.updatedAt = updatedAt; }
 
 }

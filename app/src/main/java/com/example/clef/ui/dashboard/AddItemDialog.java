@@ -150,6 +150,7 @@ public class AddItemDialog extends BottomSheetDialogFragment {
                 .getBoolean("sync_enabled", false);
 
         Credential credential = new Credential(title, username, password, "", notes, category);
+        credential.setUpdatedAt(System.currentTimeMillis());
         vault.addCredential(credential);
 
         executor.execute(() -> {
