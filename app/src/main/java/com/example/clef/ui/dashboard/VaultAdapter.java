@@ -93,7 +93,7 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
         android.content.SharedPreferences prefs =
                 context.getSharedPreferences(ExpiryHelper.PREFS_NAME, android.content.Context.MODE_PRIVATE);
         int strokeColor;
-        if (prefs.getBoolean(ExpiryHelper.PREF_NOTIFICATIONS, false)) {
+        if (prefs.getBoolean(ExpiryHelper.PREF_COLORS, false)) {
             long periodMs = prefs.getLong(ExpiryHelper.PREF_PERIOD, ExpiryHelper.PERIOD_ONE_YEAR);
             strokeColor = ExpiryHelper.getStrokeColor(context, credential.getUpdatedAt(), periodMs);
         } else {

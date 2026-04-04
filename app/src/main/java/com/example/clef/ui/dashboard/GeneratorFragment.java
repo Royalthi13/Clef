@@ -60,7 +60,7 @@ public class GeneratorFragment extends Fragment {
         switchNumbers       = view.findViewById(R.id.switchNumbers);
         switchSymbols       = view.findViewById(R.id.switchSymbols);
 
-        // FIX: Mostrar y conectar los botones — ya no se ocultan
+// FIX: Mostrar y conectar los botones — ya no se ocultan
         View btnCopy     = view.findViewById(R.id.btnCopy);
         View btnGenerate = view.findViewById(R.id.btnGenerate);
 

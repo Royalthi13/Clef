@@ -23,6 +23,7 @@ public class ExpiryHelper {
 
     public static final String PREFS_NAME         = "settings";
     public static final String PREF_NOTIFICATIONS = "notifications_enabled";
+    public static final String PREF_COLORS        = "expiry_colors_enabled";
     public static final String PREF_PERIOD        = "expiry_period_ms";
 
     private static final String METADATA_PREFS = "expiry_metadata";

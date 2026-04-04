@@ -59,6 +59,9 @@ public class SettingsFragment extends Fragment {
 
         authManager = new AuthManager(requireActivity(), getString(R.string.default_web_client_id));
 
+        view.findViewById(R.id.rowStats).setOnClickListener(v ->
+                StatsDialog.newInstance().show(getChildFragmentManager(), "stats"));
+
         ivAvatar    = view.findViewById(R.id.ivAvatar);
         tvUserName  = view.findViewById(R.id.tvUserName);
         tvUserEmail = view.findViewById(R.id.tvUserEmail);
@@ -282,13 +285,18 @@ public class SettingsFragment extends Fragment {
     // ── Notificaciones ────────────────────────────────────────────────────────
 
     private void setupNotifications(View view) {
+        SwitchMaterial switchColors        = view.findViewById(R.id.switchColors);
         SwitchMaterial switchNotifications = view.findViewById(R.id.switchNotifications);
         TextView tvPeriodValue = view.findViewById(R.id.tvExpiryPeriodValue);
         SharedPreferences prefs = requireContext()
                 .getSharedPreferences(ExpiryHelper.PREFS_NAME, Context.MODE_PRIVATE);
 
+        switchColors.setChecked(prefs.getBoolean(ExpiryHelper.PREF_COLORS, false));
         switchNotifications.setChecked(prefs.getBoolean(ExpiryHelper.PREF_NOTIFICATIONS, false));
         tvPeriodValue.setText(periodLabel(prefs.getLong(ExpiryHelper.PREF_PERIOD, ExpiryHelper.PERIOD_ONE_YEAR)));
+
+        switchColors.setOnCheckedChangeListener((btn, isChecked) ->
+                prefs.edit().putBoolean(ExpiryHelper.PREF_COLORS, isChecked).apply());
 
         switchNotifications.setOnCheckedChangeListener((btn, isChecked) -> {
             prefs.edit().putBoolean(ExpiryHelper.PREF_NOTIFICATIONS, isChecked).apply();

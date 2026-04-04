@@ -139,6 +139,21 @@ public class VaultFragment extends Fragment {
         View btnEmptyAdd = view.findViewById(R.id.btnEmptyAddFirst);
         if (btnEmptyAdd != null) btnEmptyAdd.setOnClickListener(v -> openAddDialog());
 
+        // Banner tip icono generador
+        android.content.SharedPreferences tipPrefs = requireContext()
+                .getSharedPreferences("generator_prefs", Context.MODE_PRIVATE);
+        View cardTip = view.findViewById(R.id.cardGeneratorTip);
+        if (tipPrefs.getBoolean("tip_dismissed", false)) {
+            cardTip.setVisibility(View.GONE);
+        } else {
+            view.findViewById(R.id.btnTipDismiss).setOnClickListener(v -> {
+                tipPrefs.edit().putBoolean("tip_dismissed", true).apply();
+                cardTip.animate().alpha(0f).setDuration(250)
+                        .withEndAction(() -> cardTip.setVisibility(View.GONE))
+                        .start();
+            });
+        }
+
         etSearch.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int i, int c, int a) {}
             @Override public void onTextChanged(CharSequence s, int i, int b, int c) {}
