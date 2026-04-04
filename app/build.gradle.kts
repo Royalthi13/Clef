@@ -64,4 +64,7 @@ dependencies {
     implementation("com.airbnb.android:lottie:6.4.1")
 
     implementation("com.github.bumptech.glide:glide:4.16.0")
+
+    // WorkManager (notificaciones en background)
+    implementation("androidx.work:work-runtime:2.9.0")
 }

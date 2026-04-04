@@ -153,6 +153,8 @@ public class AddItemDialog extends BottomSheetDialogFragment {
         credential.setUpdatedAt(System.currentTimeMillis());
         vault.addCredential(credential);
 
+        credential.setSynced(syncEnabled);
+
         executor.execute(() -> {
             try {
                 KeyManager km = new KeyManager();
@@ -162,7 +164,6 @@ public class AddItemDialog extends BottomSheetDialogFragment {
                 repo.saveVault(encryptedVault, new VaultRepository.Callback<Void>() {
                     @Override
                     public void onSuccess(Void result) {
-                        credential.setSynced(syncEnabled);
                         session.updateVault(vault);
                         mainHandler.post(() -> {
                             if (listener != null) listener.onCredentialSaved();

@@ -25,8 +25,10 @@ import com.example.clef.data.remote.AuthManager;
 import com.example.clef.data.repository.VaultRepository;
 import com.example.clef.ui.auth.LoginActivity;
 import com.example.clef.utils.BiometricHelper;
+import com.example.clef.utils.ExpiryHelper;
 import com.example.clef.utils.SessionManager;
 import com.example.clef.utils.ThemeManager;
+import com.example.clef.workers.PasswordExpiryWorker;
 import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.firebase.auth.FirebaseAuth;
@@ -68,6 +70,7 @@ public class SettingsFragment extends Fragment {
         setupAutoLock(view);
         setupSyncSwitch(view);
         setupImportExport(view);
+        setupNotifications(view);
         setupSignOut(view);
     }
 
@@ -274,6 +277,51 @@ public class SettingsFragment extends Fragment {
         view.findViewById(R.id.rowImportExport).setOnClickListener(v ->
                 ImportExportDialog.newInstance()
                         .show(getChildFragmentManager(), "import_export"));
+    }
+
+    // ── Notificaciones ────────────────────────────────────────────────────────
+
+    private void setupNotifications(View view) {
+        SwitchMaterial switchNotifications = view.findViewById(R.id.switchNotifications);
+        TextView tvPeriodValue = view.findViewById(R.id.tvExpiryPeriodValue);
+        SharedPreferences prefs = requireContext()
+                .getSharedPreferences(ExpiryHelper.PREFS_NAME, Context.MODE_PRIVATE);
+
+        switchNotifications.setChecked(prefs.getBoolean(ExpiryHelper.PREF_NOTIFICATIONS, false));
+        tvPeriodValue.setText(periodLabel(prefs.getLong(ExpiryHelper.PREF_PERIOD, ExpiryHelper.PERIOD_ONE_YEAR)));
+
+        switchNotifications.setOnCheckedChangeListener((btn, isChecked) -> {
+            prefs.edit().putBoolean(ExpiryHelper.PREF_NOTIFICATIONS, isChecked).apply();
+            if (isChecked) {
+                PasswordExpiryWorker.schedule(requireContext());
+            } else {
+                PasswordExpiryWorker.cancel(requireContext());
+            }
+        });
+
+        view.findViewById(R.id.rowExpiryPeriod).setOnClickListener(v -> {
+            String[] options = {"Test (10 min)", "3 meses", "6 meses", "1 año"};
+            long[] values = {
+                    ExpiryHelper.PERIOD_TEST,
+                    ExpiryHelper.PERIOD_THREE_MONTHS,
+                    ExpiryHelper.PERIOD_SIX_MONTHS,
+                    ExpiryHelper.PERIOD_ONE_YEAR
+            };
+            new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                    .setTitle("Plazo de caducidad")
+                    .setItems(options, (d, which) -> {
+                        prefs.edit().putLong(ExpiryHelper.PREF_PERIOD, values[which]).apply();
+                        tvPeriodValue.setText(options[which]);
+                    })
+                    .show();
+        });
+    }
+
+    private String periodLabel(long ms) {
+        if (ms == ExpiryHelper.PERIOD_TEST)          return "Test (10 min)";
+        if (ms == ExpiryHelper.PERIOD_THREE_MONTHS)  return "3 meses";
+        if (ms == ExpiryHelper.PERIOD_SIX_MONTHS)    return "6 meses";
+        return "1 año";
     }
 
     // ── Cerrar sesión ─────────────────────────────────────────────────────────

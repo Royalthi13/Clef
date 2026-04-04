@@ -1,8 +1,13 @@
 package com.example.clef.ui.dashboard;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 
@@ -30,6 +35,8 @@ public class MainActivity extends AppCompatActivity {
                             android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
                     .putExtra("session_expired", true));
         });
+
+        requestNotificationPermission();
 
         long savedMs = getSharedPreferences("settings", 0).getLong("auto_lock_ms", 300_000);
         SessionManager.getInstance().setLockTimeout(savedMs);
@@ -170,6 +177,16 @@ public class MainActivity extends AppCompatActivity {
             bottomNav.setSelectedItemId(R.id.nav_generator);
         } else {
             bottomNav.setSelectedItemId(R.id.nav_vault);
+        }
+    }
+
+    private void requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1001);
+            }
         }
     }
 }

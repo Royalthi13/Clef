@@ -19,8 +19,7 @@
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvCredentials"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:maxHeight="400dp"
+        android:layout_height="300dp"
         android:overScrollMode="ifContentScrolls"
         android:paddingBottom="8dp" />
 

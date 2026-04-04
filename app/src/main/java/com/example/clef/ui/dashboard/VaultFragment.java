@@ -18,7 +18,9 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.clef.R;
 import com.example.clef.crypto.KeyManager;
 import com.example.clef.data.model.Credential;
+import com.example.clef.utils.ExpiryHelper;
 import com.example.clef.data.model.Vault;
+import com.example.clef.workers.PasswordExpiryWorker;
 import com.example.clef.data.repository.VaultRepository;
 import com.example.clef.utils.SessionManager;
 import com.google.android.material.chip.Chip;
@@ -41,6 +43,16 @@ public class VaultFragment extends Fragment {
 
     private final ExecutorService executor    = Executors.newSingleThreadExecutor();
     private final Handler         mainHandler = new Handler(Looper.getMainLooper());
+
+    private final Runnable expiryRefreshRunnable = new Runnable() {
+        @Override public void run() {
+            if (isAdded()) {
+                adapter.notifyDataSetChanged();
+                PasswordExpiryWorker.checkAndNotify(requireContext());
+                mainHandler.postDelayed(this, 60_000);
+            }
+        }
+    };
 
     @Nullable
     @Override
@@ -117,12 +129,24 @@ public class VaultFragment extends Fragment {
     public void onResume() {
         super.onResume();
         applyFilters();
+        mainHandler.postDelayed(expiryRefreshRunnable, 60_000);
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        mainHandler.removeCallbacks(expiryRefreshRunnable);
     }
 
     @Override
     public void onHiddenChanged(boolean hidden) {
         super.onHiddenChanged(hidden);
-        if (!hidden) applyFilters();
+        if (!hidden) {
+            applyFilters();
+            mainHandler.postDelayed(expiryRefreshRunnable, 60_000);
+        } else {
+            mainHandler.removeCallbacks(expiryRefreshRunnable);
+        }
     }
 
     // ── Guardado ───────────────────────────────────────────────────────────────
@@ -271,6 +295,9 @@ public class VaultFragment extends Fragment {
     private void applyFilters() {
         Vault vault = SessionManager.getInstance().getVault();
         if (vault == null) { showList(Collections.emptyList()); return; }
+
+        ExpiryHelper.saveMetadata(requireContext(), vault.getCredentials());
+        PasswordExpiryWorker.checkAndNotify(requireContext());
 
         List<Credential> list = new ArrayList<>(vault.getCredentials());
 

@@ -20,7 +20,10 @@ import com.bumptech.glide.request.RequestOptions;
 import com.example.clef.R;
 import com.example.clef.data.model.Credential;
 import com.example.clef.utils.ClipboardHelper;
+import com.example.clef.utils.ExpiryHelper;
 import com.example.clef.utils.PasswordGenerator;
+
+import androidx.core.content.ContextCompat;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
@@ -85,6 +88,18 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
         holder.tvTitle.setText(title);
         holder.tvUsername.setText(credential.getUsername());
         holder.ivSyncStatus.setVisibility(credential.isSynced() ? View.VISIBLE : View.GONE);
+
+        // ── Borde de caducidad ────────────────────────────────────────────────
+        android.content.SharedPreferences prefs =
+                context.getSharedPreferences(ExpiryHelper.PREFS_NAME, android.content.Context.MODE_PRIVATE);
+        int strokeColor;
+        if (prefs.getBoolean(ExpiryHelper.PREF_NOTIFICATIONS, false)) {
+            long periodMs = prefs.getLong(ExpiryHelper.PREF_PERIOD, ExpiryHelper.PERIOD_ONE_YEAR);
+            strokeColor = ExpiryHelper.getStrokeColor(context, credential.getUpdatedAt(), periodMs);
+        } else {
+            strokeColor = ContextCompat.getColor(context, R.color.clef_border);
+        }
+        ((com.google.android.material.card.MaterialCardView) holder.itemView).setStrokeColor(strokeColor);
 
         loadServiceIcon(holder, credential, title);
 
@@ -197,11 +212,33 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
                     dialogView.findViewById(R.id.tilNewPassword);
             com.google.android.material.textfield.TextInputEditText etNew =
                     dialogView.findViewById(R.id.etNewPassword);
+            android.widget.ImageButton btnShowNew =
+                    dialogView.findViewById(R.id.btnShowNewPassword);
 
+            // Dado → generar contraseña
             tilNew.setStartIconOnClickListener(gen -> {
                 String generated = PasswordGenerator.generateFromPrefs(context);
                 etNew.setText(generated);
                 etNew.setSelection(generated.length());
+            });
+
+            // Ojo → mantener pulsado para ver
+            btnShowNew.setOnTouchListener((v2, event) -> {
+                int len = etNew.getText() != null ? etNew.getText().length() : 0;
+                switch (event.getAction()) {
+                    case android.view.MotionEvent.ACTION_DOWN:
+                        etNew.setInputType(android.text.InputType.TYPE_CLASS_TEXT |
+                                android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
+                        etNew.setSelection(len);
+                        break;
+                    case android.view.MotionEvent.ACTION_UP:
+                    case android.view.MotionEvent.ACTION_CANCEL:
+                        etNew.setInputType(android.text.InputType.TYPE_CLASS_TEXT |
+                                android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+                        etNew.setSelection(len);
+                        break;
+                }
+                return true;
             });
 
             new com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
