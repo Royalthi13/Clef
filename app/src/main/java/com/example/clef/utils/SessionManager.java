@@ -54,7 +54,7 @@ public class SessionManager {
     public synchronized byte[] getDek() {
         return dek != null ? dek.clone() : null;
     }
-    public Vault   getVault()   { return vault; }
+    public synchronized Vault   getVault()   { return vault; }
     public boolean isUnlocked() { return dek != null; }
 
     public long getCloudVaultVersion() { return cloudVaultVersion; }

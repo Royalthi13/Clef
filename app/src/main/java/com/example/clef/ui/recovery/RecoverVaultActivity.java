@@ -189,9 +189,9 @@ public class RecoverVaultActivity extends AppCompatActivity {
                                         "Contraseña restablecida. Guarda tu nuevo código PUK.",
                                         Toast.LENGTH_SHORT).show();
                                 // Mostrar nuevo PUK antes de ir al dashboard
+                                ShowPukActivity.TempSecretHolder.set(nuevoPukBundle.puk);
                                 Intent i = new Intent(RecoverVaultActivity.this,
                                         ShowPukActivity.class);
-                                i.putExtra("extra_puk", nuevoPukBundle.puk);
                                 i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP |
                                         Intent.FLAG_ACTIVITY_NEW_TASK);
                                 startActivity(i);
