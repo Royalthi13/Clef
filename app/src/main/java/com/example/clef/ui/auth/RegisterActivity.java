@@ -70,6 +70,7 @@ public class RegisterActivity extends AppCompatActivity {
         if (email.isEmpty()) { etEmail.setError("Introduce tu correo"); return null; }
         if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) { etEmail.setError("Correo no válido"); return null; }
         return email;
+
     }
 
     private String getPassword() {
