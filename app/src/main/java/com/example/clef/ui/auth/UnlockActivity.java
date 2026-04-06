@@ -2,6 +2,7 @@ package com.example.clef.ui.auth;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.Editable;
@@ -19,28 +20,17 @@ import com.example.clef.data.repository.VaultRepository;
 import com.example.clef.ui.dashboard.MainActivity;
 import com.example.clef.ui.recovery.RecoverVaultActivity;
 import com.example.clef.utils.BiometricHelper;
+import com.example.clef.utils.BruteForceGuard;
 import com.example.clef.utils.SessionManager;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/**
- * Pantalla de desbloqueo cuando el usuario ya está autenticado en Firebase
- * pero la DEK no está en memoria (sesión bloqueada o dispositivo nuevo).
- *
- * Flujo:
- *   1. Cargar datos desde caché local (dispositivo conocido).
- *   2. Si no hay caché, descargar de Firebase (dispositivo nuevo).
- *   3. Si hay biometría activa, lanzarla automáticamente.
- *   4. Si el usuario introduce la contraseña correctamente, desbloquear.
- *
- * FIX: Añadido enlace "¿Olvidaste tu contraseña maestra?" → RecoverVaultActivity.
- * FIX: Si Firebase falla en dispositivo nuevo, redirige a Login con mensaje claro
- *      en lugar de bloquear al usuario autenticado sin explicación.
- */
 public class UnlockActivity extends AppCompatActivity {
 
     private TextInputLayout   tilPassword;
@@ -50,6 +40,8 @@ public class UnlockActivity extends AppCompatActivity {
     private View              loadingOverlay;
 
     private FirebaseManager.UserData userData;
+    private BruteForceGuard          bruteForceGuard;
+    private CountDownTimer           countDownTimer;
 
     private final ExecutorService cryptoExecutor = Executors.newSingleThreadExecutor();
     private final Handler         mainHandler    = new Handler(Looper.getMainLooper());
@@ -70,9 +62,12 @@ public class UnlockActivity extends AppCompatActivity {
         btnBiometric   = findViewById(R.id.btnBiometric);
         loadingOverlay = findViewById(R.id.loadingOverlay);
 
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        String uid = (user != null) ? user.getUid() : "anon";
+        bruteForceGuard = new BruteForceGuard(this, uid, "unlock");
+
         btnUnlock.setOnClickListener(v -> onMasterPasswordSubmit());
 
-        // Enlace a recuperación con PUK — pantalla ya no está huérfana
         TextView tvForgotMaster = findViewById(R.id.tvForgotMasterPassword);
         if (tvForgotMaster != null) {
             tvForgotMaster.setOnClickListener(v ->
@@ -84,9 +79,45 @@ public class UnlockActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        applyLockoutIfNeeded();
+    }
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
         cryptoExecutor.shutdownNow();
+        if (countDownTimer != null) countDownTimer.cancel();
+    }
+
+    // ── Protección fuerza bruta ────────────────────────────────────────────────
+
+    private void applyLockoutIfNeeded() {
+        long remaining = bruteForceGuard.getRemainingLockoutMs();
+        if (remaining <= 0) {
+            btnUnlock.setEnabled(true);
+            tilPassword.setError(null);
+            return;
+        }
+        startCountdown(remaining);
+    }
+
+    private void startCountdown(long remaining) {
+        btnUnlock.setEnabled(false);
+        if (countDownTimer != null) countDownTimer.cancel();
+        countDownTimer = new CountDownTimer(remaining, 1000) {
+            @Override
+            public void onTick(long millisUntilFinished) {
+                long s = (millisUntilFinished + 999) / 1000;
+                tilPassword.setError("Demasiados intentos. Espera " + s + "s.");
+            }
+            @Override
+            public void onFinish() {
+                tilPassword.setError(null);
+                btnUnlock.setEnabled(true);
+            }
+        }.start();
     }
 
     // ── Carga de datos ─────────────────────────────────────────────────────────
@@ -100,7 +131,6 @@ public class UnlockActivity extends AppCompatActivity {
             setLoading(false);
             onDataReady();
         } else {
-            // Dispositivo nuevo: descargar de Firebase
             repo.downloadAndCacheFromFirebase(new VaultRepository.Callback<FirebaseManager.UserData>() {
                 @Override
                 public void onSuccess(FirebaseManager.UserData data) {
@@ -116,12 +146,10 @@ public class UnlockActivity extends AppCompatActivity {
 
                 @Override
                 public void onError(Exception e) {
-                    // FIX: Mostrar mensaje más claro en lugar de redirigir silenciosamente
                     setLoading(false);
                     Toast.makeText(UnlockActivity.this,
                             "Sin conexión y sin datos locales. Conéctate a internet para continuar.",
                             Toast.LENGTH_LONG).show();
-                    // Dar opción de volver al login pero no forzar — el usuario puede reintentar
                     btnUnlock.setEnabled(false);
                     btnUnlock.setText("Sin datos disponibles");
                 }
@@ -135,6 +163,7 @@ public class UnlockActivity extends AppCompatActivity {
     }
 
     private void onDataReady() {
+        applyLockoutIfNeeded();
         boolean bioAvailable = BiometricHelper.isAvailable(this) && BiometricHelper.isEnabled(this);
         if (bioAvailable) {
             btnBiometric.setVisibility(View.VISIBLE);
@@ -155,6 +184,7 @@ public class UnlockActivity extends AppCompatActivity {
                     try {
                         KeyManager km    = new KeyManager();
                         Vault      vault = km.descifrarVault(userData.vault, dek);
+                        bruteForceGuard.recordSuccess();
                         SessionManager.getInstance().unlock(dek, vault);
                         mainHandler.post(UnlockActivity.this::goToMain);
                     } catch (Exception e) {
@@ -169,7 +199,7 @@ public class UnlockActivity extends AppCompatActivity {
                 Toast.makeText(UnlockActivity.this, message, Toast.LENGTH_SHORT).show();
             }
 
-            @Override public void onCancelled() { /* el campo de contraseña sigue visible */ }
+            @Override public void onCancelled() {}
         });
     }
 
@@ -178,6 +208,11 @@ public class UnlockActivity extends AppCompatActivity {
     private void onMasterPasswordSubmit() {
         if (userData == null) {
             Toast.makeText(this, getString(R.string.unlock_no_data), Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (bruteForceGuard.isLockedOut()) {
+            applyLockoutIfNeeded();
             return;
         }
 
@@ -199,12 +234,23 @@ public class UnlockActivity extends AppCompatActivity {
             try {
                 KeyManager.LoginResult result =
                         new KeyManager().login(passwordChars, salt, cajaA, vault);
+                bruteForceGuard.recordSuccess();
                 SessionManager.getInstance().unlock(result.dek, result.vault);
                 mainHandler.post(this::goToMain);
             } catch (Exception e) {
+                bruteForceGuard.recordFailure();
                 mainHandler.post(() -> {
                     setLoading(false);
-                    tilPassword.setError(getString(R.string.unlock_wrong_password));
+                    int remaining = BruteForceGuard.MAX_ATTEMPTS - bruteForceGuard.getAttemptCount();
+                    if (remaining <= 0) {
+                        bruteForceGuard.recordSuccess();
+                        startActivity(new Intent(UnlockActivity.this, RecoverVaultActivity.class));
+                        finish();
+                        return;
+                    }
+                    tilPassword.setError(getString(R.string.unlock_wrong_password)
+                            + " (" + remaining + " intentos restantes)");
+                    applyLockoutIfNeeded();
                 });
             }
         });

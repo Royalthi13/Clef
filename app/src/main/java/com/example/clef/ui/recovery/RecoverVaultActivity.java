@@ -16,11 +16,16 @@ import com.example.clef.data.remote.FirebaseManager;
 import com.example.clef.data.repository.VaultRepository;
 import com.example.clef.ui.dashboard.MainActivity;
 import com.example.clef.ui.setup.ShowPukActivity;
+import com.example.clef.utils.BruteForceGuard;
 import com.example.clef.utils.SessionManager;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+
+import android.os.CountDownTimer;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -53,6 +58,9 @@ public class RecoverVaultActivity extends AppCompatActivity {
     private final ExecutorService cryptoExecutor = Executors.newSingleThreadExecutor();
     private final Handler         mainHandler    = new Handler(Looper.getMainLooper());
 
+    private BruteForceGuard bruteForceGuard;
+    private CountDownTimer  countDownTimer;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -71,15 +79,58 @@ public class RecoverVaultActivity extends AppCompatActivity {
         loadingOverlay     = findViewById(R.id.loadingOverlay);
 
         btnRecover.setOnClickListener(v -> onRecoverClicked());
+
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        String uid = (user != null) ? user.getUid() : "anon";
+        bruteForceGuard = new BruteForceGuard(this, uid, "recover");
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        applyLockoutIfNeeded();
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
         cryptoExecutor.shutdownNow();
+        if (countDownTimer != null) countDownTimer.cancel();
+    }
+
+    private void applyLockoutIfNeeded() {
+        long remaining = bruteForceGuard.getRemainingLockoutMs();
+        if (remaining <= 0) {
+            btnRecover.setEnabled(true);
+            tilPuk.setError(null);
+            return;
+        }
+        startCountdown(remaining);
+    }
+
+    private void startCountdown(long remaining) {
+        btnRecover.setEnabled(false);
+        if (countDownTimer != null) countDownTimer.cancel();
+        countDownTimer = new CountDownTimer(remaining, 1000) {
+            @Override
+            public void onTick(long millisUntilFinished) {
+                long s = (millisUntilFinished + 999) / 1000;
+                tilPuk.setError("Demasiados intentos. Espera " + s + "s.");
+            }
+            @Override
+            public void onFinish() {
+                tilPuk.setError(null);
+                btnRecover.setEnabled(true);
+            }
+        }.start();
     }
 
     private void onRecoverClicked() {
+        if (bruteForceGuard.isLockedOut()) {
+            applyLockoutIfNeeded();
+            return;
+        }
+
         tilPuk            .setError(null);
         tilNewPassword    .setError(null);
         tilConfirmPassword.setError(null);
@@ -183,6 +234,7 @@ public class RecoverVaultActivity extends AppCompatActivity {
                     new VaultRepository.Callback<Void>() {
                         @Override
                         public void onSuccess(Void r) {
+                            bruteForceGuard.recordSuccess();
                             SessionManager.getInstance().unlock(result.dek, result.vault);
                             mainHandler.post(() -> {
                                 Toast.makeText(RecoverVaultActivity.this,
@@ -211,9 +263,26 @@ public class RecoverVaultActivity extends AppCompatActivity {
                     });
 
         } catch (Exception e) {
+            bruteForceGuard.recordFailure();
             mainHandler.post(() -> {
                 setLoading(false);
-                tilPuk.setError("Código PUK incorrecto");
+                int remaining = BruteForceGuard.MAX_ATTEMPTS - bruteForceGuard.getAttemptCount();
+                if (remaining <= 0) {
+                    bruteForceGuard.recordSuccess();
+                    SessionManager.getInstance().lock();
+                    new com.example.clef.data.remote.AuthManager(RecoverVaultActivity.this,
+                            getString(R.string.default_web_client_id))
+                            .signOut(RecoverVaultActivity.this, () -> {
+                                Intent i = new Intent(RecoverVaultActivity.this,
+                                        com.example.clef.ui.auth.LoginActivity.class);
+                                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                startActivity(i);
+                                finish();
+                            });
+                    return;
+                }
+                tilPuk.setError("Código PUK incorrecto (" + remaining + " intentos restantes)");
+                applyLockoutIfNeeded();
             });
         }
     }
