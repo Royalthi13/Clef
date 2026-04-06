@@ -3,6 +3,9 @@ package com.example.clef.utils;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import androidx.security.crypto.EncryptedSharedPreferences;
+import androidx.security.crypto.MasterKey;
+
 /**
  * Protege contra ataques de fuerza bruta con delays exponenciales.
  * Tras cada intento fallido aplica un delay creciente antes de permitir otro intento.
@@ -12,7 +15,7 @@ import android.content.SharedPreferences;
  */
 public class BruteForceGuard {
 
-    private static final int[] DELAYS_SECONDS = {1, 1, 1, 1, 1}; // TODO: cambiar a {10, 30, 60, 120, 240} antes de producción
+    private static final int[] DELAYS_SECONDS = {10, 30, 60, 120, 240};
     public  static final int   MAX_ATTEMPTS   = 5;
 
     private final SharedPreferences prefs;
@@ -20,7 +23,22 @@ public class BruteForceGuard {
     private final String            keyLastAttempt;
 
     public BruteForceGuard(Context context, String uid, String prefix) {
-        prefs          = context.getSharedPreferences("brute_force_guard", Context.MODE_PRIVATE);
+        SharedPreferences p;
+        try {
+            MasterKey masterKey = new MasterKey.Builder(context)
+                    .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                    .build();
+            p = EncryptedSharedPreferences.create(
+                    context,
+                    "brute_force_guard",
+                    masterKey,
+                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            );
+        } catch (Exception e) {
+            p = context.getSharedPreferences("brute_force_guard", Context.MODE_PRIVATE);
+        }
+        prefs          = p;
         keyAttempts    = prefix + "_attempts_"     + uid;
         keyLastAttempt = prefix + "_last_attempt_" + uid;
     }

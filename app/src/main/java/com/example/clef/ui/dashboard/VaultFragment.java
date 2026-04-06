@@ -23,6 +23,7 @@ import com.example.clef.data.model.Credential;
 import com.example.clef.data.remote.FirebaseManager;
 import com.example.clef.utils.BiometricHelper;
 import com.example.clef.utils.ExpiryHelper;
+import com.example.clef.utils.SecurePrefs;
 import com.example.clef.data.model.Vault;
 import com.example.clef.workers.PasswordExpiryWorker;
 import com.example.clef.data.repository.VaultRepository;
@@ -143,8 +144,7 @@ public class VaultFragment extends Fragment {
         String tipUid = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser() != null
                 ? com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser().getUid()
                 : "anon";
-        android.content.SharedPreferences tipPrefs = requireContext()
-                .getSharedPreferences("generator_prefs_" + tipUid, Context.MODE_PRIVATE);
+        android.content.SharedPreferences tipPrefs = SecurePrefs.get(requireContext(), "generator_prefs_" + tipUid);
         View cardTip = view.findViewById(R.id.cardGeneratorTip);
         if (tipPrefs.getBoolean("tip_dismissed", false)) {
             cardTip.setVisibility(View.GONE);
@@ -519,7 +519,7 @@ public class VaultFragment extends Fragment {
 
         // Ordenación
         android.content.SharedPreferences prefs =
-                requireContext().getSharedPreferences(ExpiryHelper.PREFS_NAME, Context.MODE_PRIVATE);
+                SecurePrefs.get(requireContext(), ExpiryHelper.PREFS_NAME);
         long periodMs = prefs.getLong(ExpiryHelper.PREF_PERIOD, ExpiryHelper.PERIOD_ONE_YEAR);
 
         switch (currentSort) {

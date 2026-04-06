@@ -29,6 +29,7 @@ import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.bumptech.glide.load.resource.bitmap.CircleCrop;
 import com.bumptech.glide.signature.ObjectKey;
 import com.example.clef.R;
+import com.example.clef.utils.SecurePrefs;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
@@ -192,8 +193,7 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null) { ivProfilePhoto.setImageResource(R.drawable.ic_person_24); return; }
 
-        SharedPreferences prefs = requireContext()
-                .getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE);
+        SharedPreferences prefs = SecurePrefs.get(requireContext(), PREFS_NAME);
         String localPath = prefs.getString(photoPathKey(user.getUid()), null);
         long   signature = prefs.getLong(photoSigKey(user.getUid()), 0L);
 
@@ -488,8 +488,7 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
      */
     private void deleteOldPhotoIfNeeded(String uid) {
         if (!isAdded()) return;
-        SharedPreferences prefs = requireContext()
-                .getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE);
+        SharedPreferences prefs = SecurePrefs.get(requireContext(), PREFS_NAME);
         String oldPath = prefs.getString(photoPathKey(uid), null);
         if (oldPath != null && selectedPhotoFile != null
                 && !oldPath.equals(selectedPhotoFile.getAbsolutePath())) {

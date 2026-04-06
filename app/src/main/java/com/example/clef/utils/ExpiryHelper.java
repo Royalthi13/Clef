@@ -3,6 +3,8 @@ package com.example.clef.utils;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import com.example.clef.utils.SecurePrefs;
+
 import androidx.core.content.ContextCompat;
 
 import com.example.clef.R;
@@ -67,13 +69,13 @@ public class ExpiryHelper {
             metas.add(new CredentialMeta(c.getTitle(), c.getUpdatedAt()));
         }
         String json = new Gson().toJson(metas);
-        ctx.getSharedPreferences(METADATA_PREFS, Context.MODE_PRIVATE)
+        SecurePrefs.get(ctx, METADATA_PREFS)
                 .edit().putString(METADATA_KEY, json).apply();
     }
 
     /** Carga los metadatos guardados. */
     public static List<CredentialMeta> loadMetadata(Context ctx) {
-        String json = ctx.getSharedPreferences(METADATA_PREFS, Context.MODE_PRIVATE)
+        String json = SecurePrefs.get(ctx, METADATA_PREFS)
                 .getString(METADATA_KEY, null);
         if (json == null) return new ArrayList<>();
         Type type = new TypeToken<List<CredentialMeta>>(){}.getType();

@@ -14,6 +14,7 @@ import androidx.fragment.app.Fragment;
 import com.example.clef.R;
 import com.example.clef.utils.ClipboardHelper;
 import com.example.clef.utils.PasswordGenerator;
+import com.example.clef.utils.SecurePrefs;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.slider.Slider;
 
@@ -124,9 +125,7 @@ public class GeneratorFragment extends Fragment {
     }
 
     private void loadSavedConfig() {
-        SharedPreferences prefs = requireContext()
-                .getSharedPreferences(PasswordGenerator.PREFS_NAME,
-                        android.content.Context.MODE_PRIVATE);
+        SharedPreferences prefs = SecurePrefs.get(requireContext(), PasswordGenerator.PREFS_NAME);
         sliderLength   .setValue(  prefs.getInt    (PasswordGenerator.KEY_LENGTH,    16));
         switchUppercase.setChecked(prefs.getBoolean(PasswordGenerator.KEY_UPPERCASE, true));
         switchLowercase.setChecked(prefs.getBoolean(PasswordGenerator.KEY_LOWERCASE, true));

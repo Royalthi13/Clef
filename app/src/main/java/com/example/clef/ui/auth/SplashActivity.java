@@ -11,6 +11,7 @@ import com.example.clef.R;
 import com.example.clef.data.remote.AuthManager;
 import com.example.clef.data.remote.FirebaseManager;
 import com.example.clef.ui.setup.CreateMasterActivity;
+import com.example.clef.utils.RootDetector;
 import com.example.clef.utils.SessionManager;
 
 public class SplashActivity extends AppCompatActivity {
@@ -34,6 +35,24 @@ public class SplashActivity extends AppCompatActivity {
         // fue destruida sin pasar por signOut. Coste: ninguno — si el usuario
         // era el mismo, UnlockActivity la recuperará enseguida.
         SessionManager.getInstance().lock();
+
+        // Comprobar integridad del dispositivo antes de continuar
+        RootDetector.Result rootResult = RootDetector.check(this);
+        if (rootResult.blocked) {
+            setContentView(R.layout.activity_splash);
+            String titulo = rootResult.isClear
+                    ? "Dispositivo no seguro"
+                    : "Múltiples indicios de riesgo";
+            new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                    .setTitle(titulo)
+                    .setMessage(rootResult.reason +
+                            "\n\nEl acceso ha sido bloqueado para proteger tus datos. " +
+                            "Si crees que es un error, contacta con soporte.")
+                    .setPositiveButton("Cerrar app", (d, w) -> finish())
+                    .setCancelable(false)
+                    .show();
+            return;
+        }
 
         setContentView(R.layout.activity_splash);
 

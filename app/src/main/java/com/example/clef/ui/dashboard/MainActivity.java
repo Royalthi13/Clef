@@ -14,6 +14,7 @@ import androidx.fragment.app.FragmentManager;
 import com.example.clef.R;
 import com.example.clef.ui.auth.UnlockActivity;
 import com.example.clef.ui.settings.SettingsFragment;
+import com.example.clef.utils.SecurePrefs;
 import com.example.clef.utils.SessionManager;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
@@ -38,7 +39,7 @@ public class MainActivity extends AppCompatActivity {
 
         requestNotificationPermission();
 
-        long savedMs = getSharedPreferences("settings", 0).getLong("auto_lock_ms", 300_000);
+        long savedMs = SecurePrefs.get(this, "settings").getLong("auto_lock_ms", 300_000);
         SessionManager.getInstance().setLockTimeout(savedMs);
 
         FragmentManager fm = getSupportFragmentManager();

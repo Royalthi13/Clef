@@ -16,6 +16,7 @@ import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.ProcessLifecycleOwner;
 
 import com.example.clef.utils.ExpiryHelper;
+import com.example.clef.utils.SecurePrefs;
 import com.example.clef.utils.SessionManager;
 import com.example.clef.utils.ThemeManager;
 import com.example.clef.workers.PasswordExpiryWorker;
@@ -48,7 +49,7 @@ public class ClefApp extends Application {
         });
 
         // Si las notificaciones estaban activadas antes de reinstalar, reprogramar el worker
-        SharedPreferences prefs = getSharedPreferences(ExpiryHelper.PREFS_NAME, Context.MODE_PRIVATE);
+        SharedPreferences prefs = SecurePrefs.get(this, ExpiryHelper.PREFS_NAME);
         if (prefs.getBoolean(ExpiryHelper.PREF_NOTIFICATIONS, false)) {
             PasswordExpiryWorker.schedule(this);
         }

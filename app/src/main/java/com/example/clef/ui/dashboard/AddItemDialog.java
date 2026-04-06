@@ -17,6 +17,7 @@ import com.example.clef.data.model.Credential;
 import com.example.clef.data.model.Vault;
 import com.example.clef.data.repository.VaultRepository;
 import com.example.clef.utils.PasswordGenerator;
+import com.example.clef.utils.SecurePrefs;
 import com.example.clef.utils.SessionManager;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.button.MaterialButton;
@@ -159,8 +160,7 @@ public class AddItemDialog extends BottomSheetDialogFragment {
                 ? (Credential.Category) chipGroupCategory.findViewById(checkedId).getTag()
                 : Credential.Category.OTHER;
 
-        boolean syncEnabled = requireContext()
-                .getSharedPreferences("settings", 0)
+        boolean syncEnabled = SecurePrefs.get(requireContext(), "settings")
                 .getBoolean("sync_enabled", false);
 
         Credential credential = new Credential(title, username, password, url, notes, category);

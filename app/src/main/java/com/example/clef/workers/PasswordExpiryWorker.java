@@ -17,6 +17,7 @@ import androidx.work.WorkerParameters;
 import com.example.clef.R;
 import com.example.clef.ui.dashboard.MainActivity;
 import com.example.clef.utils.ExpiryHelper;
+import com.example.clef.utils.SecurePrefs;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -34,7 +35,7 @@ public class PasswordExpiryWorker extends Worker {
     @Override
     public Result doWork() {
         Context ctx = getApplicationContext();
-        SharedPreferences prefs = ctx.getSharedPreferences(ExpiryHelper.PREFS_NAME, Context.MODE_PRIVATE);
+        SharedPreferences prefs = SecurePrefs.get(ctx, ExpiryHelper.PREFS_NAME);
 
         boolean enabled = prefs.getBoolean(ExpiryHelper.PREF_NOTIFICATIONS, false);
         if (!enabled) return Result.success();
@@ -90,7 +91,7 @@ public class PasswordExpiryWorker extends Worker {
      */
     public static void checkAndNotify(Context ctx) {
         android.content.SharedPreferences prefs =
-                ctx.getSharedPreferences(ExpiryHelper.PREFS_NAME, Context.MODE_PRIVATE);
+                SecurePrefs.get(ctx, ExpiryHelper.PREFS_NAME);
         if (!prefs.getBoolean(ExpiryHelper.PREF_NOTIFICATIONS, false)) return;
 
         long now = System.currentTimeMillis();

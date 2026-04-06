@@ -3,6 +3,8 @@ package com.example.clef.utils;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import com.example.clef.utils.SecurePrefs;
+
 import androidx.appcompat.app.AppCompatDelegate;
 
 /**
@@ -32,12 +34,12 @@ public class ThemeManager {
 
     /** Devuelve el modo guardado (por defecto: sistema). */
     public static int load(Context context) {
-        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        SharedPreferences prefs = SecurePrefs.get(context, PREFS_NAME);
         return prefs.getInt(KEY_THEME, MODE_SYSTEM);
     }
 
     private static void save(Context context, int mode) {
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        SecurePrefs.get(context, PREFS_NAME)
                 .edit()
                 .putInt(KEY_THEME, mode)
                 .apply();

@@ -3,6 +3,8 @@ package com.example.clef.utils;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import com.example.clef.utils.SecurePrefs;
+
 import java.security.SecureRandom;
 
 /**
@@ -77,7 +79,7 @@ public class PasswordGenerator {
      * Llamar desde AddItemDialog para rellenar el campo contraseña.
      */
     public static String generateFromPrefs(Context context) {
-        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        SharedPreferences prefs = SecurePrefs.get(context, PREFS_NAME);
         int     length  = prefs.getInt(KEY_LENGTH,    DEFAULT_LENGTH);
         boolean upper   = prefs.getBoolean(KEY_UPPERCASE, true);
         boolean lower   = prefs.getBoolean(KEY_LOWERCASE, true);
@@ -89,7 +91,7 @@ public class PasswordGenerator {
     /** Guarda la configuración actual en SharedPreferences. */
     public static void saveConfig(Context context, int length, boolean upper,
                                   boolean lower, boolean numbers, boolean symbols) {
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        SecurePrefs.get(context, PREFS_NAME)
                 .edit()
                 .putInt(KEY_LENGTH,       length)
                 .putBoolean(KEY_UPPERCASE, upper)

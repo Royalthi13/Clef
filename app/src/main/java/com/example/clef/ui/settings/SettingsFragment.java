@@ -26,6 +26,7 @@ import com.example.clef.data.repository.VaultRepository;
 import com.example.clef.ui.auth.LoginActivity;
 import com.example.clef.utils.BiometricHelper;
 import com.example.clef.utils.ExpiryHelper;
+import com.example.clef.utils.SecurePrefs;
 import com.example.clef.utils.SessionManager;
 import com.example.clef.utils.ThemeManager;
 import com.example.clef.workers.PasswordExpiryWorker;
@@ -100,8 +101,7 @@ public class SettingsFragment extends Fragment {
         }
         tvUserEmail.setText(user.getEmail() != null ? user.getEmail() : "");
 
-        SharedPreferences prefs = requireContext()
-                .getSharedPreferences(ProfileEditDialog.PREFS_NAME, Context.MODE_PRIVATE);
+        SharedPreferences prefs = SecurePrefs.get(requireContext(), ProfileEditDialog.PREFS_NAME);
 
         String uid       = user.getUid();
         String localPath = prefs.getString(ProfileEditDialog.photoPathKey(uid), null);
@@ -236,8 +236,7 @@ public class SettingsFragment extends Fragment {
 
     private void setupAutoLock(View view) {
         TextView tvAutoLockValue = view.findViewById(R.id.tvAutoLockValue);
-        SharedPreferences prefs = requireContext()
-                .getSharedPreferences("settings", Context.MODE_PRIVATE);
+        SharedPreferences prefs = SecurePrefs.get(requireContext(), "settings");
         tvAutoLockValue.setText(msToLabel(prefs.getLong("auto_lock_ms", 300_000)));
 
         view.findViewById(R.id.rowAutoLock).setOnClickListener(v -> {
@@ -260,8 +259,7 @@ public class SettingsFragment extends Fragment {
 
     private void setupSyncSwitch(View view) {
         SwitchMaterial switchSync = view.findViewById(R.id.switchSync);
-        SharedPreferences prefs = requireContext()
-                .getSharedPreferences("settings", Context.MODE_PRIVATE);
+        SharedPreferences prefs = SecurePrefs.get(requireContext(), "settings");
         switchSync.setChecked(prefs.getBoolean("sync_enabled", false));
         switchSync.setOnCheckedChangeListener((btn, isChecked) ->
                 prefs.edit().putBoolean("sync_enabled", isChecked).apply());
@@ -288,8 +286,7 @@ public class SettingsFragment extends Fragment {
         SwitchMaterial switchColors        = view.findViewById(R.id.switchColors);
         SwitchMaterial switchNotifications = view.findViewById(R.id.switchNotifications);
         TextView tvPeriodValue = view.findViewById(R.id.tvExpiryPeriodValue);
-        SharedPreferences prefs = requireContext()
-                .getSharedPreferences(ExpiryHelper.PREFS_NAME, Context.MODE_PRIVATE);
+        SharedPreferences prefs = SecurePrefs.get(requireContext(), ExpiryHelper.PREFS_NAME);
 
         boolean notificationsOn = prefs.getBoolean(ExpiryHelper.PREF_NOTIFICATIONS, false);
 

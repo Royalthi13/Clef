@@ -12,7 +12,7 @@ import androidx.annotation.NonNull;
 public class ClipboardHelper {
 
     private static final long CLEAR_DELAY_MS     = 45_000;
-    private static final long CLEAR_DELAY_PUK_MS = 30_000; // TODO: cambiar a 300_000 (5 min) antes de producción
+    private static final long CLEAR_DELAY_PUK_MS = 300_000; // 5 minutos para el PUK
 
     // Timestamp y delay del ultimo contenido sensible copiado
     private static long copyTimestamp = 0;

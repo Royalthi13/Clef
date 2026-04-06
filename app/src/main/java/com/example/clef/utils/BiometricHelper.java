@@ -2,6 +2,8 @@ package com.example.clef.utils;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+
+import com.example.clef.utils.SecurePrefs;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 import android.util.Base64;
@@ -53,7 +55,7 @@ public class BiometricHelper {
 
     /** true solo si hay una DEK cifrada guardada para el usuario ACTUAL. */
     public static boolean isEnabled(Context context) {
-        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return SecurePrefs.get(context, PREFS_NAME)
                 .contains(getDekKey());
     }
 
@@ -90,7 +92,7 @@ public class BiometricHelper {
                                 System.arraycopy(encDek, 0, combined, iv.length, encDek.length);
 
                                 // Guardar con clave específica del usuario actual
-                                activity.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                                SecurePrefs.get(activity, PREFS_NAME)
                                         .edit()
                                         .putString(getDekKey(),
                                                 Base64.encodeToString(combined, Base64.NO_WRAP))
@@ -171,7 +173,7 @@ public class BiometricHelper {
 
     /** Borra SOLO la entrada del usuario actual, no las de otros usuarios. */
     public static void disable(Context context) {
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        SecurePrefs.get(context, PREFS_NAME)
                 .edit()
                 .remove(getDekKey())
                 .apply();
@@ -184,7 +186,7 @@ public class BiometricHelper {
 
     /** Borra TODAS las entradas biométricas del dispositivo (llamar en signOut completo). */
     public static void disableAll(Context context) {
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        SecurePrefs.get(context, PREFS_NAME)
                 .edit().clear().apply();
         try {
             KeyStore ks = KeyStore.getInstance(ANDROID_KEYSTORE);
@@ -203,7 +205,7 @@ public class BiometricHelper {
 
     public static void unlock(FragmentActivity activity, UnlockCallback callback) {
         // Lee la clave del usuario ACTUAL — si es otro usuario, getDekKey() devuelve otro string
-        String encDekB64 = activity.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        String encDekB64 = SecurePrefs.get(activity, PREFS_NAME)
                 .getString(getDekKey(), null);
 
         if (encDekB64 == null) {

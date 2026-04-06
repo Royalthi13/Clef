@@ -8,6 +8,7 @@ import androidx.security.crypto.EncryptedSharedPreferences;
 import androidx.security.crypto.MasterKey;
 
 import com.example.clef.crypto.KeyManager;
+import com.example.clef.utils.SecurePrefs;
 import com.example.clef.data.local.FileManager;
 import com.example.clef.data.model.Credential;
 import com.example.clef.data.model.Vault;
@@ -85,7 +86,7 @@ public class VaultRepository {
 
     public void saveVault(String encryptedVaultBase64, Callback<Void> callback) {
         saveLocalVault(encryptedVaultBase64);
-        boolean syncEnabled = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+        boolean syncEnabled = SecurePrefs.get(context, "settings")
                 .getBoolean("sync_enabled", false);
         if (syncEnabled) {
             exportToFirebase(callback);

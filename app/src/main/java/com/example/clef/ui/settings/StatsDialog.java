@@ -14,6 +14,7 @@ import com.example.clef.data.model.Credential;
 import com.example.clef.data.model.Vault;
 import com.example.clef.utils.ExpiryHelper;
 import com.example.clef.utils.PasswordStrengthHelper;
+import com.example.clef.utils.SecurePrefs;
 import com.example.clef.utils.SessionManager;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 
@@ -51,8 +52,7 @@ public class StatsDialog extends BottomSheetDialogFragment {
 
         List<Credential> credentials = vault.getCredentials();
 
-        android.content.SharedPreferences prefs = requireContext()
-                .getSharedPreferences(ExpiryHelper.PREFS_NAME, android.content.Context.MODE_PRIVATE);
+        android.content.SharedPreferences prefs = SecurePrefs.get(requireContext(), ExpiryHelper.PREFS_NAME);
         long periodMs = prefs.getLong(ExpiryHelper.PREF_PERIOD, ExpiryHelper.PERIOD_ONE_YEAR);
 
         int total   = credentials.size();

@@ -22,6 +22,7 @@ import com.example.clef.data.model.Credential;
 import com.example.clef.utils.ClipboardHelper;
 import com.example.clef.utils.ExpiryHelper;
 import com.example.clef.utils.PasswordGenerator;
+import com.example.clef.utils.SecurePrefs;
 
 import androidx.core.content.ContextCompat;
 import com.google.android.material.button.MaterialButton;
@@ -90,8 +91,7 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
         holder.ivSyncStatus.setVisibility(credential.isSynced() ? View.VISIBLE : View.GONE);
 
         // ── Borde de caducidad ────────────────────────────────────────────────
-        android.content.SharedPreferences prefs =
-                context.getSharedPreferences(ExpiryHelper.PREFS_NAME, android.content.Context.MODE_PRIVATE);
+        android.content.SharedPreferences prefs = SecurePrefs.get(context, ExpiryHelper.PREFS_NAME);
         int strokeColor;
         if (prefs.getBoolean(ExpiryHelper.PREF_COLORS, false)) {
             long periodMs = prefs.getLong(ExpiryHelper.PREF_PERIOD, ExpiryHelper.PERIOD_ONE_YEAR);
