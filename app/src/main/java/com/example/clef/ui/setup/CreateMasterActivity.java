@@ -123,7 +123,7 @@ public class CreateMasterActivity extends AppCompatActivity {
                         mainHandler.post(() -> {
                             setLoading(false);
                             Intent i = new Intent(CreateMasterActivity.this, ShowPukActivity.class);
-                            i.putExtra(EXTRA_PUK, bundle.puk);
+                            ShowPukActivity.TempSecretHolder.set(bundle.puk);
                             startActivity(i);
                             finish();
                         });

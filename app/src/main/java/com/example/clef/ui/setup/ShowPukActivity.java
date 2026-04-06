@@ -24,7 +24,7 @@ public class ShowPukActivity extends AppCompatActivity {
         MaterialToolbar toolbar = findViewById(R.id.topAppBar);
         toolbar.setNavigationOnClickListener(v -> finish());
 
-        String puk = getIntent().getStringExtra(CreateMasterActivity.EXTRA_PUK);
+        String puk = TempSecretHolder.getAndClear();
         if (puk == null || puk.isEmpty()) {
             Toast.makeText(this, R.string.puk_missing, Toast.LENGTH_LONG).show();
             goToMain();
@@ -53,5 +53,14 @@ public class ShowPukActivity extends AppCompatActivity {
         i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(i);
         finish();
+    }
+    public static class TempSecretHolder {
+        private static String secret;
+        public static void set(String s) { secret = s; }
+        public static String getAndClear() {
+            String s = secret;
+            secret = null;
+            return s;
+        }
     }
 }

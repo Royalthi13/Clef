@@ -51,7 +51,9 @@ public class SessionManager {
         resetInactivityTimer();
     }
 
-    public byte[]  getDek()     { return dek; }
+    public synchronized byte[] getDek() {
+        return dek != null ? dek.clone() : null;
+    }
     public Vault   getVault()   { return vault; }
     public boolean isUnlocked() { return dek != null; }
 
