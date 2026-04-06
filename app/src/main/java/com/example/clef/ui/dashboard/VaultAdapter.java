@@ -107,6 +107,7 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
             ClipboardHelper.copySensitive(context, title, credential.getPassword());
             credential.setLastUsedAt(System.currentTimeMillis());
             if (actionListener != null) actionListener.onSave(credential);
+            android.widget.Toast.makeText(context, "Contraseña copiada", android.widget.Toast.LENGTH_SHORT).show();
         });
 
         // ── Expandir / colapsar al pulsar la card ─────────────────────────────

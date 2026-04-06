@@ -1,7 +1,5 @@
 package com.example.clef.ui.setup;
 
-import android.content.ClipData;
-import android.content.ClipboardManager;
 import android.content.Intent;
 import android.os.Bundle;
 import android.widget.TextView;
@@ -11,6 +9,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.clef.R;
 import com.example.clef.ui.dashboard.MainActivity;
+import com.example.clef.utils.ClipboardHelper;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
 
@@ -38,11 +37,8 @@ public class ShowPukActivity extends AppCompatActivity {
         MaterialButton btnContinue = findViewById(R.id.btnContinue);
 
         btnCopy.setOnClickListener(v -> {
-            ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-            if (clipboard != null) {
-                clipboard.setPrimaryClip(ClipData.newPlainText("PUK", puk));
-                Toast.makeText(this, R.string.puk_copied, Toast.LENGTH_SHORT).show();
-            }
+            ClipboardHelper.copySensitivePuk(this, "PUK", puk);
+            Toast.makeText(this, R.string.puk_copied, Toast.LENGTH_SHORT).show();
         });
 
         btnContinue.setOnClickListener(v -> goToMain());

@@ -2,6 +2,7 @@ package com.example.clef;
 
 import android.app.Activity;
 import android.app.Application;
+import com.example.clef.utils.ClipboardHelper;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
@@ -37,7 +38,9 @@ public class ClefApp extends Application {
                 );
             }
             @Override public void onActivityStarted(Activity activity) {}
-            @Override public void onActivityResumed(Activity activity) {}
+            @Override public void onActivityResumed(Activity activity) {
+                ClipboardHelper.clearIfExpired(activity);
+            }
             @Override public void onActivityPaused(Activity activity) {}
             @Override public void onActivityStopped(Activity activity) {}
             @Override public void onActivitySaveInstanceState(Activity activity, Bundle outState) {}

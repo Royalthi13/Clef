@@ -5,36 +5,49 @@ import android.content.ClipDescription;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.os.Build;
-import android.os.Handler;
-import android.os.Looper;
 import android.os.PersistableBundle;
 
 import androidx.annotation.NonNull;
 
 public class ClipboardHelper {
 
-    private static final long CLEAR_DELAY_MS = 45_000;
+    private static final long CLEAR_DELAY_MS     = 45_000;
+    private static final long CLEAR_DELAY_PUK_MS = 30_000; // TODO: cambiar a 300_000 (5 min) antes de producción
 
-    private static final Handler handler = new Handler(Looper.getMainLooper());
-    private static Runnable pendingClear;
+    // Timestamp y delay del ultimo contenido sensible copiado
+    private static long copyTimestamp = 0;
+    private static long copyDelay     = 0;
 
     private ClipboardHelper() {}
 
     /**
-     * Copia texto al portapapeles y programa su borrado a los 45s.
-     * En Android 13+ marcamos el clip como sensible para ocultar la preview.
-     * El borrado real compara el texto exacto antes de limpiar,
-     * para no borrar si el usuario copió algo distinto después.
+     * Copia el PUK al portapapeles con limpieza a los 5 minutos.
+     */
+    public static void copySensitivePuk(@NonNull Context context,
+                                        @NonNull String label,
+                                        @NonNull String text) {
+        copySensitive(context, label, text, CLEAR_DELAY_PUK_MS);
+    }
+
+    /**
+     * Copia texto sensible al portapapeles con limpieza a los 45 segundos.
      */
     public static void copySensitive(@NonNull Context context,
                                      @NonNull String label,
                                      @NonNull String text) {
+        copySensitive(context, label, text, CLEAR_DELAY_MS);
+    }
+
+    private static void copySensitive(@NonNull Context context,
+                                      @NonNull String label,
+                                      @NonNull String text,
+                                      long delayMs) {
         ClipboardManager cm = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
         if (cm == null) return;
 
         ClipData clip = ClipData.newPlainText(label, text);
 
-        // Android 13+: marcar como contenido sensible oculta la notificación de portapapeles
+        // Android 13+: marcar como contenido sensible oculta la notificación del portapapeles
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             PersistableBundle extras = new PersistableBundle();
             extras.putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true);
@@ -43,29 +56,32 @@ public class ClipboardHelper {
 
         cm.setPrimaryClip(clip);
 
-        // Cancelar borrado pendiente anterior
-        if (pendingClear != null) {
-            handler.removeCallbacks(pendingClear);
-            pendingClear = null;
-        }
+        // Guardar timestamp para limpiar cuando la app vuelva a foreground
+        copyTimestamp = System.currentTimeMillis();
+        copyDelay     = delayMs;
+    }
 
-        final String copiedText = text;
+    /**
+     * Llamar desde onActivityResumed en ClefApp.
+     * Si ha pasado el tiempo configurado, limpia el portapapeles.
+     * La app esta en foreground en este momento, por lo que el sistema lo permite.
+     */
+    public static void clearIfExpired(@NonNull Context context) {
+        if (copyTimestamp == 0) return;
+        if (System.currentTimeMillis() - copyTimestamp < copyDelay) return;
 
-        pendingClear = () -> {
-            try {
-                if (!cm.hasPrimaryClip()) return;
-                ClipData current = cm.getPrimaryClip();
-                if (current == null || current.getItemCount() == 0) return;
+        ClipboardManager cm = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+        if (cm == null) return;
 
-                CharSequence currentText = current.getItemAt(0).coerceToText(context);
-                if (currentText != null && copiedText.contentEquals(currentText)) {
-                    cm.setPrimaryClip(ClipData.newPlainText("", ""));
-                }
-            } catch (Exception ignored) {
-                // SecurityException posible si la app está en background en algunos dispositivos
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                cm.clearPrimaryClip();
+            } else {
+                cm.setPrimaryClip(ClipData.newPlainText("", ""));
             }
-        };
+        } catch (Exception ignored) {}
 
-        handler.postDelayed(pendingClear, CLEAR_DELAY_MS);
+        copyTimestamp = 0;
+        copyDelay     = 0;
     }
 }
