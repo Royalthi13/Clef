@@ -65,7 +65,8 @@ public class FirebaseManager {
     public void addVaultListener(OnVaultChangedListener listener) {
         removeVaultListener();
         vaultListener = userDoc().addSnapshotListener((snap, error) -> {
-            if (error != null || snap == null || !snap.exists()) return;
+            if (error != null) { removeVaultListener(); return; }
+            if (snap == null || !snap.exists()) return;
             String vault = snap.getString(FIELD_VAULT);
             long version = snap.contains(FIELD_VERSION) ? snap.getLong(FIELD_VERSION) : 0L;
             if (vault != null) listener.onVaultChanged(vault, version);
