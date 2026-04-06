@@ -41,6 +41,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -342,15 +343,17 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
                 .setPositiveButton("Confirmar", (d, w) -> {
                     com.google.android.material.textfield.TextInputEditText et =
                             dialogView.findViewById(R.id.etVerifyPassword);
-                    String pwd = et.getText() != null ? et.getText().toString() : "";
-                    if (pwd.isEmpty()) { setLoading(false); return; }
+                    Editable editable = et.getText();
+                    char[] pwd = new char[editable != null ? editable.length() : 0];
+                    if (editable != null) editable.getChars(0, editable.length(), pwd, 0);
+                    if (pwd.length == 0) { setLoading(false); return; }
                     verifyPassword(pwd);
                 })
                 .setNegativeButton(getString(R.string.cancel), (d, w) -> setLoading(false))
                 .show();
     }
 
-    private void verifyPassword(String password) {
+    private void verifyPassword(char[] password) {
         if (!isAdded()) return;
         com.example.clef.data.repository.VaultRepository repo =
                 new com.example.clef.data.repository.VaultRepository(requireContext());
@@ -360,7 +363,7 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
         executor.execute(() -> {
             try {
                 new com.example.clef.crypto.KeyManager()
-                        .login(password.toCharArray(), data.salt, data.cajaA, data.vault);
+                        .login(password, data.salt, data.cajaA, data.vault);
                 if (isAdded()) silentReauthAndDelete();
             } catch (Exception e) {
                 if (!isAdded()) return;
@@ -369,6 +372,8 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
                     Toast.makeText(requireContext(),
                             "Contraseña incorrecta", Toast.LENGTH_SHORT).show();
                 });
+            }finally {
+                Arrays.fill(password, '0'); // Limpia el array de contraseña por seguridad
             }
         });
     }

@@ -22,6 +22,7 @@ import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -83,32 +84,36 @@ public class CreateMasterActivity extends AppCompatActivity {
     }
 
     private void onCreateVault() {
-        String master  = etMaster.getText()  != null ? etMaster.getText().toString()  : "";
-        String confirm = etConfirm.getText() != null ? etConfirm.getText().toString() : "";
+        Editable masterEditable  = etMaster.getText();
+        Editable confirmEditable = etConfirm.getText();
+        char[] master  = new char[masterEditable  != null ? masterEditable.length()  : 0];
+        char[] confirm = new char[confirmEditable != null ? confirmEditable.length() : 0];
+        if (masterEditable  != null) masterEditable.getChars(0,  masterEditable.length(),  master,  0);
+        if (confirmEditable != null) confirmEditable.getChars(0, confirmEditable.length(), confirm, 0);
 
         tilMaster.setError(null);
         tilConfirm.setError(null);
 
-        if (master.isEmpty()) {
+        if (master.length==0) {
             tilMaster.setError(getString(R.string.master_error_required));
             return;
         }
-        if (master.length() < 8) {
+        if (master.length < 8) {
             tilMaster.setError(getString(R.string.master_error_min_len));
             return;
         }
-        if (!master.equals(confirm)) {
+        if (!Arrays.equals(master,confirm)) {
             tilConfirm.setError(getString(R.string.master_error_mismatch));
             return;
         }
 
         setLoading(true);
 
-        char[] masterChars = master.toCharArray();
+
         cryptoExecutor.execute(() -> {
             try {
                 KeyManager keyManager = new KeyManager();
-                KeyManager.RegistrationBundle bundle = keyManager.register(masterChars);
+                KeyManager.RegistrationBundle bundle = keyManager.register(master);
 
                 VaultRepository repo = new VaultRepository(this);
                 repo.registerUser(bundle, new VaultRepository.Callback<Void>() {
@@ -143,6 +148,9 @@ public class CreateMasterActivity extends AppCompatActivity {
                         finish();
                     }
                 });
+            } finally {
+                Arrays.fill(master,  '0');
+                Arrays.fill(confirm, '0');
             }
         });
     }

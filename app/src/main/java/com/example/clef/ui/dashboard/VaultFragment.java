@@ -30,6 +30,7 @@ import com.example.clef.utils.SessionManager;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.textfield.TextInputEditText;
+import com.google.firebase.auth.FirebaseAuth;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -80,7 +81,6 @@ public class VaultFragment extends Fragment {
         etSearch            = view.findViewById(R.id.etSearch);
         chipGroupCategories = view.findViewById(R.id.chipGroupCategories);
         btnSort             = view.findViewById(R.id.btnSort);
-
         for (Credential.Category cat : Credential.Category.values()) {
             Chip chip = new Chip(requireContext());
             chip.setText(getString(cat.getLabelRes()));
@@ -140,8 +140,11 @@ public class VaultFragment extends Fragment {
         if (btnEmptyAdd != null) btnEmptyAdd.setOnClickListener(v -> openAddDialog());
 
         // Banner tip icono generador
+        String tipUid = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser() != null
+                ? com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser().getUid()
+                : "anon";
         android.content.SharedPreferences tipPrefs = requireContext()
-                .getSharedPreferences("generator_prefs", Context.MODE_PRIVATE);
+                .getSharedPreferences("generator_prefs_" + tipUid, Context.MODE_PRIVATE);
         View cardTip = view.findViewById(R.id.cardGeneratorTip);
         if (tipPrefs.getBoolean("tip_dismissed", false)) {
             cardTip.setVisibility(View.GONE);

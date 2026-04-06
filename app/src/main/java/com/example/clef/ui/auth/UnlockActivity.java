@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.Editable;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -180,15 +181,16 @@ public class UnlockActivity extends AppCompatActivity {
             return;
         }
 
-        String password = etPassword.getText() != null ? etPassword.getText().toString() : "";
-        if (password.isEmpty()) {
+        Editable editable = etPassword.getText();
+        char[] passwordChars = new char[editable != null ? editable.length() : 0];
+        if (editable != null) editable.getChars(0, editable.length(), passwordChars, 0);
+        if (passwordChars.length == 0) {
             tilPassword.setError(getString(R.string.master_error_required));
             return;
         }
         tilPassword.setError(null);
         setLoading(true);
 
-        char[] passwordChars = password.toCharArray();
         String salt  = userData.salt;
         String cajaA = userData.cajaA;
         String vault = userData.vault;
