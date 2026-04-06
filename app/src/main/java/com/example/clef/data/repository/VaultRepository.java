@@ -4,6 +4,9 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Base64;
 
+import androidx.security.crypto.EncryptedSharedPreferences;
+import androidx.security.crypto.MasterKey;
+
 import com.example.clef.crypto.KeyManager;
 import com.example.clef.data.local.FileManager;
 import com.example.clef.data.model.Credential;
@@ -12,6 +15,9 @@ import com.example.clef.data.remote.FirebaseManager;
 import com.example.clef.data.remote.FirebaseManager.UserData;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 
 public class VaultRepository {
 
@@ -38,10 +44,19 @@ public class VaultRepository {
 
     // ── SharedPreferences con UID ──────────────────────────────────────────────
 
-    private SharedPreferences getKeyPrefs() {
+    private SharedPreferences getKeyPrefs() throws GeneralSecurityException, IOException {
         FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();
         String suffix = (u != null) ? "_" + u.getUid() : "_anon";
-        return context.getSharedPreferences(KEY_PREFS_BASE + suffix, Context.MODE_PRIVATE);
+        MasterKey masterKey = new MasterKey.Builder(context)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build();
+        return EncryptedSharedPreferences.create(
+                context,
+                KEY_PREFS_BASE + suffix,
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        );
     }
 
     // ── Registro ──────────────────────────────────────────────────────────────
@@ -54,7 +69,13 @@ public class VaultRepository {
                         bundle.bovedaCifradaBase64)
                 .addOnSuccessListener(unused -> {
                     saveLocalVault(bundle.bovedaCifradaBase64);
-                    cacheKeys(bundle.saltBase64, bundle.cajaABase64, bundle.cajaBBase64);
+                    try {
+                        cacheKeys(bundle.saltBase64, bundle.cajaABase64, bundle.cajaBBase64);
+                    } catch (GeneralSecurityException e) {
+                        throw new RuntimeException(e);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
                     callback.onSuccess(null);
                 })
                 .addOnFailureListener(callback::onError);
@@ -81,7 +102,13 @@ public class VaultRepository {
                     if (userData != null) {
                         if (userData.vault != null) saveLocalVault(userData.vault);
                         if (userData.salt != null && userData.cajaA != null) {
-                            cacheKeys(userData.salt, userData.cajaA, userData.cajaB);
+                            try {
+                                cacheKeys(userData.salt, userData.cajaA, userData.cajaB);
+                            } catch (GeneralSecurityException e) {
+                                throw new RuntimeException(e);
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            }
                         }
                     }
                     callback.onSuccess(userData);
@@ -101,7 +128,13 @@ public class VaultRepository {
     public void updateCajaA(String nuevaCajaABase64, Callback<Void> callback) {
         firebaseManager.uploadCajaA(nuevaCajaABase64)
                 .addOnSuccessListener(unused -> {
-                    getKeyPrefs().edit().putString(KEY_CAJA_A, nuevaCajaABase64).apply();
+                    try {
+                        getKeyPrefs().edit().putString(KEY_CAJA_A, nuevaCajaABase64).apply();
+                    } catch (GeneralSecurityException e) {
+                        throw new RuntimeException(e);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
                     callback.onSuccess(null);
                 })
                 .addOnFailureListener(callback::onError);
@@ -110,10 +143,16 @@ public class VaultRepository {
     public void updateCajaAyB(String nuevaCajaABase64, String nuevaCajaBBase64, Callback<Void> callback) {
         firebaseManager.uploadCajaAyB(nuevaCajaABase64, nuevaCajaBBase64)
                 .addOnSuccessListener(unused -> {
-                    getKeyPrefs().edit()
-                            .putString(KEY_CAJA_A, nuevaCajaABase64)
-                            .putString(KEY_CAJA_B, nuevaCajaBBase64)
-                            .apply();
+                    try {
+                        getKeyPrefs().edit()
+                                .putString(KEY_CAJA_A, nuevaCajaABase64)
+                                .putString(KEY_CAJA_B, nuevaCajaBBase64)
+                                .apply();
+                    } catch (GeneralSecurityException e) {
+                        throw new RuntimeException(e);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
                     callback.onSuccess(null);
                 })
                 .addOnFailureListener(callback::onError);
@@ -128,7 +167,14 @@ public class VaultRepository {
     }
 
     public UserData loadOfflineUserData() {
-        SharedPreferences prefs = getKeyPrefs();
+        SharedPreferences prefs = null;
+        try {
+            prefs = getKeyPrefs();
+        } catch (GeneralSecurityException e) {
+            throw new RuntimeException(e);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         String ownerUid = prefs.getString(KEY_OWNER_UID, null);
         FirebaseUser current = FirebaseAuth.getInstance().getCurrentUser();
         if (current == null) return null;
@@ -143,7 +189,14 @@ public class VaultRepository {
     }
 
     public void exportToFirebase(Callback<Void> callback) {
-        SharedPreferences prefs = getKeyPrefs();
+        SharedPreferences prefs = null;
+        try {
+            prefs = getKeyPrefs();
+        } catch (GeneralSecurityException e) {
+            throw new RuntimeException(e);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         String salt  = prefs.getString(KEY_SALT,   null);
         String cajaA = prefs.getString(KEY_CAJA_A, null);
         String cajaB = prefs.getString(KEY_CAJA_B, null);
@@ -165,7 +218,13 @@ public class VaultRepository {
                     if (userData != null) {
                         if (userData.vault != null) saveLocalVault(userData.vault);
                         if (userData.salt != null) {
-                            cacheKeys(userData.salt, userData.cajaA, userData.cajaB);
+                            try {
+                                cacheKeys(userData.salt, userData.cajaA, userData.cajaB);
+                            } catch (GeneralSecurityException e) {
+                                throw new RuntimeException(e);
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            }
                         }
                     }
                     callback.onSuccess(userData);
@@ -179,7 +238,7 @@ public class VaultRepository {
         saveLocalVault(encryptedVaultBase64);
     }
 
-    public void uploadSpecificVaultToFirebase(String encryptedVault, Callback<Void> callback) {
+    public void uploadSpecificVaultToFirebase(String encryptedVault, Callback<Void> callback) throws GeneralSecurityException, IOException {
         String salt  = getKeyPrefs().getString(KEY_SALT,   null);
         String cajaA = getKeyPrefs().getString(KEY_CAJA_A, null);
         String cajaB = getKeyPrefs().getString(KEY_CAJA_B, null);
@@ -227,7 +286,13 @@ public class VaultRepository {
     public void clearLocalVault() { fileManager.deleteVault(); }
 
     public void clearKeyCache() {
-        getKeyPrefs().edit().clear().apply();
+        try {
+            getKeyPrefs().edit().clear().apply();
+        } catch (GeneralSecurityException e) {
+            throw new RuntimeException(e);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     // ── Borrado de cuenta ─────────────────────────────────────────────────────
@@ -268,7 +333,7 @@ public class VaultRepository {
         }
     }
 
-    private void cacheKeys(String salt, String cajaA, String cajaB) {
+    private void cacheKeys(String salt, String cajaA, String cajaB) throws GeneralSecurityException, IOException {
         FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();
         SharedPreferences.Editor editor = getKeyPrefs().edit()
                 .putString(KEY_SALT,   salt)
