@@ -1,11 +1,14 @@
 package com.example.clef;
 
+import android.app.Activity;
 import android.app.Application;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Build;
+import android.os.Bundle;
+import android.view.WindowManager;
 
 import androidx.lifecycle.DefaultLifecycleObserver;
 import androidx.lifecycle.LifecycleOwner;
@@ -23,6 +26,23 @@ public class ClefApp extends Application {
         super.onCreate();
         ThemeManager.applyStored(this);
         createNotificationChannel();
+
+        // Proteger todas las Activities contra capturas de pantalla y reciente de tareas
+        registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
+            @Override
+            public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
+                activity.getWindow().setFlags(
+                        WindowManager.LayoutParams.FLAG_SECURE,
+                        WindowManager.LayoutParams.FLAG_SECURE
+                );
+            }
+            @Override public void onActivityStarted(Activity activity) {}
+            @Override public void onActivityResumed(Activity activity) {}
+            @Override public void onActivityPaused(Activity activity) {}
+            @Override public void onActivityStopped(Activity activity) {}
+            @Override public void onActivitySaveInstanceState(Activity activity, Bundle outState) {}
+            @Override public void onActivityDestroyed(Activity activity) {}
+        });
 
         // Si las notificaciones estaban activadas antes de reinstalar, reprogramar el worker
         SharedPreferences prefs = getSharedPreferences(ExpiryHelper.PREFS_NAME, Context.MODE_PRIVATE);

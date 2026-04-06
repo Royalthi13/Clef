@@ -286,6 +286,9 @@ public class ImportExportDialog extends BottomSheetDialogFragment {
     private void decryptAndUnlock(FirebaseManager.UserData userData, byte[] dek) {
         try {
             Vault vault = new KeyManager().descifrarVault(userData.vault, dek);
+            if (vault == null || vault.getCredentials() == null) {
+                throw new Exception("Vault descifrado inválido");
+            }
             // Marcar todas las credenciales descargadas como synced=true (vienen de Firebase)
             for (Credential c : vault.getCredentials()) {
                 c.setSynced(true);

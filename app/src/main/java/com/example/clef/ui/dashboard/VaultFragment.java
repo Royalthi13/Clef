@@ -438,20 +438,24 @@ public class VaultFragment extends Fragment {
                                 String encrypted = new KeyManager().cifrarVault(vault, dek);
                                 VaultRepository repo = new VaultRepository(
                                         getContext() != null ? getContext() : root.getContext());
-                                repo.saveVault(encrypted, new VaultRepository.Callback<Void>() {
-                                    @Override public void onSuccess(Void r) {}
-                                    @Override public void onError(Exception e) {
-                                        list.add(idx, credential);
-                                        session.updateVault(vault);
-                                        mainHandler.post(() -> {
-                                            if (!isAdded()) return;
-                                            applyFilters();
-                                            android.widget.Toast.makeText(requireContext(),
-                                                    "Error al eliminar. Inténtalo de nuevo.",
-                                                    android.widget.Toast.LENGTH_SHORT).show();
-                                        });
-                                    }
-                                });
+                                repo.saveLocalVaultOnly(encrypted);
+                                if (credential.isSynced()) {
+                                    long expectedVersion = session.getCloudVaultVersion();
+                                    repo.uploadSyncedOnly(vault, dek, expectedVersion, new VaultRepository.Callback<Void>() {
+                                        @Override public void onSuccess(Void r) {}
+                                        @Override public void onError(Exception e) {
+                                            list.add(idx, credential);
+                                            session.updateVault(vault);
+                                            mainHandler.post(() -> {
+                                                if (!isAdded()) return;
+                                                applyFilters();
+                                                android.widget.Toast.makeText(requireContext(),
+                                                        "Error al eliminar. Inténtalo de nuevo.",
+                                                        android.widget.Toast.LENGTH_SHORT).show();
+                                            });
+                                        }
+                                    });
+                                }
                             } catch (Exception e) {
                                 list.add(idx, credential);
                                 session.updateVault(vault);
