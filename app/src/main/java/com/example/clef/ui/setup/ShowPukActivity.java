@@ -13,6 +13,8 @@ import com.example.clef.utils.ClipboardHelper;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
 
+import java.util.Arrays;
+
 public class ShowPukActivity extends AppCompatActivity {
 
     @Override
@@ -23,21 +25,26 @@ public class ShowPukActivity extends AppCompatActivity {
         MaterialToolbar toolbar = findViewById(R.id.topAppBar);
         toolbar.setNavigationOnClickListener(v -> finish());
 
-        String puk = TempSecretHolder.getAndClear();
-        if (puk == null || puk.isEmpty()) {
+        // Consumir char[] y zeriarlo inmediatamente.
+        // Antes era String static que quedaba indefinidamente en heap.
+        char[] pukChars = TempSecretHolder.getAndClear();
+        if (pukChars == null || pukChars.length == 0) {
             Toast.makeText(this, R.string.puk_missing, Toast.LENGTH_LONG).show();
             goToMain();
             return;
         }
 
-        TextView tvPuk = findViewById(R.id.tvPukCode);
-        tvPuk.setText(puk);
+        String pukDisplay = new String(pukChars);
+        Arrays.fill(pukChars, '\0');
 
-        MaterialButton btnCopy = findViewById(R.id.btnCopyPuk);
+        TextView tvPuk = findViewById(R.id.tvPukCode);
+        tvPuk.setText(pukDisplay);
+
+        MaterialButton btnCopy     = findViewById(R.id.btnCopyPuk);
         MaterialButton btnContinue = findViewById(R.id.btnContinue);
 
         btnCopy.setOnClickListener(v -> {
-            ClipboardHelper.copySensitivePuk(this, "PUK", puk);
+            ClipboardHelper.copySensitivePuk(this, "PUK", pukDisplay);
             Toast.makeText(this, R.string.puk_copied, Toast.LENGTH_SHORT).show();
         });
 
@@ -50,11 +57,27 @@ public class ShowPukActivity extends AppCompatActivity {
         startActivity(i);
         finish();
     }
+
+    /**
+     * Holder temporal del PUK usando char[] en lugar de String estático.
+     * El array se zeriza al leer y al sobrescribir.
+     */
     public static class TempSecretHolder {
-        private static String secret;
-        public static void set(String s) { secret = s; }
-        public static String getAndClear() {
-            String s = secret;
+        private static volatile char[] secret;
+
+        public static void set(char[] pukChars) {
+            char[] old = secret;
+            if (old != null) Arrays.fill(old, '\0');
+            secret = pukChars.clone();
+        }
+
+        /** Sobrecarga String para compatibilidad con llamadores existentes. */
+        public static void set(String puk) {
+            set(puk.toCharArray());
+        }
+
+        public static char[] getAndClear() {
+            char[] s = secret;
             secret = null;
             return s;
         }
