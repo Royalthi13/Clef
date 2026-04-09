@@ -13,9 +13,12 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.clef.R;
+import com.example.clef.crypto.CryptoUtils;
 import com.example.clef.crypto.KeyManager;
+import com.example.clef.data.model.Vault;
 import com.example.clef.data.repository.VaultRepository;
 import com.example.clef.ui.auth.LoginActivity;
+import com.example.clef.utils.SessionManager;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
@@ -31,14 +34,14 @@ public class CreateMasterActivity extends AppCompatActivity {
 
     public static final String EXTRA_PUK = "extra_puk";
 
-    private TextInputLayout            tilMaster;
-    private TextInputLayout            tilConfirm;
-    private TextInputEditText          etMaster;
-    private TextInputEditText          etConfirm;
-    private LinearProgressIndicator    strengthBar;
-    private TextView                   tvStrength;
-    private MaterialButton             btnCreate;
-    private View                       loadingOverlay;
+    private TextInputLayout         tilMaster;
+    private TextInputLayout         tilConfirm;
+    private TextInputEditText       etMaster;
+    private TextInputEditText       etConfirm;
+    private LinearProgressIndicator strengthBar;
+    private TextView                tvStrength;
+    private MaterialButton          btnCreate;
+    private View                    loadingOverlay;
 
     private final ExecutorService cryptoExecutor = Executors.newSingleThreadExecutor();
     private final Handler         mainHandler    = new Handler(Looper.getMainLooper());
@@ -72,7 +75,6 @@ public class CreateMasterActivity extends AppCompatActivity {
         etConfirm.addTextChangedListener(watcher);
 
         btnCreate.setOnClickListener(v -> onCreateVault());
-        // FIX: Mostrar estado inicial útil en lugar de "Fortaleza" estático
         tvStrength.setText("Introduce una contraseña para ver su fortaleza");
         strengthBar.setProgressCompat(0, false);
     }
@@ -94,7 +96,7 @@ public class CreateMasterActivity extends AppCompatActivity {
         tilMaster.setError(null);
         tilConfirm.setError(null);
 
-        if (master.length==0) {
+        if (master.length == 0) {
             tilMaster.setError(getString(R.string.master_error_required));
             return;
         }
@@ -102,13 +104,15 @@ public class CreateMasterActivity extends AppCompatActivity {
             tilMaster.setError(getString(R.string.master_error_min_len));
             return;
         }
-        if (!Arrays.equals(master,confirm)) {
+        if (!Arrays.equals(master, confirm)) {
             tilConfirm.setError(getString(R.string.master_error_mismatch));
+            Arrays.fill(master,  '\0');
+            Arrays.fill(confirm, '\0');
             return;
         }
+        Arrays.fill(confirm, '\0');
 
         setLoading(true);
-
 
         cryptoExecutor.execute(() -> {
             try {
@@ -117,31 +121,39 @@ public class CreateMasterActivity extends AppCompatActivity {
 
                 VaultRepository repo = new VaultRepository(this);
                 repo.registerUser(bundle, new VaultRepository.Callback<Void>() {
-                    @Override public void onSuccess(Void result) {
-                        com.example.clef.utils.SessionManager.getInstance()
-                                .unlock(bundle.dek, new com.example.clef.data.model.Vault());
+                    @Override
+                    public void onSuccess(Void result) {
+                        // C-5 FIX: copiar la DEK para la sesión ANTES de zerisar bundle.dek,
+                        // luego limpiar el bundle para no dejar la clave suelta en heap.
+                        byte[] sessionDek = bundle.dek.clone();
+                        CryptoUtils.zeroise(bundle.dek);
+
+                        SessionManager.getInstance().unlock(sessionDek, new Vault());
                         mainHandler.post(() -> {
                             setLoading(false);
-                            Intent i = new Intent(CreateMasterActivity.this, ShowPukActivity.class);
                             ShowPukActivity.TempSecretHolder.set(bundle.puk);
-                            startActivity(i);
+                            startActivity(new Intent(CreateMasterActivity.this,
+                                    ShowPukActivity.class));
                             finish();
                         });
                     }
 
-                    @Override public void onError(Exception e) {
+                    @Override
+                    public void onError(Exception e) {
+                        CryptoUtils.zeroise(bundle.dek);
                         mainHandler.post(() -> {
                             setLoading(false);
                             Toast.makeText(CreateMasterActivity.this,
-                                    R.string.master_error_register_failed, Toast.LENGTH_LONG).show();
+                                    R.string.master_error_register_failed,
+                                    Toast.LENGTH_LONG).show();
                         });
                     }
                 });
             } catch (Exception e) {
                 mainHandler.post(() -> {
                     setLoading(false);
-                    Toast.makeText(this,
-                            R.string.master_error_crypto_failed, Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, R.string.master_error_crypto_failed,
+                            Toast.LENGTH_LONG).show();
                     if (e.getMessage() != null &&
                             e.getMessage().toLowerCase(Locale.ROOT).contains("auth")) {
                         startActivity(new Intent(this, LoginActivity.class));
@@ -149,8 +161,7 @@ public class CreateMasterActivity extends AppCompatActivity {
                     }
                 });
             } finally {
-                Arrays.fill(master,  '0');
-                Arrays.fill(confirm, '0');
+                Arrays.fill(master,  '\0');
             }
         });
     }
@@ -164,13 +175,11 @@ public class CreateMasterActivity extends AppCompatActivity {
 
     private void updateStrengthUi() {
         String pwd = etMaster.getText() != null ? etMaster.getText().toString() : "";
-
         if (pwd.isEmpty()) {
             tvStrength.setText("Introduce una contraseña para ver su fortaleza");
             strengthBar.setProgressCompat(0, true);
             return;
         }
-
         Strength s = Strength.estimate(pwd);
         strengthBar.setProgressCompat(s.score, true);
         tvStrength.setText(getString(R.string.master_strength_format, s.label, s.score));
@@ -181,48 +190,27 @@ public class CreateMasterActivity extends AppCompatActivity {
         if (tilConfirm.getError() != null) tilConfirm.setError(null);
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // FIX: Strength.estimate() reescrito sin regex para no penalizar cada tecla.
-    // Antes usaba p.matches(".*[a-z].*") x4, que compila y evalúa una regex
-    // completa por pulsación. Ahora itera una vez sobre los chars del String.
-    // ──────────────────────────────────────────────────────────────────────────
     private enum Strength {
-        WEAK("Débil", 20),
-        OK("Aceptable", 50),
-        STRONG("Fuerte", 75),
-        EXCELLENT("Excelente", 90);
+        WEAK("Débil", 20), OK("Aceptable", 50), STRONG("Fuerte", 75), EXCELLENT("Excelente", 90);
 
         final String label;
         final int    score;
 
-        Strength(String label, int score) {
-            this.label = label;
-            this.score = score;
-        }
+        Strength(String label, int score) { this.label = label; this.score = score; }
 
         static Strength estimate(String p) {
             if (p == null || p.isEmpty()) return WEAK;
-
-            int  len    = p.length();
-            boolean lower  = false;
-            boolean upper  = false;
-            boolean digit  = false;
-            boolean symbol = false;
-
+            int len = p.length();
+            boolean lower = false, upper = false, digit = false, symbol = false;
             for (int i = 0; i < len; i++) {
                 char c = p.charAt(i);
                 if      (c >= 'a' && c <= 'z') lower  = true;
                 else if (c >= 'A' && c <= 'Z') upper  = true;
                 else if (c >= '0' && c <= '9') digit  = true;
                 else                           symbol = true;
-
-                // Early exit si ya encontramos todo
                 if (lower && upper && digit && symbol) break;
             }
-
-            int variety = (lower ? 1 : 0) + (upper ? 1 : 0)
-                    + (digit ? 1 : 0) + (symbol ? 1 : 0);
-
+            int variety = (lower ? 1 : 0) + (upper ? 1 : 0) + (digit ? 1 : 0) + (symbol ? 1 : 0);
             if (len >= 14 && variety >= 3) return EXCELLENT;
             if (len >= 12 && variety >= 3) return STRONG;
             if (len >=  8 && variety >= 2) return OK;
