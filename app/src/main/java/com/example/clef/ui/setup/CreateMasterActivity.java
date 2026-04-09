@@ -32,7 +32,7 @@ import java.util.concurrent.Executors;
 
 public class CreateMasterActivity extends AppCompatActivity {
 
-    public static final String EXTRA_PUK = "extra_puk";
+    //public static final String EXTRA_PUK = "extra_puk";
 
     private TextInputLayout         tilMaster;
     private TextInputLayout         tilConfirm;
@@ -120,11 +120,11 @@ public class CreateMasterActivity extends AppCompatActivity {
                 KeyManager.RegistrationBundle bundle = keyManager.register(master);
 
                 VaultRepository repo = new VaultRepository(this);
-                repo.registerUser(bundle, new VaultRepository.Callback<Void>() {
+                repo.registerUser(bundle, new VaultRepository.Callback<>() {
                     @Override
                     public void onSuccess(Void result) {
-                        // C-5 FIX: copiar la DEK para la sesión ANTES de zerisar bundle.dek,
-                        // luego limpiar el bundle para no dejar la clave suelta en heap.
+                        // Se copia la DEK para la sesión ANTES de zerizar bundle.dek,
+                        // luego se limpia el bundle para no dejar la clave suelta en heap.
                         byte[] sessionDek = bundle.dek.clone();
                         CryptoUtils.zeroise(bundle.dek);
 
