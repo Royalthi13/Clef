@@ -4,38 +4,39 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 
 import java.io.File;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
- * Detecta indicios de root en el dispositivo.
- *
- * Dos categorias:
- * - Indicios CLAROS: uno solo es suficiente para bloquear
- * - Indicios SOSPECHOSOS: se necesitan 3 o mas para bloquear
+ * Runtime.exec() ahora tiene timeout de 500ms por llamada.
+ * Se usan hilos de fondo con ExecutorService para no bloquear el hilo llamador.
+ * Además, el buffer de lectura de "mount" se amplía a 4096 bytes para no
+ * truncar la lista de puntos de montaje en sistemas con muchas particiones.
  */
 public class RootDetector {
 
-    // Apps de root conocidas
+    private static final int EXEC_TIMEOUT_MS = 500;
+
     private static final String[] ROOT_APPS = {
-            "com.topjohnwu.magisk",       // Magisk
-            "eu.chainfire.supersu",        // SuperSU
-            "com.koushikdutta.superuser",  // Superuser
-            "com.noshufou.android.su",     // Superuser (antiguo)
-            "com.kingroot.kinguser",       // KingRoot
-            "com.kingo.root",              // KingoRoot
-            "com.smedialink.oneclickroot", // One Click Root
-            "com.zhiqupk.root.global",     // Root Master
-            "com.alephzain.framaroot"      // Framaroot
+            "com.topjohnwu.magisk",
+            "eu.chainfire.supersu",
+            "com.koushikdutta.superuser",
+            "com.noshufou.android.su",
+            "com.kingroot.kinguser",
+            "com.kingo.root",
+            "com.smedialink.oneclickroot",
+            "com.zhiqupk.root.global",
+            "com.alephzain.framaroot"
     };
 
-    // Rutas donde se suele encontrar el binario su (indicios claros)
     private static final String[] SU_CLEAR_PATHS = {
-            "/system/bin/su",
-            "/system/xbin/su",
-            "/sbin/su",
-            "/su/bin/su"
+            "/system/bin/su", "/system/xbin/su", "/sbin/su", "/su/bin/su"
     };
 
-    // Rutas sospechosas adicionales
     private static final String[] SU_SUSPICIOUS_PATHS = {
             "/data/local/su",
             "/data/local/bin/su",
@@ -48,126 +49,112 @@ public class RootDetector {
     public static class Result {
         public final boolean blocked;
         public final String  reason;
-        public final boolean isClear; // true = indicio claro, false = sospechoso
-
+        public final boolean isClear;
         Result(boolean blocked, String reason, boolean isClear) {
-            this.blocked = blocked;
-            this.reason  = reason;
-            this.isClear = isClear;
+            this.blocked = blocked; this.reason = reason; this.isClear = isClear;
         }
     }
 
-    /**
-     * Analiza el dispositivo y devuelve el resultado.
-     */
     public static Result check(Context context) {
-        // ── Indicios CLAROS (uno solo bloquea) ────────────────────────────────
-
-        // 1. Binario su en rutas principales
         for (String path : SU_CLEAR_PATHS) {
             if (new File(path).exists()) {
-                return new Result(true,
-                        "Se ha detectado acceso de superusuario (su) en el dispositivo. " +
-                        "Ruta: " + path,
-                        true);
+                return new Result(true, "Binario su detectado en " + path, true);
             }
         }
 
-        // 2. App de root instalada
         String rootApp = findRootApp(context);
         if (rootApp != null) {
-            return new Result(true,
-                    "Se ha detectado una aplicación de root instalada: " + rootApp + ". " +
-                    "Esto indica que el dispositivo ha sido rooteado.",
-                    true);
+            return new Result(true, "App de root instalada: " + rootApp, true);
         }
 
-        // 3. Particion del sistema escribible
         if (isSystemWritable()) {
-            return new Result(true,
-                    "La partición del sistema es modificable. " +
-                    "Esto indica que el dispositivo ha sido rooteado.",
-                    true);
+            return new Result(true, "La partición del sistema es modificable.", true);
         }
-
-        // ── Indicios SOSPECHOSOS (necesitan 3 para bloquear) ──────────────────
 
         int suspiciousCount = 0;
-        StringBuilder suspiciousDetails = new StringBuilder();
+        StringBuilder details = new StringBuilder();
 
-        // 4. Binario su en rutas secundarias
         for (String path : SU_SUSPICIOUS_PATHS) {
             if (new File(path).exists()) {
                 suspiciousCount++;
-                suspiciousDetails.append("• Binario su en ").append(path).append("\n");
+                details.append("• Binario su en ").append(path).append("\n");
                 break;
             }
         }
 
-        // 5. Build de test-keys (sistema no firmado por fabricante oficial)
         String buildTags = android.os.Build.TAGS;
-        if (buildTags != null && (buildTags.contains("test-keys") ||buildTags.contains("dev-keys") )) {
+        if (buildTags != null && (buildTags.contains("test-keys") || buildTags.contains("dev-keys"))) {
             suspiciousCount++;
-            suspiciousDetails.append("• Sistema firmado con claves de prueba (test-keys)\n");
+            details.append("• Sistema firmado con claves de prueba\n");
         }
-
-        // 6. ro.debuggable = 1
         if ("1".equals(getBuildProp("ro.debuggable"))) {
             suspiciousCount++;
-            suspiciousDetails.append("• Sistema operativo en modo debug\n");
+            details.append("• Sistema en modo debug\n");
         }
-
-        // 7. ro.secure = 0
         if ("0".equals(getBuildProp("ro.secure"))) {
             suspiciousCount++;
-            suspiciousDetails.append("• Seguridad del sistema desactivada (ro.secure=0)\n");
+            details.append("• ro.secure=0\n");
         }
 
         if (suspiciousCount >= 3) {
             return new Result(true,
-                    "Se han detectado " + suspiciousCount + " indicios sospechosos de modificación:\n\n" +
-                    suspiciousDetails.toString().trim(),
+                    suspiciousCount + " indicios de root:\n" + details.toString().trim(),
                     false);
         }
-
         return new Result(false, "", false);
     }
 
     private static String findRootApp(Context context) {
         PackageManager pm = context.getPackageManager();
         for (String pkg : ROOT_APPS) {
-            try {
-                pm.getPackageInfo(pkg, 0);
-                return pkg;
-            } catch (PackageManager.NameNotFoundException ignored) {}
+            try { pm.getPackageInfo(pkg, 0); return pkg; }
+            catch (PackageManager.NameNotFoundException ignored) {}
         }
         return null;
     }
 
+    // timeout de 500ms y buffer de 4096 bytes.
     private static boolean isSystemWritable() {
+        ExecutorService exec = Executors.newSingleThreadExecutor();
         try {
-            Process p = Runtime.getRuntime().exec("mount");
-            byte[] bytes = new byte[1024];
-            int read = p.getInputStream().read(bytes);
-            if (read > 0) {
+            Future<Boolean> future = exec.submit(() -> {
+                Process p = Runtime.getRuntime().exec("mount");
+                byte[] bytes = new byte[4096];
+                int read = p.getInputStream().read(bytes);
+                p.destroy();
+                if (read <= 0) return false;
                 String mount = new String(bytes, 0, read);
                 for (String line : mount.split("\n")) {
-                    if (line.contains("/system") && line.contains("rw")) {
-                        return true;
-                    }
+                    if (line.contains("/system") && line.contains(" rw")) return true;
                 }
-            }
-        } catch (Exception ignored) {}
-        return false;
+                return false;
+            });
+            return future.get(EXEC_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        } catch (TimeoutException e) {
+            return false; // timeout - asumir no modificable por seguridad
+        } catch (Exception e) {
+            return false;
+        } finally {
+            exec.shutdownNow();
+        }
     }
 
+    // timeout de 500ms.
     private static String getBuildProp(String prop) {
+        ExecutorService exec = Executors.newSingleThreadExecutor();
         try {
-            Process p = Runtime.getRuntime().exec(new String[]{"getprop", prop});
-            byte[] bytes = new byte[64];
-            int read = p.getInputStream().read(bytes);
-            if (read > 0) return new String(bytes, 0, read).trim();
-        } catch (Exception ignored) {}
-        return "";
+            Future<String> future = exec.submit(() -> {
+                Process p = Runtime.getRuntime().exec(new String[]{"getprop", prop});
+                byte[] bytes = new byte[64];
+                int read = p.getInputStream().read(bytes);
+                p.destroy();
+                return (read > 0) ? new String(bytes, 0, read).trim() : "";
+            });
+            return future.get(EXEC_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        } catch (Exception e) {
+            return "";
+        } finally {
+            exec.shutdownNow();
+        }
     }
 }
