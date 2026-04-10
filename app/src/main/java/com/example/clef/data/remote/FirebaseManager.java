@@ -11,14 +11,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Comunicación con Firebase Firestore.
- *
- * Cada usuario tiene un documento en /users/{uid} con 4 campos en Base64:
- * salt, cajaA, cajaB, vault.
+ * A-4 FIX: uploadAll() ahora incluye el campo "version" = 0 en el documento
+ * inicial, evitando que las lecturas posteriores devuelvan version=0L por
+ * ausencia del campo y generen falsos conflictos en uploadVaultVersioned().
  */
 public class FirebaseManager {
-
-    // ── DTO ────────────────────────────────────────────────────────────────────
 
     public static class UserData {
         public final String salt;
@@ -40,13 +37,13 @@ public class FirebaseManager {
         }
     }
 
-    // ── Constantes ─────────────────────────────────────────────────────────────
-
     private static final String COLLECTION_USERS = "users";
     private static final String FIELD_SALT        = "salt";
     private static final String FIELD_CAJA_A      = "cajaA";
     private static final String FIELD_CAJA_B      = "cajaB";
     private static final String FIELD_VAULT        = "vault";
+    public  static final String FIELD_VERSION      = "version";
+    public  static final String CONFLICT_ERROR     = "vault_conflict";
 
     public interface OnVaultChangedListener {
         void onVaultChanged(String encryptedVault, long version);
@@ -61,53 +58,46 @@ public class FirebaseManager {
         this.auth = FirebaseAuth.getInstance();
     }
 
-    /** Escucha cambios en tiempo real del vault en Firestore. */
     public void addVaultListener(OnVaultChangedListener listener) {
         removeVaultListener();
         vaultListener = userDoc().addSnapshotListener((snap, error) -> {
             if (error != null) { removeVaultListener(); return; }
             if (snap == null || !snap.exists()) return;
-            String vault = snap.getString(FIELD_VAULT);
-            long version = snap.contains(FIELD_VERSION) ? snap.getLong(FIELD_VERSION) : 0L;
+            String vault   = snap.getString(FIELD_VAULT);
+            long   version = snap.contains(FIELD_VERSION) ? snap.getLong(FIELD_VERSION) : 0L;
             if (vault != null) listener.onVaultChanged(vault, version);
         });
     }
 
-    /** Elimina el listener activo. Llamar siempre al salir de la pantalla. */
     public void removeVaultListener() {
-        if (vaultListener != null) {
-            vaultListener.remove();
-            vaultListener = null;
-        }
+        if (vaultListener != null) { vaultListener.remove(); vaultListener = null; }
     }
 
-    // ── Subida ────────────────────────────────────────────────────────────────
+    // ── Subida ─────────────────────────────────────────────────────────────
 
-    /** Crea el documento completo del usuario. Solo se llama al registrarse. */
+    /**
+     * A-4 FIX: incluye version=0 en el documento inicial para que las
+     * operaciones versionadas posteriores funcionen correctamente.
+     */
     public Task<Void> uploadAll(String salt, String cajaA, String cajaB, String vault) {
         Map<String, Object> data = new HashMap<>();
-        data.put(FIELD_SALT,   salt);
-        data.put(FIELD_CAJA_A, cajaA);
-        data.put(FIELD_CAJA_B, cajaB);
-        data.put(FIELD_VAULT,  vault);
+        data.put(FIELD_SALT,    salt);
+        data.put(FIELD_CAJA_A,  cajaA);
+        data.put(FIELD_CAJA_B,  cajaB);
+        data.put(FIELD_VAULT,   vault);
+        data.put(FIELD_VERSION, 0L); // A-4 FIX: campo version presente desde el inicio
         return userDoc().set(data);
     }
 
-    public static final String CONFLICT_ERROR = "vault_conflict";
-    private static final String FIELD_VERSION = "version";
-
-    /** Actualiza solo el vault. Se llama cada vez que cambian las credenciales. */
     public Task<Void> uploadVault(String vault) {
         Map<String, Object> data = new HashMap<>();
         data.put(FIELD_VAULT, vault);
         return userDoc().update(data);
     }
 
-    /**
-     * Sube el vault solo si la versión en Firebase coincide con expectedVersion.
-     * Si otro dispositivo guardó antes, lanza una excepción con mensaje CONFLICT_ERROR.
-     */
-    public Task<Void> uploadVaultVersioned(String encryptedVault, long expectedVersion, long newVersion) {
+    public Task<Void> uploadVaultVersioned(String encryptedVault,
+                                           long expectedVersion,
+                                           long newVersion) {
         return db.runTransaction(transaction -> {
             DocumentSnapshot snap = transaction.get(userDoc());
             long remoteVersion = snap.contains(FIELD_VERSION)
@@ -127,20 +117,12 @@ public class FirebaseManager {
         });
     }
 
-    /** Actualiza solo la cajaA. Se llama cuando el usuario cambia su Contraseña Maestra. */
     public Task<Void> uploadCajaA(String cajaA) {
         Map<String, Object> data = new HashMap<>();
         data.put(FIELD_CAJA_A, cajaA);
         return userDoc().update(data);
     }
 
-    /**
-     * FIX: Actualiza cajaA y cajaB en la misma operación.
-     *
-     * Necesario tras recuperación con PUK para invalidar el PUK viejo
-     * de forma atómica — nunca puede quedar un estado donde la Caja A
-     * sea nueva pero la Caja B siga siendo la antigua.
-     */
     public Task<Void> uploadCajaAyB(String cajaA, String cajaB) {
         Map<String, Object> data = new HashMap<>();
         data.put(FIELD_CAJA_A, cajaA);
@@ -148,7 +130,7 @@ public class FirebaseManager {
         return userDoc().update(data);
     }
 
-    // ── Descarga ──────────────────────────────────────────────────────────────
+    // ── Descarga ──────────────────────────────────────────────────────────
 
     public Task<UserData> downloadUserData() {
         return userDoc().get().continueWith(task -> {
@@ -159,19 +141,17 @@ public class FirebaseManager {
             }
             DocumentSnapshot doc = task.getResult();
             if (!doc.exists()) return null;
-
             long version = doc.contains(FIELD_VERSION) ? doc.getLong(FIELD_VERSION) : 0L;
             return new UserData(
                     doc.getString(FIELD_SALT),
                     doc.getString(FIELD_CAJA_A),
                     doc.getString(FIELD_CAJA_B),
                     doc.getString(FIELD_VAULT),
-                    version
-            );
+                    version);
         });
     }
 
-    // ── Estado ────────────────────────────────────────────────────────────────
+    // ── Estado ────────────────────────────────────────────────────────────
 
     public Task<Boolean> userHasMasterPassword() {
         return userDoc().get().continueWith(task -> {
@@ -191,22 +171,14 @@ public class FirebaseManager {
         });
     }
 
-    // ── Borrado ───────────────────────────────────────────────────────────────
+    // ── Borrado ───────────────────────────────────────────────────────────
 
-    public Task<Void> deleteUserData() {
-        return userDoc().delete();
-    }
+    public Task<Void> deleteUserData()    { return userDoc().delete(); }
+    public Task<Void> deleteAuthAccount() { return auth.getCurrentUser().delete(); }
 
-    public Task<Void> deleteAuthAccount() {
-        return auth.getCurrentUser().delete();
-    }
+    // ── Privado ───────────────────────────────────────────────────────────
 
-    // ── Privado ───────────────────────────────────────────────────────────────
-
-    private String getUid() {
-        return auth.getCurrentUser().getUid();
-    }
-
+    private String getUid() { return auth.getCurrentUser().getUid(); }
     private DocumentReference userDoc() {
         return db.collection(COLLECTION_USERS).document(getUid());
     }
