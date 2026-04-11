@@ -8,6 +8,11 @@ import androidx.core.content.ContextCompat;
 
 import com.example.clef.R;
 
+/**
+ * M-4 FIX: evaluate() ahora itera los chars una sola vez en lugar de
+ * compilar y ejecutar 4 regex distintas por cada pulsación de tecla.
+ * Mismo enfoque que CreateMasterActivity ya usaba en su Strength enum.
+ */
 public class PasswordStrengthHelper {
 
     public enum Strength { WEAK, MEDIUM, STRONG }
@@ -15,29 +20,40 @@ public class PasswordStrengthHelper {
     public static Strength evaluate(String password) {
         if (password == null || password.isEmpty()) return Strength.WEAK;
 
+        int     len    = password.length();
+        boolean lower  = false, upper = false, digit = false, symbol = false;
+
+        for (int i = 0; i < len; i++) {
+            char c = password.charAt(i);
+            if      (c >= 'a' && c <= 'z') lower  = true;
+            else if (c >= 'A' && c <= 'Z') upper  = true;
+            else if (c >= '0' && c <= '9') digit  = true;
+            else                           symbol = true;
+            if (lower && upper && digit && symbol) break;
+        }
+
         int score = 0;
-        if (password.length() >= 8)  score++;
-        if (password.length() >= 12) score++;
-        if (password.matches(".*[A-Z].*")) score++;
-        if (password.matches(".*[a-z].*")) score++;
-        if (password.matches(".*[0-9].*")) score++;
-        if (password.matches(".*[^A-Za-z0-9].*")) score++;
+        if (len >= 8)  score++;
+        if (len >= 12) score++;
+        if (upper)     score++;
+        if (lower)     score++;
+        if (digit)     score++;
+        if (symbol)    score++;
 
         if (score <= 2) return Strength.WEAK;
         if (score <= 4) return Strength.MEDIUM;
         return Strength.STRONG;
     }
 
-    /** Actualiza las 3 barras y la etiqueta según la contraseña dada. */
     public static void update(Context ctx, String password,
                               LinearLayout bar1, LinearLayout bar2, LinearLayout bar3,
                               TextView label) {
         Strength s = evaluate(password);
 
         int colorOff  = ContextCompat.getColor(ctx, R.color.clef_border);
-        int colorWeak = ContextCompat.getColor(ctx, R.color.expiry_expired);   // rojo
-        int colorMed  = ContextCompat.getColor(ctx, R.color.expiry_warning);   // naranja
-        int colorOk   = ContextCompat.getColor(ctx, R.color.strength_strong);  // verde
+        int colorWeak = ContextCompat.getColor(ctx, R.color.expiry_expired);
+        int colorMed  = ContextCompat.getColor(ctx, R.color.expiry_warning);
+        int colorOk   = ContextCompat.getColor(ctx, R.color.strength_strong);
 
         switch (s) {
             case WEAK:
