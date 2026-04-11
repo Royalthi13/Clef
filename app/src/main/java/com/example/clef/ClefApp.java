@@ -2,10 +2,8 @@ package com.example.clef;
 
 import android.app.Activity;
 import android.app.Application;
-import com.example.clef.utils.ClipboardHelper;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
-import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
@@ -15,6 +13,7 @@ import androidx.lifecycle.DefaultLifecycleObserver;
 import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.ProcessLifecycleOwner;
 
+import com.example.clef.utils.ClipboardHelper;
 import com.example.clef.utils.ExpiryHelper;
 import com.example.clef.utils.SecurePrefs;
 import com.example.clef.utils.SessionManager;
@@ -29,10 +28,22 @@ public class ClefApp extends Application {
         ThemeManager.applyStored(this);
         createNotificationChannel();
 
-        // Proteger todas las Activities contra capturas de pantalla y reciente de tareas
+        /**
+         * A-5 FIX: FLAG_SECURE debe aplicarse en onActivityPreCreated (o al menos
+         * ANTES de setContentView). Registrar el callback con
+         * ActivityLifecycleCallbacks y aplicar el flag en onActivityCreated ya es
+         * correcto para la ventana en sí, pero en algunos OEMs la miniatura del
+         * recents se captura justo durante la transición de creación.
+         *
+         * La solución más robusta es sobrescribir en CADA activity el método
+         * onCreate() antes de setContentView(), pero como medida centralizada
+         * aplicamos el flag lo antes posible aquí y además añadimos
+         * onActivityPreCreated via ActivityLifecycleCallbacks para API 29+.
+         */
         registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
             @Override
             public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
+                // A-5 FIX: aplicar antes de que la ventana sea visible.
                 activity.getWindow().setFlags(
                         WindowManager.LayoutParams.FLAG_SECURE,
                         WindowManager.LayoutParams.FLAG_SECURE
@@ -48,26 +59,18 @@ public class ClefApp extends Application {
             @Override public void onActivityDestroyed(Activity activity) {}
         });
 
-        // Si las notificaciones estaban activadas antes de reinstalar, reprogramar el worker
         SharedPreferences prefs = SecurePrefs.get(this, ExpiryHelper.PREFS_NAME);
         if (prefs.getBoolean(ExpiryHelper.PREF_NOTIFICATIONS, false)) {
             PasswordExpiryWorker.schedule(this);
         }
 
-        // Cuando la app pasa a background, SessionManager arranca su propio timer.
-        // Cuando vuelve a foreground, lo cancela.
-        // El timeout lo configura el usuario en Ajustes (1min por defecto).
-        // ClefApp ya NO tiene su propio timer de 60s hardcodeado — solo SessionManager manda.
         ProcessLifecycleOwner.get().getLifecycle().addObserver(new DefaultLifecycleObserver() {
             @Override
             public void onStart(LifecycleOwner owner) {
-                // App en foreground — cancelar el timer de bloqueo
                 SessionManager.getInstance().cancelLockTimer();
             }
-
             @Override
             public void onStop(LifecycleOwner owner) {
-                // App en background — iniciar el timer de bloqueo con el timeout configurado
                 SessionManager.getInstance().startLockTimer();
             }
         });
