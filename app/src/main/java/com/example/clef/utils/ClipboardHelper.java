@@ -9,29 +9,30 @@ import android.os.PersistableBundle;
 
 import androidx.annotation.NonNull;
 
+/**
+ * M-5 FIX: Sustituidos los campos estáticos simples (copyTimestamp, copyDelay)
+ * por un par de variables que almacenan el timestamp y delay del último clip.
+ * La semántica anterior era correcta para un único clip a la vez, pero al copiar
+ * el PUK después de una contraseña el timestamp de la contraseña se perdía.
+ * Ahora se almacena solo el delay más corto pendiente para garantizar que
+ * cualquier clip sensible se limpie en el menor tiempo configurado.
+ */
 public class ClipboardHelper {
 
     private static final long CLEAR_DELAY_MS     = 45_000;
-    private static final long CLEAR_DELAY_PUK_MS = 300_000; // 5 minutos para el PUK
+    private static final long CLEAR_DELAY_PUK_MS = 300_000;
 
-    // Timestamp y delay del ultimo contenido sensible copiado
-    private static long copyTimestamp = 0;
-    private static long copyDelay     = 0;
+    // M-5 FIX: guardamos la expiración absoluta (epoch ms) del clip más urgente.
+    private static volatile long earliestExpiry = 0;
 
     private ClipboardHelper() {}
 
-    /**
-     * Copia el PUK al portapapeles con limpieza a los 5 minutos.
-     */
     public static void copySensitivePuk(@NonNull Context context,
                                         @NonNull String label,
                                         @NonNull String text) {
         copySensitive(context, label, text, CLEAR_DELAY_PUK_MS);
     }
 
-    /**
-     * Copia texto sensible al portapapeles con limpieza a los 45 segundos.
-     */
     public static void copySensitive(@NonNull Context context,
                                      @NonNull String label,
                                      @NonNull String text) {
@@ -42,12 +43,12 @@ public class ClipboardHelper {
                                       @NonNull String label,
                                       @NonNull String text,
                                       long delayMs) {
-        ClipboardManager cm = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+        ClipboardManager cm =
+                (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
         if (cm == null) return;
 
         ClipData clip = ClipData.newPlainText(label, text);
 
-        // Android 13+: marcar como contenido sensible oculta la notificación del portapapeles
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             PersistableBundle extras = new PersistableBundle();
             extras.putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true);
@@ -56,21 +57,20 @@ public class ClipboardHelper {
 
         cm.setPrimaryClip(clip);
 
-        // Guardar timestamp para limpiar cuando la app vuelva a foreground
-        copyTimestamp = System.currentTimeMillis();
-        copyDelay     = delayMs;
+        // M-5 FIX: registrar la expiración más próxima para que clearIfExpired
+        // limpie en el menor tiempo posible cuando haya varios clips activos.
+        long expiry = System.currentTimeMillis() + delayMs;
+        if (earliestExpiry == 0 || expiry < earliestExpiry) {
+            earliestExpiry = expiry;
+        }
     }
 
-    /**
-     * Llamar desde onActivityResumed en ClefApp.
-     * Si ha pasado el tiempo configurado, limpia el portapapeles.
-     * La app esta en foreground en este momento, por lo que el sistema lo permite.
-     */
     public static void clearIfExpired(@NonNull Context context) {
-        if (copyTimestamp == 0) return;
-        if (System.currentTimeMillis() - copyTimestamp < copyDelay) return;
+        if (earliestExpiry == 0) return;
+        if (System.currentTimeMillis() < earliestExpiry) return;
 
-        ClipboardManager cm = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+        ClipboardManager cm =
+                (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
         if (cm == null) return;
 
         try {
@@ -81,7 +81,6 @@ public class ClipboardHelper {
             }
         } catch (Exception ignored) {}
 
-        copyTimestamp = 0;
-        copyDelay     = 0;
+        earliestExpiry = 0;
     }
 }
