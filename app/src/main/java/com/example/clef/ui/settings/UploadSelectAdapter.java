@@ -16,6 +16,7 @@ import com.bumptech.glide.load.resource.bitmap.CircleCrop;
 import com.bumptech.glide.request.RequestOptions;
 import com.example.clef.R;
 import com.example.clef.data.model.Credential;
+import com.example.clef.utils.FaviconHelper;
 import com.google.android.material.card.MaterialCardView;
 
 import java.util.ArrayList;
@@ -23,15 +24,19 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * B-5 FIX: buildFaviconUrl / extractDomain / guessKnownDomain eliminados.
+ * Ahora delegan en FaviconHelper (misma lógica, un solo lugar).
+ */
 public class UploadSelectAdapter extends RecyclerView.Adapter<UploadSelectAdapter.ViewHolder> {
 
     private final List<Credential> items;
-    private final Set<Integer> selected = new HashSet<>();
-    private final Context context;
+    private final Set<Integer>     selected = new HashSet<>();
+    private final Context          context;
 
     public UploadSelectAdapter(Context context, List<Credential> items) {
         this.context = context;
-        this.items = items;
+        this.items   = items;
     }
 
     public List<Credential> getSelected() {
@@ -54,7 +59,7 @@ public class UploadSelectAdapter extends RecyclerView.Adapter<UploadSelectAdapte
         String rawTitle = credential.getTitle();
         String title = (rawTitle == null || rawTitle.trim().isEmpty()) ? "Sin Título" : rawTitle;
 
-        holder.tvTitle.setText(title);
+        holder.tvTitle   .setText(title);
         holder.tvUsername.setText(credential.getUsername());
 
         boolean isSelected = selected.contains(position);
@@ -74,8 +79,9 @@ public class UploadSelectAdapter extends RecyclerView.Adapter<UploadSelectAdapte
         });
     }
 
+    // B-5 FIX: delegar en FaviconHelper en lugar de duplicar 40+ líneas
     private void loadServiceIcon(ViewHolder holder, Credential credential, String title) {
-        String faviconUrl = buildFaviconUrl(credential, title);
+        String faviconUrl = FaviconHelper.buildFaviconUrl(credential, title);
         if (faviconUrl != null) {
             holder.tvInitial.setVisibility(View.GONE);
             holder.ivServiceLogo.setVisibility(View.VISIBLE);
@@ -102,9 +108,7 @@ public class UploadSelectAdapter extends RecyclerView.Adapter<UploadSelectAdapte
                                                        Object model,
                                                        com.bumptech.glide.request.target.Target<android.graphics.drawable.Drawable> target,
                                                        com.bumptech.glide.load.DataSource dataSource,
-                                                       boolean isFirstResource) {
-                            return false;
-                        }
+                                                       boolean isFirstResource) { return false; }
                     })
                     .into(holder.ivServiceLogo);
         } else {
@@ -114,80 +118,25 @@ public class UploadSelectAdapter extends RecyclerView.Adapter<UploadSelectAdapte
         }
     }
 
-    private String buildFaviconUrl(Credential credential, String title) {
-        String domain = null;
-        if (credential.getUrl() != null && !credential.getUrl().trim().isEmpty()) {
-            domain = extractDomain(credential.getUrl());
-        }
-        if (domain == null) domain = guessKnownDomain(title.toLowerCase().trim());
-        if (domain == null && title.length() > 2) {
-            domain = title.toLowerCase().replaceAll("\\s+", "") + ".com";
-        }
-        if (domain == null) return null;
-        return "https://www.google.com/s2/favicons?sz=64&domain=" + domain;
-    }
-
-    private String extractDomain(String url) {
-        try {
-            String clean = url.trim();
-            if (!clean.startsWith("http")) clean = "https://" + clean;
-            java.net.URL parsed = new java.net.URL(clean);
-            String host = parsed.getHost();
-            if (host == null || host.isEmpty()) return null;
-            return host.startsWith("www.") ? host.substring(4) : host;
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private String guessKnownDomain(String name) {
-        switch (name) {
-            case "instagram": case "ig":        return "instagram.com";
-            case "facebook": case "fb":         return "facebook.com";
-            case "twitter": case "x":           return "x.com";
-            case "google":                      return "google.com";
-            case "gmail":                       return "gmail.com";
-            case "youtube":                     return "youtube.com";
-            case "netflix":                     return "netflix.com";
-            case "spotify":                     return "spotify.com";
-            case "amazon":                      return "amazon.com";
-            case "apple":                       return "apple.com";
-            case "microsoft":                   return "microsoft.com";
-            case "github":                      return "github.com";
-            case "linkedin":                    return "linkedin.com";
-            case "whatsapp":                    return "whatsapp.com";
-            case "telegram":                    return "telegram.org";
-            case "discord":                     return "discord.com";
-            case "twitch":                      return "twitch.tv";
-            case "reddit":                      return "reddit.com";
-            case "tiktok":                      return "tiktok.com";
-            case "paypal":                      return "paypal.com";
-            case "steam":                       return "steampowered.com";
-            default:                            return null;
-        }
-    }
-
     @Override
-    public int getItemCount() {
-        return items.size();
-    }
+    public int getItemCount() { return items.size(); }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
         final MaterialCardView card;
-        final ImageView ivServiceLogo;
-        final TextView tvInitial;
-        final TextView tvTitle;
-        final TextView tvUsername;
-        final ImageView ivCheck;
+        final ImageView        ivServiceLogo;
+        final TextView         tvInitial;
+        final TextView         tvTitle;
+        final TextView         tvUsername;
+        final ImageView        ivCheck;
 
         ViewHolder(@NonNull View itemView) {
             super(itemView);
-            card         = itemView.findViewById(R.id.cardSelectable);
-            tvInitial    = itemView.findViewById(R.id.tvInitial);
-            ivServiceLogo= itemView.findViewById(R.id.ivServiceLogo);
-            tvTitle      = itemView.findViewById(R.id.tvTitle);
-            tvUsername   = itemView.findViewById(R.id.tvUsername);
-            ivCheck      = itemView.findViewById(R.id.ivCheck);
+            card          = itemView.findViewById(R.id.cardSelectable);
+            tvInitial     = itemView.findViewById(R.id.tvInitial);
+            ivServiceLogo = itemView.findViewById(R.id.ivServiceLogo);
+            tvTitle       = itemView.findViewById(R.id.tvTitle);
+            tvUsername    = itemView.findViewById(R.id.tvUsername);
+            ivCheck       = itemView.findViewById(R.id.ivCheck);
         }
     }
 }
