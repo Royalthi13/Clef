@@ -5,11 +5,7 @@ plugins {
 
 android {
     namespace = "com.example.clef"
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
-    }
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.clef"
@@ -45,22 +41,22 @@ dependencies {
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
 
-    // 1. Firebase y Google Login (BOM 33.1.2 - La versión más sólida)
+    // Firebase y Google Login (BOM 33.1.2 - La versión más sólida)
     implementation(platform("com.google.firebase:firebase-bom:34.10.0"))
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-firestore")
     implementation("com.google.android.gms:play-services-auth:21.2.0")
 
-    // 2. GSON (Para el JSON de la Bóveda)
+    // GSON (Para el JSON de la Bóveda)
     implementation("com.google.code.gson:gson:2.11.0")
 
-    // 3. Auto-Lock de 60 segundos
+    // Auto-Lock de 60 segundos
     implementation("androidx.lifecycle:lifecycle-process:2.8.4")
 
-    // 5. Biometría
+    // Biometría
     implementation("androidx.biometric:biometric:1.1.0")
 
-    // 4. Lottie (Para la animación premium)
+    // Lottie (Para la animación premium)
     implementation("com.airbnb.android:lottie:6.4.1")
 
     implementation("com.github.bumptech.glide:glide:4.16.0")
