@@ -18,6 +18,14 @@ import com.example.clef.utils.SecurePrefs;
 import com.example.clef.utils.SessionManager;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
+/**
+ * B-8 FIX: onResume() llamaba a startLockTimer() que programa un bloqueo
+ * en background aunque la app esté en primer plano. Esto causaba bloqueos
+ * prematuros si el usuario no interactuaba durante lockTimeoutMs.
+ *
+ * El timer de bloqueo SOLO debe iniciarse cuando la app va a background (onStop).
+ * En onResume solo hay que cancelarlo (app vuelve a primer plano).
+ */
 public class MainActivity extends AppCompatActivity {
 
     private VaultFragment    vaultFragment;
@@ -45,87 +53,54 @@ public class MainActivity extends AppCompatActivity {
         FragmentManager fm = getSupportFragmentManager();
 
         if (savedInstanceState == null) {
-            // Primera vez: crear todos los fragments y añadirlos al contenedor
             vaultFragment     = new VaultFragment();
             settingsFragment  = new SettingsFragment();
             generatorFragment = new GeneratorFragment();
 
             fm.beginTransaction()
-                    .add(R.id.fragmentContainer, settingsFragment,  "settings") .hide(settingsFragment)
+                    .add(R.id.fragmentContainer, settingsFragment,  "settings").hide(settingsFragment)
                     .add(R.id.fragmentContainer, generatorFragment, "generator").hide(generatorFragment)
                     .add(R.id.fragmentContainer, vaultFragment,     "vault")
                     .commit();
-
             activeFragment = vaultFragment;
-
         } else {
-            // Recreación (cambio de tema, rotación, sistema mata el proceso, etc.)
-            // Los fragments ya están en el back-stack del FragmentManager.
             vaultFragment     = (VaultFragment)    fm.findFragmentByTag("vault");
             generatorFragment =                    fm.findFragmentByTag("generator");
             settingsFragment  = (SettingsFragment) fm.findFragmentByTag("settings");
 
-            // BUG ANTERIOR: si algún fragment era null (proceso matado por el sistema),
-            // se creaba uno nuevo con `new` pero NO se añadía al FragmentManager.
-            // La siguiente llamada a switchTo() intentaba hide(activeFragment) con un
-            // fragment sin adjuntar → IllegalStateException.
-            //
-            // SOLUCIÓN: si faltan fragments, recrear la pila completa desde cero
-            // en lugar de mezclar fragments existentes con nuevos sin adjuntar.
             if (vaultFragment == null || generatorFragment == null || settingsFragment == null) {
-                // El estado del FragmentManager es inconsistente — reconstruir todo
                 vaultFragment     = vaultFragment     != null ? vaultFragment     : new VaultFragment();
                 generatorFragment = generatorFragment != null ? generatorFragment : new GeneratorFragment();
                 settingsFragment  = settingsFragment  != null ? settingsFragment  : new SettingsFragment();
 
-                // Limpiar el back-stack actual para evitar duplicados
                 fm.popBackStackImmediate(null, FragmentManager.POP_BACK_STACK_INCLUSIVE);
-
                 fm.beginTransaction()
-                        .replace(R.id.fragmentContainer, settingsFragment,  "settings")
-                        .hide(settingsFragment)
-                        .commit();
+                        .replace(R.id.fragmentContainer, settingsFragment, "settings")
+                        .hide(settingsFragment).commit();
                 fm.beginTransaction()
                         .add(R.id.fragmentContainer, generatorFragment, "generator")
-                        .hide(generatorFragment)
-                        .commit();
+                        .hide(generatorFragment).commit();
                 fm.beginTransaction()
-                        .add(R.id.fragmentContainer, vaultFragment, "vault")
-                        .commit();
-
+                        .add(R.id.fragmentContainer, vaultFragment, "vault").commit();
                 activeFragment = vaultFragment;
             } else {
-                // Todos los fragments están en el FragmentManager: determinar cuál era activo
-                if (!vaultFragment.isHidden()) {
-                    activeFragment = vaultFragment;
-                } else if (!generatorFragment.isHidden()) {
-                    activeFragment = generatorFragment;
-                } else if (!settingsFragment.isHidden()) {
-                    activeFragment = settingsFragment;
-                } else {
-                    // Estado incoherente (ninguno visible) → mostrar vault como fallback
+                if      (!vaultFragment.isHidden())     activeFragment = vaultFragment;
+                else if (!generatorFragment.isHidden()) activeFragment = generatorFragment;
+                else if (!settingsFragment.isHidden())  activeFragment = settingsFragment;
+                else {
                     activeFragment = vaultFragment;
                     fm.beginTransaction().show(vaultFragment).commit();
                 }
             }
-
-            // Sincronizar el BottomNav con el fragment activo
             syncBottomNav();
         }
 
         BottomNavigationView bottomNav = findViewById(R.id.bottomNav);
         bottomNav.setOnItemSelectedListener(item -> {
             int id = item.getItemId();
-            if (id == R.id.nav_vault) {
-                switchTo(vaultFragment);
-                return true;
-            } else if (id == R.id.nav_generator) {
-                switchTo(generatorFragment);
-                return true;
-            } else if (id == R.id.nav_settings) {
-                switchTo(settingsFragment);
-                return true;
-            }
+            if      (id == R.id.nav_vault)     { switchTo(vaultFragment);     return true; }
+            else if (id == R.id.nav_generator) { switchTo(generatorFragment); return true; }
+            else if (id == R.id.nav_settings)  { switchTo(settingsFragment);  return true; }
             return false;
         });
     }
@@ -133,6 +108,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
+        // B-8 FIX: solo cancelar el timer (app vuelve a foreground).
         SessionManager.getInstance().cancelLockTimer();
         if (!SessionManager.getInstance().isUnlocked()) {
             startActivity(new android.content.Intent(this, UnlockActivity.class)
@@ -145,16 +121,15 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // Reiniciar el timer cada vez que la app vuelve a primer plano,
-        // así también bloquea si el usuario se queda N minutos sin salir.
-        if (SessionManager.getInstance().isUnlocked()) {
-            SessionManager.getInstance().startLockTimer();
-        }
+        // B-8 FIX: NO llamar a startLockTimer() aquí.
+        // El timer se inicia en onStop() cuando la app realmente va a background.
+        // Llamarlo en onResume() causaba bloqueos prematuros.
     }
 
     @Override
     protected void onStop() {
         super.onStop();
+        // B-8 FIX: iniciar el timer solo cuando la app va a background.
         SessionManager.getInstance().startLockTimer();
     }
 
@@ -167,28 +142,17 @@ public class MainActivity extends AppCompatActivity {
     private void switchTo(Fragment target) {
         if (target == null || target == activeFragment) return;
         if (activeFragment == null) { activeFragment = target; return; }
-
         getSupportFragmentManager().beginTransaction()
-                .hide(activeFragment)
-                .show(target)
-                .commit();
+                .hide(activeFragment).show(target).commit();
         activeFragment = target;
     }
 
-    /**
-     * Sincroniza el ítem seleccionado en el BottomNavigationView con el fragment activo.
-     * Solo necesario tras la recreación de la Activity.
-     */
     private void syncBottomNav() {
         BottomNavigationView bottomNav = findViewById(R.id.bottomNav);
         if (bottomNav == null || activeFragment == null) return;
-        if (activeFragment == settingsFragment) {
-            bottomNav.setSelectedItemId(R.id.nav_settings);
-        } else if (activeFragment == generatorFragment) {
-            bottomNav.setSelectedItemId(R.id.nav_generator);
-        } else {
-            bottomNav.setSelectedItemId(R.id.nav_vault);
-        }
+        if      (activeFragment == settingsFragment)  bottomNav.setSelectedItemId(R.id.nav_settings);
+        else if (activeFragment == generatorFragment) bottomNav.setSelectedItemId(R.id.nav_generator);
+        else                                          bottomNav.setSelectedItemId(R.id.nav_vault);
     }
 
     private void requestNotificationPermission() {
