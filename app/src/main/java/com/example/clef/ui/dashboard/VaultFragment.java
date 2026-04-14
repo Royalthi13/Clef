@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.content.Context;
+import android.util.Log;
 
 import com.example.clef.R;
 import com.example.clef.crypto.KeyManager;
@@ -41,6 +42,8 @@ import java.util.concurrent.Executors;
 
 public class VaultFragment extends Fragment {
 
+    private static final String TAG = "VaultFragment";
+
     private enum SortOrder { RECENT, ALPHABETICAL, EXPIRY }
 
     private VaultAdapter      adapter;
@@ -51,8 +54,8 @@ public class VaultFragment extends Fragment {
     private com.google.android.material.button.MaterialButton btnSort;
     private SortOrder         currentSort = SortOrder.RECENT;
 
-    private final ExecutorService executor      = Executors.newSingleThreadExecutor();
-    private final Handler         mainHandler   = new Handler(Looper.getMainLooper());
+    private final ExecutorService executor        = Executors.newSingleThreadExecutor();
+    private final Handler         mainHandler     = new Handler(Looper.getMainLooper());
     private final FirebaseManager firebaseManager = new FirebaseManager();
 
     private final Runnable expiryRefreshRunnable = new Runnable() {
@@ -82,6 +85,7 @@ public class VaultFragment extends Fragment {
         etSearch            = view.findViewById(R.id.etSearch);
         chipGroupCategories = view.findViewById(R.id.chipGroupCategories);
         btnSort             = view.findViewById(R.id.btnSort);
+
         for (Credential.Category cat : Credential.Category.values()) {
             Chip chip = new Chip(requireContext());
             chip.setText(getString(cat.getLabelRes()));
@@ -91,7 +95,6 @@ public class VaultFragment extends Fragment {
             chipGroupCategories.addView(chip);
         }
 
-        // FIX UX: Chip "Todos" seleccionado por defecto
         Chip chipAll = view.findViewById(R.id.chipAll);
         if (chipAll != null) chipAll.setChecked(true);
 
@@ -100,13 +103,12 @@ public class VaultFragment extends Fragment {
         adapter = new VaultAdapter(requireContext());
         adapter.setOnCredentialActionListener(new VaultAdapter.OnCredentialActionListener() {
             @Override
-            public void onSave(Credential credential) {
-                saveCredential(credential);
-            }
+            public void onSave(Credential credential) { saveCredential(credential); }
 
             @Override
             public void onDelete(Credential credential) {
-                String titulo = credential.getTitle() != null ? credential.getTitle() : "esta credencial";
+                String titulo = credential.getTitle() != null
+                        ? credential.getTitle() : "esta credencial";
                 new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
                         .setTitle("Eliminar credencial")
                         .setMessage("¿Eliminar \"" + titulo + "\"?")
@@ -129,22 +131,21 @@ public class VaultFragment extends Fragment {
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
         recyclerView.setAdapter(adapter);
 
-        // Evitar el fade por defecto al notifyItemChanged (causa parpadeo al expandir)
-        androidx.recyclerview.widget.RecyclerView.ItemAnimator animator = recyclerView.getItemAnimator();
+        androidx.recyclerview.widget.RecyclerView.ItemAnimator animator =
+                recyclerView.getItemAnimator();
         if (animator instanceof androidx.recyclerview.widget.SimpleItemAnimator) {
-            ((androidx.recyclerview.widget.SimpleItemAnimator) animator).setSupportsChangeAnimations(false);
+            ((androidx.recyclerview.widget.SimpleItemAnimator) animator)
+                    .setSupportsChangeAnimations(false);
         }
 
-        // FIX UX: FAB y botón del estado vacío abren el mismo diálogo
         view.findViewById(R.id.fabAdd).setOnClickListener(v -> openAddDialog());
         View btnEmptyAdd = view.findViewById(R.id.btnEmptyAddFirst);
         if (btnEmptyAdd != null) btnEmptyAdd.setOnClickListener(v -> openAddDialog());
 
-        // Banner tip icono generador
-        String tipUid = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser() != null
-                ? com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser().getUid()
-                : "anon";
-        android.content.SharedPreferences tipPrefs = SecurePrefs.get(requireContext(), "generator_prefs_" + tipUid);
+        String tipUid = FirebaseAuth.getInstance().getCurrentUser() != null
+                ? FirebaseAuth.getInstance().getCurrentUser().getUid() : "anon";
+        android.content.SharedPreferences tipPrefs =
+                SecurePrefs.get(requireContext(), "generator_prefs_" + tipUid);
         View cardTip = view.findViewById(R.id.cardGeneratorTip);
         if (tipPrefs.getBoolean("tip_dismissed", false)) {
             cardTip.setVisibility(View.GONE);
@@ -152,8 +153,7 @@ public class VaultFragment extends Fragment {
             view.findViewById(R.id.btnTipDismiss).setOnClickListener(v -> {
                 tipPrefs.edit().putBoolean("tip_dismissed", true).apply();
                 cardTip.animate().alpha(0f).setDuration(250)
-                        .withEndAction(() -> cardTip.setVisibility(View.GONE))
-                        .start();
+                        .withEndAction(() -> cardTip.setVisibility(View.GONE)).start();
             });
         }
 
@@ -166,13 +166,12 @@ public class VaultFragment extends Fragment {
         btnSort.setOnClickListener(v -> {
             String[] options = {"Más reciente", "Alfabético", "Por caducidad"};
             int checked = currentSort == SortOrder.RECENT ? 0
-                        : currentSort == SortOrder.ALPHABETICAL ? 1 : 2;
+                    : currentSort == SortOrder.ALPHABETICAL ? 1 : 2;
             new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
                     .setTitle("Ordenar por")
                     .setSingleChoiceItems(options, checked, (dialog, which) -> {
                         currentSort = which == 0 ? SortOrder.RECENT
-                                    : which == 1 ? SortOrder.ALPHABETICAL
-                                    : SortOrder.EXPIRY;
+                                : which == 1 ? SortOrder.ALPHABETICAL : SortOrder.EXPIRY;
                         btnSort.setText(options[which] + " ▾");
                         dialog.dismiss();
                         applyFilters();
@@ -216,18 +215,29 @@ public class VaultFragment extends Fragment {
     }
 
     private void startVaultListener() {
-        firebaseManager.addVaultListener((encryptedCloudVault, version) ->
-                onCloudVaultChanged(encryptedCloudVault, version));
+        firebaseManager.addVaultListener(this::onCloudVaultChanged);
     }
 
-    /** Llamado en el hilo principal cuando Firebase detecta un cambio en el vault. */
+    // ── M-3 + C-4 FIX ─────────────────────────────────────────────────────
+
+    /**
+     * M-3 FIX: antes el catch swalloeaba cualquier excepción silenciosamente
+     * y la DEK clonada quedaba en heap sin zerizar.
+     *
+     * C-4 FIX: la DEK clonada por getDek() se zeriza SIEMPRE en el finally,
+     * tanto si la operación tuvo éxito como si lanzó excepción.
+     */
     private void onCloudVaultChanged(String encryptedCloudVault, long version) {
         SessionManager session = SessionManager.getInstance();
-        byte[] dek = session.getDek();
-        if (dek == null) return;
+        byte[] dek = session.getDek(); // clon — DEBE zerisar en finally
+        if (dek == null) return;       // sesión bloqueada antes del listener
 
         executor.execute(() -> {
             try {
+                // M-3 FIX: verificar que la sesión sigue activa antes de descifrar.
+                // Si lock() disparó entre getDek() y este punto, no intentar descifrar.
+                if (!session.isUnlocked()) return;
+
                 Vault cloudVault = new KeyManager().descifrarVault(encryptedCloudVault, dek);
 
                 mainHandler.post(() -> {
@@ -235,37 +245,51 @@ public class VaultFragment extends Fragment {
                     Vault localVault = session.getVault();
                     if (localVault == null) return;
 
-                    // Sustituir credenciales synced locales con las de la nube
                     List<Credential> list = localVault.getCredentials();
                     list.removeIf(Credential::isSynced);
                     for (Credential c : cloudVault.getCredentials()) {
                         c.setSynced(true);
                         list.add(c);
                     }
-
-                    // Actualizar versión conocida
                     session.setCloudVaultVersion(version);
 
                     Context ctx = requireContext();
-                    executor.execute(() -> {
-                        try {
-                            String enc = new KeyManager().cifrarVault(localVault, dek);
-                            new VaultRepository(ctx).saveLocalVaultOnly(enc);
-                        } catch (Exception ignored) {}
-                    });
+                    // C-4 FIX: nuevo getDek() para el subhilo — este también se zeriza en finally
+                    byte[] dekForSave = session.getDek();
+                    if (dekForSave != null) {
+                        executor.execute(() -> {
+                            try {
+                                String enc = new KeyManager().cifrarVault(localVault, dekForSave);
+                                new VaultRepository(ctx).saveLocalVaultOnly(enc);
+                            } catch (Exception e) {
+                                Log.e(TAG, "onCloudVaultChanged: error guardando local", e);
+                            } finally {
+                                SessionManager.zeroizeDekCopy(dekForSave);
+                            }
+                        });
+                    }
 
                     session.updateVault(localVault);
                     applyFilters();
                 });
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                // M-3 FIX: logear en lugar de swallowear silenciosamente
+                Log.w(TAG, "onCloudVaultChanged: error al descifrar vault remoto", e);
+            } finally {
+                // C-4 FIX: siempre zerizar el clon de la DEK
+                SessionManager.zeroizeDekCopy(dek);
+            }
         });
     }
 
-    // ── Guardado ───────────────────────────────────────────────────────────────
+    // ── Guardado ───────────────────────────────────────────────────────────
 
+    /**
+     * C-4 FIX: el clon de DEK se zeriza en finally del executor.
+     */
     private void saveCredential(Credential credential) {
         SessionManager session = SessionManager.getInstance();
-        byte[] dek  = session.getDek();
+        byte[] dek   = session.getDek(); // clon
         Vault  vault = session.getVault();
         if (dek == null || vault == null) return;
 
@@ -275,164 +299,193 @@ public class VaultFragment extends Fragment {
             try {
                 String encrypted = new KeyManager().cifrarVault(vault, dek);
                 VaultRepository repo = new VaultRepository(requireContext());
-
-                // Siempre guardar el vault completo en local
                 repo.saveLocalVaultOnly(encrypted);
 
                 if (credential.isSynced()) {
-                    // Subir a Firebase solo las credenciales con synced=true
-                    repo.uploadSyncedOnly(vault, dek, expectedVersion, new VaultRepository.Callback<Void>() {
-                        @Override
-                        public void onSuccess(Void r) {
-                            session.setCloudVaultVersion(expectedVersion + 1);
-                            session.updateVault(vault);
-                            mainHandler.post(() -> { if (isAdded()) adapter.refreshWithoutCollapse(); });
-                        }
+                    repo.uploadSyncedOnly(vault, dek, expectedVersion,
+                            new VaultRepository.Callback<Void>() {
+                                @Override
+                                public void onSuccess(Void r) {
+                                    session.setCloudVaultVersion(expectedVersion + 1);
+                                    session.updateVault(vault);
+                                    mainHandler.post(() -> {
+                                        if (isAdded()) adapter.refreshWithoutCollapse();
+                                    });
+                                }
 
-                        @Override
-                        public void onError(Exception e) {
-                            if (com.example.clef.data.remote.FirebaseManager.CONFLICT_ERROR.equals(e.getMessage())) {
-                                retryAfterConflict(credential, vault, dek);
-                            } else {
-                                session.updateVault(vault);
-                                mainHandler.post(() -> {
-                                    if (!isAdded()) return;
-                                    adapter.refreshWithoutCollapse();
-                                    android.widget.Toast.makeText(requireContext(),
-                                            "Guardado local. Error al sincronizar.",
-                                            android.widget.Toast.LENGTH_SHORT).show();
-                                });
-                            }
-                        }
-                    });
+                                @Override
+                                public void onError(Exception e) {
+                                    if (FirebaseManager.CONFLICT_ERROR.equals(e.getMessage())) {
+                                        // Para retryAfterConflict necesitamos otro clon;
+                                        // el dek actual se zeriza en finally de este execute.
+                                        byte[] dekRetry = session.getDek();
+                                        if (dekRetry != null) {
+                                            retryAfterConflict(credential, vault, dekRetry);
+                                        }
+                                    } else {
+                                        session.updateVault(vault);
+                                        mainHandler.post(() -> {
+                                            if (!isAdded()) return;
+                                            adapter.refreshWithoutCollapse();
+                                            android.widget.Toast.makeText(requireContext(),
+                                                    "Guardado local. Error al sincronizar.",
+                                                    android.widget.Toast.LENGTH_SHORT).show();
+                                        });
+                                    }
+                                }
+                            });
                 } else {
                     session.updateVault(vault);
                     mainHandler.post(() -> { if (isAdded()) adapter.refreshWithoutCollapse(); });
                 }
             } catch (Exception e) {
+                Log.e(TAG, "saveCredential: error", e);
                 mainHandler.post(() -> {
                     if (!isAdded()) return;
                     android.widget.Toast.makeText(requireContext(),
                             "Error al guardar", android.widget.Toast.LENGTH_SHORT).show();
                 });
+            } finally {
+                // C-4 FIX: zerizar siempre el clon
+                SessionManager.zeroizeDekCopy(dek);
             }
         });
     }
 
     private void retryAfterConflict(Credential pendingCredential, Vault staleVault, byte[] dek) {
         VaultRepository repo = new VaultRepository(requireContext());
-        repo.downloadAndCacheFromFirebase(new VaultRepository.Callback<com.example.clef.data.remote.FirebaseManager.UserData>() {
-            @Override
-            public void onSuccess(com.example.clef.data.remote.FirebaseManager.UserData userData) {
-                if (userData == null || userData.vault == null) return;
-                executor.execute(() -> {
-                    try {
-                        // Descifrar el vault fresco de Firebase
-                        Vault freshVault = new KeyManager().descifrarVault(userData.vault, dek);
-
-                        // Fusionar: credenciales cloud (synced=true) + locales no synced del vault en sesión
-                        java.util.List<Credential> merged = new java.util.ArrayList<>();
-                        for (Credential c : freshVault.getCredentials()) {
-                            c.setSynced(true);
-                            merged.add(c);
+        repo.downloadAndCacheFromFirebase(
+                new VaultRepository.Callback<FirebaseManager.UserData>() {
+                    @Override
+                    public void onSuccess(FirebaseManager.UserData userData) {
+                        if (userData == null || userData.vault == null) {
+                            SessionManager.zeroizeDekCopy(dek);
+                            return;
                         }
-                        for (Credential c : staleVault.getCredentials()) {
-                            if (!c.isSynced()) merged.add(c);
-                        }
-                        freshVault.setCredentials(merged);
+                        executor.execute(() -> {
+                            try {
+                                Vault freshVault = new KeyManager()
+                                        .descifrarVault(userData.vault, dek);
 
-                        // Aplicar el cambio pendiente encima del vault fresco
-                        java.util.List<Credential> list = freshVault.getCredentials();
-                        int idx = findCredentialIndex(list, pendingCredential);
-                        if (idx >= 0) {
-                            list.set(idx, pendingCredential);
-                        } else {
-                            list.add(pendingCredential);
-                        }
+                                List<Credential> merged = new ArrayList<>();
+                                for (Credential c : freshVault.getCredentials()) {
+                                    c.setSynced(true);
+                                    merged.add(c);
+                                }
+                                for (Credential c : staleVault.getCredentials()) {
+                                    if (!c.isSynced()) merged.add(c);
+                                }
+                                freshVault.setCredentials(merged);
 
-                        // Guardar localmente y subir con la versión nueva
-                        String encLocal = new KeyManager().cifrarVault(freshVault, dek);
-                        repo.saveLocalVaultOnly(encLocal);
+                                List<Credential> list = freshVault.getCredentials();
+                                int idx = findCredentialIndex(list, pendingCredential);
+                                if (idx >= 0) list.set(idx, pendingCredential);
+                                else list.add(pendingCredential);
 
-                        final long newExpected = userData.version;
-                        repo.uploadSyncedOnly(freshVault, dek, newExpected, new VaultRepository.Callback<Void>() {
-                            @Override
-                            public void onSuccess(Void r) {
+                                String encLocal = new KeyManager().cifrarVault(freshVault, dek);
+                                repo.saveLocalVaultOnly(encLocal);
+
+                                final long newExpected = userData.version;
                                 SessionManager session = SessionManager.getInstance();
-                                session.setCloudVaultVersion(newExpected + 1);
-                                session.updateVault(freshVault);
-                                mainHandler.post(() -> { if (isAdded()) adapter.refreshWithoutCollapse(); });
-                            }
-
-                            @Override
-                            public void onError(Exception e) {
-                                SessionManager.getInstance().updateVault(freshVault);
+                                repo.uploadSyncedOnly(freshVault, dek, newExpected,
+                                        new VaultRepository.Callback<Void>() {
+                                            @Override
+                                            public void onSuccess(Void r) {
+                                                session.setCloudVaultVersion(newExpected + 1);
+                                                session.updateVault(freshVault);
+                                                mainHandler.post(() -> {
+                                                    if (isAdded()) adapter.refreshWithoutCollapse();
+                                                });
+                                            }
+                                            @Override
+                                            public void onError(Exception e) {
+                                                session.updateVault(freshVault);
+                                                mainHandler.post(() -> {
+                                                    if (!isAdded()) return;
+                                                    adapter.refreshWithoutCollapse();
+                                                    android.widget.Toast.makeText(requireContext(),
+                                                            "Guardado local. Error al sincronizar.",
+                                                            android.widget.Toast.LENGTH_SHORT).show();
+                                                });
+                                            }
+                                        });
+                            } catch (Exception e) {
+                                Log.e(TAG, "retryAfterConflict: error", e);
                                 mainHandler.post(() -> {
                                     if (!isAdded()) return;
-                                    adapter.refreshWithoutCollapse();
                                     android.widget.Toast.makeText(requireContext(),
-                                            "Guardado local. Error al sincronizar.",
+                                            "Error al guardar",
                                             android.widget.Toast.LENGTH_SHORT).show();
                                 });
+                            } finally {
+                                // C-4 FIX: zerizar el clon pasado a este método
+                                SessionManager.zeroizeDekCopy(dek);
                             }
                         });
-                    } catch (Exception e) {
+                    }
+
+                    @Override
+                    public void onError(Exception e) {
+                        SessionManager.zeroizeDekCopy(dek);
                         mainHandler.post(() -> {
                             if (!isAdded()) return;
                             android.widget.Toast.makeText(requireContext(),
-                                    "Error al guardar", android.widget.Toast.LENGTH_SHORT).show();
+                                    "Guardado local. Error al sincronizar.",
+                                    android.widget.Toast.LENGTH_SHORT).show();
                         });
                     }
                 });
-            }
-
-            @Override
-            public void onError(Exception e) {
-                mainHandler.post(() -> {
-                    if (!isAdded()) return;
-                    android.widget.Toast.makeText(requireContext(),
-                            "Guardado local. Error al sincronizar.",
-                            android.widget.Toast.LENGTH_SHORT).show();
-                });
-            }
-        });
     }
 
-    // ── Borrado ────────────────────────────────────────────────────────────────
+    // ── Borrado ────────────────────────────────────────────────────────────
 
+    /**
+     * C-4 FIX: el clon de DEK se zeriza en finally del Snackbar callback.
+     */
     private void deleteCredential(Credential credential) {
         SessionManager session = SessionManager.getInstance();
-        byte[] dek   = session.getDek();
+        byte[] dek   = session.getDek(); // clon
         Vault  vault = session.getVault();
         if (dek == null || vault == null) return;
 
         List<Credential> list = vault.getCredentials();
         int idx = findCredentialIndex(list, credential);
-        if (idx < 0) { applyFilters(); return; }
+        if (idx < 0) {
+            SessionManager.zeroizeDekCopy(dek);
+            applyFilters();
+            return;
+        }
 
-        // Borrar de memoria inmediatamente y refrescar UI
         list.remove(idx);
         session.updateVault(vault);
         applyFilters();
 
         View root = getView();
-        if (root == null) return;
+        if (root == null) {
+            SessionManager.zeroizeDekCopy(dek);
+            return;
+        }
 
         String titulo = credential.getTitle() != null ? credential.getTitle() : "Credencial";
 
         com.google.android.material.snackbar.Snackbar
                 .make(root, "\"" + titulo + "\" eliminada", 5000)
                 .setAction("Deshacer", v -> {
-                    // Restaurar en memoria
+                    // Restaurar en memoria — dek sigue vivo hasta onDismissed
                     list.add(idx, credential);
                     session.updateVault(vault);
                     applyFilters();
                 })
                 .addCallback(new com.google.android.material.snackbar.Snackbar.Callback() {
                     @Override
-                    public void onDismissed(com.google.android.material.snackbar.Snackbar sb, int event) {
-                        // Solo persistir si no se pulsó "Deshacer"
-                        if (event == DISMISS_EVENT_ACTION) return;
+                    public void onDismissed(
+                            com.google.android.material.snackbar.Snackbar sb, int event) {
+                        if (event == DISMISS_EVENT_ACTION) {
+                            // Usuario pulsó "Deshacer" — limpiar dek sin persistir
+                            SessionManager.zeroizeDekCopy(dek);
+                            return;
+                        }
+                        // Persistir la eliminación
                         executor.execute(() -> {
                             try {
                                 String encrypted = new KeyManager().cifrarVault(vault, dek);
@@ -441,25 +494,32 @@ public class VaultFragment extends Fragment {
                                 repo.saveLocalVaultOnly(encrypted);
                                 if (credential.isSynced()) {
                                     long expectedVersion = session.getCloudVaultVersion();
-                                    repo.uploadSyncedOnly(vault, dek, expectedVersion, new VaultRepository.Callback<Void>() {
-                                        @Override public void onSuccess(Void r) {}
-                                        @Override public void onError(Exception e) {
-                                            list.add(idx, credential);
-                                            session.updateVault(vault);
-                                            mainHandler.post(() -> {
-                                                if (!isAdded()) return;
-                                                applyFilters();
-                                                android.widget.Toast.makeText(requireContext(),
-                                                        "Error al eliminar. Inténtalo de nuevo.",
-                                                        android.widget.Toast.LENGTH_SHORT).show();
+                                    repo.uploadSyncedOnly(vault, dek, expectedVersion,
+                                            new VaultRepository.Callback<Void>() {
+                                                @Override public void onSuccess(Void r) {}
+                                                @Override public void onError(Exception e) {
+                                                    list.add(idx, credential);
+                                                    session.updateVault(vault);
+                                                    mainHandler.post(() -> {
+                                                        if (!isAdded()) return;
+                                                        applyFilters();
+                                                        android.widget.Toast.makeText(
+                                                                        requireContext(),
+                                                                        "Error al eliminar. Inténtalo de nuevo.",
+                                                                        android.widget.Toast.LENGTH_SHORT)
+                                                                .show();
+                                                    });
+                                                }
                                             });
-                                        }
-                                    });
                                 }
                             } catch (Exception e) {
+                                Log.e(TAG, "deleteCredential: error persistiendo", e);
                                 list.add(idx, credential);
                                 session.updateVault(vault);
                                 mainHandler.post(() -> { if (isAdded()) applyFilters(); });
+                            } finally {
+                                // C-4 FIX: zerizar siempre el clon
+                                SessionManager.zeroizeDekCopy(dek);
                             }
                         });
                     }
@@ -487,7 +547,7 @@ public class VaultFragment extends Fragment {
         return a.equals(b);
     }
 
-    // ── Filtrado ──────────────────────────────────────────────────────────────
+    // ── Filtrado ──────────────────────────────────────────────────────────
 
     private void applyFilters() {
         Vault vault = SessionManager.getInstance().getVault();
@@ -517,7 +577,6 @@ public class VaultFragment extends Fragment {
             });
         }
 
-        // Ordenación
         android.content.SharedPreferences prefs =
                 SecurePrefs.get(requireContext(), ExpiryHelper.PREFS_NAME);
         long periodMs = prefs.getLong(ExpiryHelper.PREF_PERIOD, ExpiryHelper.PERIOD_ONE_YEAR);
@@ -534,7 +593,6 @@ public class VaultFragment extends Fragment {
                 list.sort((a, b) -> {
                     ExpiryHelper.Status sa = ExpiryHelper.getStatus(a.getUpdatedAt(), periodMs);
                     ExpiryHelper.Status sb = ExpiryHelper.getStatus(b.getUpdatedAt(), periodMs);
-                    // Expiradas primero, luego warning, luego ok, luego sin período
                     return sb.ordinal() - sa.ordinal();
                 });
                 break;
