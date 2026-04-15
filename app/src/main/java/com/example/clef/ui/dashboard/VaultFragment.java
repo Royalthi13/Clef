@@ -35,6 +35,7 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.FirebaseAuth;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -112,7 +113,8 @@ public class VaultFragment extends Fragment {
                 new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
                         .setTitle("Eliminar credencial")
                         .setMessage("¿Eliminar \"" + titulo + "\"?")
-                        .setPositiveButton("Eliminar", (dialog, which) ->
+                        .setPositiveButton("Eliminar", (dialog, which) -> {
+                            if (BiometricHelper.isAvailable(requireContext())) {
                                 BiometricHelper.confirmIdentity(
                                         requireActivity(),
                                         "Confirmar eliminación",
@@ -122,7 +124,11 @@ public class VaultFragment extends Fragment {
                                                 deleteCredential(credential);
                                             }
                                             @Override public void onCancelled() {}
-                                        }))
+                                        });
+                            } else {
+                                confirmWithMasterPassword(credential);
+                            }
+                        })
                         .setNegativeButton("Cancelar", null)
                         .show();
             }
@@ -439,6 +445,48 @@ public class VaultFragment extends Fragment {
 
     // ── Borrado ────────────────────────────────────────────────────────────
 
+    private void confirmWithMasterPassword(Credential credential) {
+        android.view.View dialogView = android.view.LayoutInflater.from(requireContext())
+                .inflate(R.layout.dialog_verify_password, null);
+        com.google.android.material.textfield.TextInputEditText etPassword =
+                dialogView.findViewById(R.id.etVerifyPassword);
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Confirmar eliminación")
+                .setMessage("Introduce tu contraseña maestra para confirmar")
+                .setView(dialogView)
+                .setPositiveButton("Confirmar", (d, w) -> {
+                    String pwd = etPassword.getText() != null
+                            ? etPassword.getText().toString() : "";
+                    if (pwd.isEmpty()) return;
+                    verifyMasterAndDelete(credential, pwd.toCharArray());
+                })
+                .setNegativeButton("Cancelar", null)
+                .show();
+    }
+
+    private void verifyMasterAndDelete(Credential credential, char[] passwordChars) {
+        VaultRepository repo = new VaultRepository(requireContext());
+        FirebaseManager.UserData data = repo.loadOfflineUserData();
+        if (data == null || data.salt == null || data.cajaA == null) {
+            Arrays.fill(passwordChars, '\0');
+            android.widget.Toast.makeText(requireContext(),
+                    "No se pueden verificar las credenciales.",
+                    android.widget.Toast.LENGTH_SHORT).show();
+            return;
+        }
+        executor.execute(() -> {
+            try {
+                new KeyManager().login(passwordChars, data.salt, data.cajaA, data.vault);
+                mainHandler.post(() -> deleteCredential(credential));
+            } catch (Exception e) {
+                mainHandler.post(() -> android.widget.Toast.makeText(requireContext(),
+                        "Contraseña incorrecta.",
+                        android.widget.Toast.LENGTH_SHORT).show());
+            } finally {
+                Arrays.fill(passwordChars, '\0');
+            }
+        });
+    }
     /**
      * C-4 FIX: el clon de DEK se zeriza en finally del Snackbar callback.
      */
