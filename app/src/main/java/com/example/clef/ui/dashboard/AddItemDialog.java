@@ -21,7 +21,6 @@ import com.example.clef.utils.SecurePrefs;
 import com.example.clef.utils.SessionManager;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.button.MaterialButton;
-import com.google.android.material.chip.Chip;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
@@ -34,8 +33,9 @@ public class AddItemDialog extends BottomSheetDialogFragment {
     }
 
     private OnCredentialSavedListener listener;
-
-    private com.google.android.material.chip.ChipGroup chipGroupCategory;
+    private com.google.android.material.textfield.MaterialAutoCompleteTextView acCategory;
+    private Credential.Category selectedCategory = null;
+    private boolean categoryManuallyChanged = false;
     private TextInputLayout   tilTitle;
     private TextInputLayout   tilUsername;
     private TextInputLayout   tilPassword;
@@ -74,18 +74,39 @@ public class AddItemDialog extends BottomSheetDialogFragment {
         etUrl       = view.findViewById(R.id.etUrl);
         etDescription = view.findViewById(R.id.etDescription);
         btnSave     = view.findViewById(R.id.btnSave);
-        chipGroupCategory = view.findViewById(R.id.chipGroupCategory);
+        acCategory  = view.findViewById(R.id.acCategory);
 
-        android.view.LayoutInflater inflater = android.view.LayoutInflater.from(requireContext());
-        for (Credential.Category cat : Credential.Category.values()) {
-            com.google.android.material.chip.Chip chip =
-                    (com.google.android.material.chip.Chip) inflater.inflate(
-                            R.layout.item_filter_chip, chipGroupCategory, false);
-            chip.setText(getString(cat.getLabelRes()));
-            chip.setTag(cat);
-            chipGroupCategory.addView(chip);
-        }
+        Credential.Category[] cats = Credential.Category.values();
+        String[] catLabels = new String[cats.length];
+        for (int i = 0; i < cats.length; i++) catLabels[i] = getString(cats[i].getLabelRes());
 
+        android.widget.ArrayAdapter<String> catAdapter = new android.widget.ArrayAdapter<>(
+                requireContext(),
+                android.R.layout.simple_list_item_1,
+                catLabels);
+        acCategory.setAdapter(catAdapter);
+        acCategory.setOnItemClickListener((parent, v, pos, id) -> {
+            selectedCategory = cats[pos];
+            categoryManuallyChanged = true;
+        });
+
+        // Autodetección en tiempo real mientras escribe título/URL, salvo que el
+        // usuario ya haya tocado el selector manualmente.
+        android.text.TextWatcher autoCat = new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int i, int c, int a) {}
+            @Override public void onTextChanged(CharSequence s, int i, int b, int c) {}
+            @Override public void afterTextChanged(android.text.Editable s) {
+                if (categoryManuallyChanged) return;
+                Credential.Category detected = com.example.clef.utils.CategoryDetector
+                        .detect(text(etTitle), text(etUrl));
+                if (detected != null && detected != selectedCategory) {
+                    selectedCategory = detected;
+                    acCategory.setText(getString(detected.getLabelRes()), false);
+                }
+            }
+        };
+        etTitle.addTextChangedListener(autoCat);
+        etUrl.addTextChangedListener(autoCat);
         tilPassword.setEndIconMode(TextInputLayout.END_ICON_CUSTOM);
         tilPassword.setEndIconDrawable(R.drawable.ic_generator);
         tilPassword.setEndIconContentDescription("Generar contraseña");
@@ -156,10 +177,8 @@ public class AddItemDialog extends BottomSheetDialogFragment {
 
         setFormEnabled(false);
 
-        int checkedId = chipGroupCategory.getCheckedChipId();
-        Credential.Category category = checkedId != View.NO_ID
-                ? (Credential.Category) chipGroupCategory.findViewById(checkedId).getTag()
-                : Credential.Category.OTHER;
+        Credential.Category category = selectedCategory != null
+                ? selectedCategory : Credential.Category.OTHER;
 
         boolean syncEnabled = SecurePrefs.get(requireContext(), "settings")
                 .getBoolean("sync_enabled", false);
@@ -210,13 +229,14 @@ public class AddItemDialog extends BottomSheetDialogFragment {
                 }
             } catch (Exception e) {
                 vault.getCredentials().remove(credential);
-            } finally {
-                SessionManager.zeroizeDekCopy(dek);
                 mainHandler.post(() -> {
+                    if (!isAdded()) return;
                     setFormEnabled(true);
                     Toast.makeText(requireContext(),
                             getString(R.string.add_item_error_save), Toast.LENGTH_LONG).show();
                 });
+            } finally {
+                SessionManager.zeroizeDekCopy(dek);
             }
         });
     }
