@@ -2,7 +2,7 @@ package com.example.clef.utils;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-
+import android.util.Log;
 import androidx.security.crypto.EncryptedSharedPreferences;
 import androidx.security.crypto.MasterKey;
 
@@ -28,6 +28,7 @@ public class SecurePrefs {
                     EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             );
         } catch (Exception e) {
+            Log.e("SecurePrefs", "EncryptedSharedPreferences no disponible para '" + name + "'. Usando prefs en claro.", e);
             return context.getSharedPreferences(name, Context.MODE_PRIVATE);
         }
     }

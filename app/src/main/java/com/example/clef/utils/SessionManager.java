@@ -48,6 +48,7 @@ public class SessionManager {
     // Sesión
 
     public synchronized void unlock(byte[] dek, Vault vault) {
+        if (this.dek != null) CryptoUtils.zeroise(this.dek);
         this.dek   = dek;
         this.vault = vault;
         resetInactivityTimer();

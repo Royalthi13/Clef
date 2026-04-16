@@ -208,7 +208,9 @@ public class AddItemDialog extends BottomSheetDialogFragment {
                     });
                 }
             } catch (Exception e) {
-                vault.removeCredential(vault.getCredentials().size() - 1);
+                vault.getCredentials().remove(credential);
+            } finally {
+                SessionManager.zeroizeDekCopy(dek);
                 mainHandler.post(() -> {
                     setFormEnabled(true);
                     Toast.makeText(requireContext(),

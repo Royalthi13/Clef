@@ -25,7 +25,7 @@ import com.example.clef.utils.FaviconHelper;
 import com.example.clef.utils.PasswordGenerator;
 import com.example.clef.utils.PasswordStrengthHelper;
 import com.example.clef.utils.SecurePrefs;
-import com.example.clef.utils.SessionManager;
+
 
 import androidx.core.content.ContextCompat;
 import com.google.android.material.button.MaterialButton;

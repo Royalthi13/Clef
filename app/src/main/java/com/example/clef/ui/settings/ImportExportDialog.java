@@ -87,6 +87,7 @@ public class ImportExportDialog extends BottomSheetDialogFragment {
         }
 
         if (unsynced.isEmpty()) {
+            SessionManager.zeroizeDekCopy(dek);
             Toast.makeText(requireContext(),
                     getString(R.string.export_all_synced), Toast.LENGTH_SHORT).show();
             return;
@@ -160,6 +161,8 @@ public class ImportExportDialog extends BottomSheetDialogFragment {
                     Toast.makeText(requireContext(),
                             getString(R.string.export_error_network), Toast.LENGTH_LONG).show();
                 });
+            } finally {
+                SessionManager.zeroizeDekCopy(dek);
             }
         });
     }
@@ -227,10 +230,11 @@ public class ImportExportDialog extends BottomSheetDialogFragment {
                     Toast.makeText(requireContext(),
                             getString(R.string.delete_cloud_error), Toast.LENGTH_LONG).show();
                 });
+            } finally {
+                SessionManager.zeroizeDekCopy(dek);
             }
         });
     }
-
     // ── Importar ───────────────────────────────────────────────────────────────
 
     private void confirmImport() {
@@ -273,6 +277,7 @@ public class ImportExportDialog extends BottomSheetDialogFragment {
 
             @Override
             public void onError(Exception e) {
+                SessionManager.zeroizeDekCopy(dek);
                 mainHandler.post(() -> {
                     if (!isAdded()) return;
                     setFormEnabled(true);
@@ -304,6 +309,7 @@ public class ImportExportDialog extends BottomSheetDialogFragment {
                 dismiss();
             });
         } catch (Exception e) {
+            SessionManager.zeroizeDekCopy(dek);
             mainHandler.post(() -> {
                 if (!isAdded()) return;
                 setFormEnabled(true);

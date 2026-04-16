@@ -129,8 +129,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStop() {
         super.onStop();
-        // B-8 FIX: iniciar el timer solo cuando la app va a background.
-        SessionManager.getInstance().startLockTimer();
+
+
     }
 
     @Override

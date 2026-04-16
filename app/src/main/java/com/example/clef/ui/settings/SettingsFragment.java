@@ -360,6 +360,7 @@ public class SettingsFragment extends Fragment {
     }
 
     private void performSignOut() {
+        BiometricHelper.disableAll(requireContext());
         SessionManager.getInstance().setOnLockListener(null);
         SessionManager.getInstance().lock();
 

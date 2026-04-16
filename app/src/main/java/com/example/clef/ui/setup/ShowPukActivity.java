@@ -33,12 +33,13 @@ public class ShowPukActivity extends AppCompatActivity {
             goToMain();
             return;
         }
-
+        TextView tvPuk = findViewById(R.id.tvPukCode);
+        tvPuk.setText(java.nio.CharBuffer.wrap(pukChars));
         String pukDisplay = new String(pukChars);
         Arrays.fill(pukChars, '\0');
 
-        TextView tvPuk = findViewById(R.id.tvPukCode);
-        tvPuk.setText(pukDisplay);
+
+
 
         MaterialButton btnCopy     = findViewById(R.id.btnCopyPuk);
         MaterialButton btnContinue = findViewById(R.id.btnContinue);

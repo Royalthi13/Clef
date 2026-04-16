@@ -373,7 +373,7 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
                             "Contraseña incorrecta", Toast.LENGTH_SHORT).show();
                 });
             }finally {
-                Arrays.fill(password, '0'); // Limpia el array de contraseña por seguridad
+                Arrays.fill(password, '\0'); // Limpia el array de contraseña por seguridad
             }
         });
     }
