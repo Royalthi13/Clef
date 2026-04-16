@@ -21,12 +21,12 @@ import com.example.clef.utils.SecurePrefs;
 import com.example.clef.utils.SessionManager;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.chip.Chip;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
 public class AddItemDialog extends BottomSheetDialogFragment {
 
     public interface OnCredentialSavedListener {
@@ -76,11 +76,12 @@ public class AddItemDialog extends BottomSheetDialogFragment {
         btnSave     = view.findViewById(R.id.btnSave);
         chipGroupCategory = view.findViewById(R.id.chipGroupCategory);
 
+        android.view.LayoutInflater inflater = android.view.LayoutInflater.from(requireContext());
         for (Credential.Category cat : Credential.Category.values()) {
             com.google.android.material.chip.Chip chip =
-                    new com.google.android.material.chip.Chip(requireContext());
+                    (com.google.android.material.chip.Chip) inflater.inflate(
+                            R.layout.item_filter_chip, chipGroupCategory, false);
             chip.setText(getString(cat.getLabelRes()));
-            chip.setCheckable(true);
             chip.setTag(cat);
             chipGroupCategory.addView(chip);
         }

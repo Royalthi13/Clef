@@ -86,12 +86,11 @@ public class VaultFragment extends Fragment {
         etSearch            = view.findViewById(R.id.etSearch);
         chipGroupCategories = view.findViewById(R.id.chipGroupCategories);
         btnSort             = view.findViewById(R.id.btnSort);
-
+        android.view.LayoutInflater inflater = android.view.LayoutInflater.from(requireContext());
         for (Credential.Category cat : Credential.Category.values()) {
-            Chip chip = new Chip(requireContext());
+            Chip chip = (Chip) inflater.inflate(
+                    R.layout.item_filter_chip, chipGroupCategories, false);
             chip.setText(getString(cat.getLabelRes()));
-            chip.setCheckable(true);
-            chip.setClickable(true);
             chip.setTag(cat);
             chipGroupCategories.addView(chip);
         }
