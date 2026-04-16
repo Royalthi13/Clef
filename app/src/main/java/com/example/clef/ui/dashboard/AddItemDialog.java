@@ -116,6 +116,9 @@ public class AddItemDialog extends BottomSheetDialogFragment {
             etPassword.setSelection(generated.length());
         });
 
+        android.widget.ImageButton btnShowPassword = view.findViewById(R.id.btnShowPassword);
+        com.example.clef.utils.PasswordVisibilityToggle.attach(etPassword, btnShowPassword);
+
         android.widget.LinearLayout sBar1 = view.findViewById(R.id.strengthBar1);
         android.widget.LinearLayout sBar2 = view.findViewById(R.id.strengthBar2);
         android.widget.LinearLayout sBar3 = view.findViewById(R.id.strengthBar3);

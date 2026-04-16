@@ -148,8 +148,12 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
         holder.etNotes.setText(credential.getNotes() != null ? credential.getNotes() : "");
         holder.btnSave.setEnabled(false);
 
-        holder.etPassword.setFocusable(false);
-        holder.etPassword.setFocusableInTouchMode(false);
+        holder.etPassword.setFocusable(true);
+        holder.etPassword.setFocusableInTouchMode(true);
+        holder.etPassword.setLongClickable(true);
+        holder.etPassword.setTextIsSelectable(true);
+        holder.etPassword.setCursorVisible(true);
+        holder.etPassword.setHorizontallyScrolling(true);
         holder.tilPassword.setStartIconOnClickListener(null);
         holder.tilPassword.setStartIconDrawable(null);
 
@@ -162,25 +166,14 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
         holder.etUrl             .addTextChangedListener(holder.urlWatcher);
         holder.etNotes           .addTextChangedListener(holder.notesWatcher);
 
-        holder.btnShowPassword.setOnTouchListener((v, event) -> {
-            int len = holder.etPassword.getText() != null
-                    ? holder.etPassword.getText().length() : 0;
-            switch (event.getAction()) {
-                case android.view.MotionEvent.ACTION_DOWN:
-                    holder.etPassword.setInputType(android.text.InputType.TYPE_CLASS_TEXT |
-                            android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
-                    holder.etPassword.setSelection(len);
-                    break;
-                case android.view.MotionEvent.ACTION_UP:
-                case android.view.MotionEvent.ACTION_CANCEL:
-                    holder.etPassword.setInputType(android.text.InputType.TYPE_CLASS_TEXT |
-                            android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
-                    holder.etPassword.setSelection(len);
-                    break;
-            }
-            return true;
-        });
+        if (holder.passwordWatcher != null) {
+            holder.etPassword.removeTextChangedListener(holder.passwordWatcher);
+        }
+        holder.passwordWatcher = new SimpleTextWatcher(() -> holder.btnSave.setEnabled(true));
+        holder.etPassword.addTextChangedListener(holder.passwordWatcher);
 
+        com.example.clef.utils.PasswordVisibilityToggle.attach(
+                holder.etPassword, holder.btnShowPassword);
         String prevPwd = credential.getPreviousPassword();
         if (prevPwd != null && !prevPwd.isEmpty()) {
             holder.etPreviousPassword.setText(prevPwd);
@@ -222,21 +215,7 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
                 etNew.setSelection(generated.length());
             });
 
-            btnShowNew.setOnTouchListener((v2, event) -> {
-                int len = etNew.getText() != null ? etNew.getText().length() : 0;
-                switch (event.getAction()) {
-                    case android.view.MotionEvent.ACTION_DOWN:
-                        etNew.setInputType(android.text.InputType.TYPE_CLASS_TEXT |
-                                android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
-                        etNew.setSelection(len); break;
-                    case android.view.MotionEvent.ACTION_UP:
-                    case android.view.MotionEvent.ACTION_CANCEL:
-                        etNew.setInputType(android.text.InputType.TYPE_CLASS_TEXT |
-                                android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
-                        etNew.setSelection(len); break;
-                }
-                return true;
-            });
+            com.example.clef.utils.PasswordVisibilityToggle.attach(etNew, btnShowNew);
 
             new com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
                     .setTitle("Cambiar contraseña")
@@ -259,22 +238,8 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
                     .show();
         });
 
-        holder.btnShowPreviousPassword.setOnTouchListener((v, event) -> {
-            int len = holder.etPreviousPassword.getText() != null
-                    ? holder.etPreviousPassword.getText().length() : 0;
-            switch (event.getAction()) {
-                case android.view.MotionEvent.ACTION_DOWN:
-                    holder.etPreviousPassword.setInputType(android.text.InputType.TYPE_CLASS_TEXT |
-                            android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
-                    holder.etPreviousPassword.setSelection(len); break;
-                case android.view.MotionEvent.ACTION_UP:
-                case android.view.MotionEvent.ACTION_CANCEL:
-                    holder.etPreviousPassword.setInputType(android.text.InputType.TYPE_CLASS_TEXT |
-                            android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
-                    holder.etPreviousPassword.setSelection(len); break;
-            }
-            return true;
-        });
+        com.example.clef.utils.PasswordVisibilityToggle.attach(
+                holder.etPreviousPassword, holder.btnShowPreviousPassword);
 
         holder.btnSave.setOnClickListener(v -> {
             String newTitle    = text(holder.etExpandedTitle);
@@ -323,21 +288,7 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
             TextInputEditText etHist = row.findViewById(R.id.etHistoryPassword);
             android.widget.ImageButton btnEye = row.findViewById(R.id.btnShowHistoryPassword);
             etHist.setText(pwd);
-            btnEye.setOnTouchListener((v, event) -> {
-                int len = etHist.getText() != null ? etHist.getText().length() : 0;
-                switch (event.getAction()) {
-                    case android.view.MotionEvent.ACTION_DOWN:
-                        etHist.setInputType(android.text.InputType.TYPE_CLASS_TEXT |
-                                android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
-                        etHist.setSelection(len); break;
-                    case android.view.MotionEvent.ACTION_UP:
-                    case android.view.MotionEvent.ACTION_CANCEL:
-                        etHist.setInputType(android.text.InputType.TYPE_CLASS_TEXT |
-                                android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
-                        etHist.setSelection(len); break;
-                }
-                return true;
-            });
+            com.example.clef.utils.PasswordVisibilityToggle.attach(etHist, btnEye);
             holder.layoutPasswordHistory.addView(row);
         }
 
@@ -487,6 +438,7 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
         TextWatcher usernameWatcher;
         TextWatcher urlWatcher;
         TextWatcher notesWatcher;
+        TextWatcher passwordWatcher;
         // B-6 FIX: eliminado campo previousPassword (dead code)
 
         ViewHolder(@NonNull View itemView) {
@@ -523,7 +475,8 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
             if (usernameWatcher != null) etExpandedUsername.removeTextChangedListener(usernameWatcher);
             if (urlWatcher      != null) etUrl             .removeTextChangedListener(urlWatcher);
             if (notesWatcher    != null) etNotes           .removeTextChangedListener(notesWatcher);
-            titleWatcher = usernameWatcher = urlWatcher = notesWatcher = null;
+            if (passwordWatcher != null) etPassword        .removeTextChangedListener(passwordWatcher);
+            titleWatcher = usernameWatcher = urlWatcher = notesWatcher = passwordWatcher = null;
         }
     }
 }
