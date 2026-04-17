@@ -1,6 +1,7 @@
 package com.example.clef.ui.settings;
 
 import android.Manifest;
+import com.google.firebase.functions.FirebaseFunctions;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -318,18 +319,7 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
     private void verifyIdentity() {
         if (!isAdded()) return;
         setLoading(true);
-        if (com.example.clef.utils.BiometricHelper.isAvailable(requireContext())
-                && com.example.clef.utils.BiometricHelper.isEnabled(requireContext())) {
-            com.example.clef.utils.BiometricHelper.unlock(
-                    (androidx.fragment.app.FragmentActivity) requireActivity(),
-                    new com.example.clef.utils.BiometricHelper.UnlockCallback() {
-                        @Override public void onSuccess(byte[] dek) { silentReauthAndDelete(); }
-                        @Override public void onCancelled()          { showPasswordDialog(); }
-                        @Override public void onError(String msg)    { showPasswordDialog(); }
-                    });
-        } else {
-            showPasswordDialog();
-        }
+        showPasswordDialog();
     }
 
     private void showPasswordDialog() {
@@ -364,16 +354,33 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
             try {
                 new com.example.clef.crypto.KeyManager()
                         .login(password, data.salt, data.cajaA, data.vault);
-                if (isAdded()) silentReauthAndDelete();
             } catch (Exception e) {
+                Arrays.fill(password, '\0');
                 if (!isAdded()) return;
                 requireActivity().runOnUiThread(() -> {
                     setLoading(false);
                     Toast.makeText(requireContext(),
                             "Contraseña incorrecta", Toast.LENGTH_SHORT).show();
                 });
-            }finally {
-                Arrays.fill(password, '\0'); // Limpia el array de contraseña por seguridad
+                return;
+            }
+
+            // Contraseña local verificada — reautenticar en Firebase según proveedor
+            FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+            if (user == null) {
+                Arrays.fill(password, '\0');
+                requireActivity().runOnUiThread(() -> setLoading(false));
+                return;
+            }
+
+            boolean isEmailUser = user.getProviderData().stream()
+                    .anyMatch(p -> "password".equals(p.getProviderId()));
+
+            Arrays.fill(password, '\0');
+            if (isEmailUser) {
+                requireActivity().runOnUiThread(() -> { if (isAdded()) proceedDeleteAccount(); });
+            } else {
+                if (isAdded()) silentReauthAndDelete();
             }
         });
     }
@@ -398,31 +405,73 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
 
     private void proceedDeleteAccount() {
         if (!isAdded()) return;
-        com.example.clef.data.repository.VaultRepository repo =
-                new com.example.clef.data.repository.VaultRepository(requireContext());
-        repo.deleteAccount(new com.example.clef.data.repository.VaultRepository.Callback<Void>() {
-            @Override
-            public void onSuccess(Void result) {
-                com.example.clef.utils.SessionManager.getInstance().lock();
-                com.google.firebase.auth.FirebaseAuth.getInstance().signOut();
-                if (!isAdded()) return;
-                Toast.makeText(requireContext(),
-                        getString(R.string.delete_account_success), Toast.LENGTH_SHORT).show();
-                requireActivity().startActivity(
-                        new android.content.Intent(requireContext(),
-                                com.example.clef.ui.auth.LoginActivity.class)
-                                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK |
-                                        android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK));
-            }
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser == null) { setLoading(false); return; }
 
-            @Override
-            public void onError(Exception e) {
-                if (!isAdded()) return;
-                setLoading(false);
-                Toast.makeText(requireContext(),
-                        getString(R.string.delete_account_error), Toast.LENGTH_LONG).show();
+        android.util.Log.d("DeleteAccount", "Refrescando token...");
+        currentUser.getIdToken(true)
+                .addOnSuccessListener(tokenResult -> {
+                    android.util.Log.d("DeleteAccount", "Token OK, llamando vía HTTP...");
+                    executor.execute(() -> callDeleteAccountHttp(tokenResult.getToken()));
+                })
+                .addOnFailureListener(e -> {
+                    android.util.Log.e("DeleteAccount", "Token refresh FAILED", e);
+                    if (!isAdded()) return;
+                    setLoading(false);
+                    Toast.makeText(requireContext(),
+                            getString(R.string.delete_account_error), Toast.LENGTH_LONG).show();
+                });
+    }
+
+    private void callDeleteAccountHttp(String idToken) {
+        android.app.Activity activity = getActivity();
+        if (activity == null) return;
+        try {
+            java.net.URL url = new java.net.URL(
+                    "https://us-central1-clef-efe86.cloudfunctions.net/deleteAccountHttp");
+            java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("Authorization", "Bearer " + idToken);
+            conn.setDoOutput(true);
+            conn.getOutputStream().write("{\"data\":{}}".getBytes());
+
+            int code = conn.getResponseCode();
+            android.util.Log.d("DeleteAccount", "HTTP response: " + code);
+
+            if (code == 200) {
+                activity.runOnUiThread(() -> {
+                    com.example.clef.data.repository.VaultRepository repo =
+                            new com.example.clef.data.repository.VaultRepository(activity);
+                    repo.clearLocalVault();
+                    repo.clearKeyCache();
+                    com.example.clef.utils.SessionManager.getInstance().setOnLockListener(null);
+                    com.example.clef.utils.SessionManager.getInstance().lock();
+                    FirebaseAuth.getInstance().signOut();
+                    Toast.makeText(activity,
+                            getString(R.string.delete_account_success), Toast.LENGTH_SHORT).show();
+                    activity.startActivity(
+                            new android.content.Intent(activity,
+                                    com.example.clef.ui.auth.LoginActivity.class)
+                                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK |
+                                            android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK));
+                });
+            } else {
+                android.util.Log.e("DeleteAccount", "HTTP error: " + code);
+                activity.runOnUiThread(() -> {
+                    setLoading(false);
+                    Toast.makeText(activity,
+                            getString(R.string.delete_account_error), Toast.LENGTH_LONG).show();
+                });
             }
-        });
+        } catch (Exception e) {
+            android.util.Log.e("DeleteAccount", "HTTP call FAILED", e);
+            activity.runOnUiThread(() -> {
+                setLoading(false);
+                Toast.makeText(activity,
+                        getString(R.string.delete_account_error), Toast.LENGTH_LONG).show();
+            });
+        }
     }
 
     // ── Guardar ────────────────────────────────────────────────────────────────
