@@ -7,7 +7,9 @@ import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -18,18 +20,21 @@ import java.util.Map;
 public class FirebaseManager {
 
     public static class UserData {
-        public final String salt;
-        public final String cajaA;
-        public final String cajaB;
-        public final String vault;
-        public final long   version;
+        public final String       salt;
+        public final String       cajaA;
+        public final String       cajaB;
+        public final String       vault;
+        public final long         version;
+        public final List<String> knownIps;
 
-        public UserData(String salt, String cajaA, String cajaB, String vault, long version) {
-            this.salt    = salt;
-            this.cajaA   = cajaA;
-            this.cajaB   = cajaB;
-            this.vault   = vault;
-            this.version = version;
+        public UserData(String salt, String cajaA, String cajaB, String vault, long version,
+                        List<String> knownIps) {
+            this.salt     = salt;
+            this.cajaA    = cajaA;
+            this.cajaB    = cajaB;
+            this.vault    = vault;
+            this.version  = version;
+            this.knownIps = knownIps != null ? knownIps : new ArrayList<>();
         }
 
         public boolean hasMasterPassword() {
@@ -43,6 +48,7 @@ public class FirebaseManager {
     private static final String FIELD_CAJA_B      = "cajaB";
     private static final String FIELD_VAULT        = "vault";
     public  static final String FIELD_VERSION      = "version";
+    public  static final String FIELD_KNOWN_IPS   = "knownIps";
     public  static final String CONFLICT_ERROR     = "vault_conflict";
 
     public interface OnVaultChangedListener {
@@ -86,7 +92,7 @@ public class FirebaseManager {
         data.put(FIELD_CAJA_B,  cajaB);
         data.put(FIELD_VAULT,   vault);
         data.put(FIELD_VERSION, 0L); // A-4 FIX: campo version presente desde el inicio
-        return userDoc().set(data);
+        return userDoc().set(data, com.google.firebase.firestore.SetOptions.merge());
     }
 
     public Task<Void> uploadVault(String vault) {
@@ -142,12 +148,14 @@ public class FirebaseManager {
             DocumentSnapshot doc = task.getResult();
             if (!doc.exists()) return null;
             long version = doc.contains(FIELD_VERSION) ? doc.getLong(FIELD_VERSION) : 0L;
+            List<String> knownIps = (List<String>) doc.get(FIELD_KNOWN_IPS);
             return new UserData(
                     doc.getString(FIELD_SALT),
                     doc.getString(FIELD_CAJA_A),
                     doc.getString(FIELD_CAJA_B),
                     doc.getString(FIELD_VAULT),
-                    version);
+                    version,
+                    knownIps);
         });
     }
 
@@ -168,6 +176,32 @@ public class FirebaseManager {
             if (!task.isSuccessful()) return false;
             DocumentSnapshot doc = task.getResult();
             return doc != null && doc.exists();
+        });
+    }
+
+    // ── IPs conocidas ─────────────────────────────────────────────────────
+
+    /**
+     * Añade una IP a la lista de IPs conocidas del usuario.
+     * Usa arrayUnion para no sobreescribir las existentes y evitar duplicados.
+     */
+    public Task<Void> saveKnownIp(String ip) {
+        Map<String, Object> data = new HashMap<>();
+        data.put(FIELD_KNOWN_IPS, com.google.firebase.firestore.FieldValue.arrayUnion(ip));
+        return userDoc().update(data);
+    }
+
+    /**
+     * Comprueba si una IP ya está en la lista de IPs conocidas del usuario.
+     * Devuelve true si es conocida, false si es nueva.
+     */
+    public Task<Boolean> isKnownIp(String ip) {
+        return userDoc().get().continueWith(task -> {
+            if (!task.isSuccessful()) return false;
+            DocumentSnapshot doc = task.getResult();
+            if (doc == null || !doc.exists()) return false;
+            List<String> knownIps = (List<String>) doc.get(FIELD_KNOWN_IPS);
+            return knownIps != null && knownIps.contains(ip);
         });
     }
 

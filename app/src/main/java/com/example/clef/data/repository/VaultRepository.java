@@ -179,7 +179,7 @@ public class VaultRepository {
         String cajaB = prefs.getString(KEY_CAJA_B, null);
         String vault = loadLocalVault();
         if (salt == null || cajaA == null || vault == null) return null;
-        return new UserData(salt, cajaA, cajaB, vault, 0L);
+        return new UserData(salt, cajaA, cajaB, vault, 0L, null);
     }
 
     public void exportToFirebase(Callback<Void> callback) {

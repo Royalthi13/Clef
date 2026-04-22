@@ -22,6 +22,7 @@ import com.bumptech.glide.load.resource.bitmap.CircleCrop;
 import com.bumptech.glide.signature.ObjectKey;
 import com.example.clef.R;
 import com.example.clef.data.remote.AuthManager;
+import com.example.clef.data.remote.FirebaseManager;
 import com.example.clef.data.repository.VaultRepository;
 import com.example.clef.ui.auth.LoginActivity;
 import com.example.clef.utils.BiometricHelper;

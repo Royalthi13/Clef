@@ -101,6 +101,7 @@ public class FileManager {
      */
     public boolean vaultExists() {
         return getVaultFile().exists();
+
     }
 
     /**

@@ -16,8 +16,10 @@ import com.example.clef.R;
 import com.example.clef.data.remote.AuthManager;
 import com.example.clef.data.remote.FirebaseManager;
 import com.example.clef.ui.setup.CreateMasterActivity;
+import com.example.clef.utils.SecurePrefs;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
+import com.google.firebase.functions.FirebaseFunctions;
 
 public class LoginActivity extends AppCompatActivity {
 
@@ -117,12 +119,65 @@ public class LoginActivity extends AppCompatActivity {
                 startActivity(new Intent(this, RegisterActivity.class)));
     }
 
-    /**
-     * Decide a qué pantalla ir tras la autenticación.
-     * Usa userHasMasterPassword en lugar de userExists para ser resiliente
-     * a registros incompletos (documento en Firestore sin cajaA).
-     */
+    private static final String PREFS_SECURITY      = "security";
+    private static final String KEY_LAST_IP_CHECK   = "last_ip_check";
+    private static final long   MAX_OFFLINE_DAYS    = 7;
+    private static final long   MS_PER_DAY          = 86_400_000L;
+
     private void checkAndNavigate() {
+        String device = android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL;
+        FirebaseFunctions.getInstance("us-central1")
+                .getHttpsCallable("checkLoginIp")
+                .call(new java.util.HashMap<String, Object>() {{ put("device", device); }})
+                .addOnSuccessListener(result -> {
+                    saveIpCheckTimestamp();
+
+                    java.util.Map<String, Object> data = (java.util.Map<String, Object>) result.getData();
+                    boolean isNew = data != null && Boolean.TRUE.equals(data.get("isNew"));
+                    String ip = data != null ? (String) data.get("ip") : "";
+
+                    navigateAfterIpCheck();
+                })
+                .addOnFailureListener(e -> {
+                    android.util.Log.e("IPCheck", "checkLoginIp failed: " + e.getMessage(), e);
+                    handleOfflineAccess();
+                });
+    }
+
+    private void handleOfflineAccess() {
+        long lastCheck = SecurePrefs.get(this, PREFS_SECURITY)
+                .getLong(KEY_LAST_IP_CHECK, 0L);
+
+        if (lastCheck == 0L) {
+            // Primer uso o error de red en registro — guardamos timestamp y dejamos pasar
+            saveIpCheckTimestamp();
+            navigateAfterIpCheck();
+            return;
+        }
+
+        long daysSinceCheck = (System.currentTimeMillis() - lastCheck) / MS_PER_DAY;
+        if (daysSinceCheck > MAX_OFFLINE_DAYS) {
+            setLoading(false);
+            new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                    .setTitle("Verificación requerida")
+                    .setMessage("No se ha podido verificar tu acceso en los últimos " + MAX_OFFLINE_DAYS + " días. Necesitas conexión a internet para continuar.")
+                    .setPositiveButton("Entendido", null)
+                    .setCancelable(false)
+                    .show();
+        } else {
+            Toast.makeText(this, "Sin conexión — verificación pendiente (" + daysSinceCheck + " días)", Toast.LENGTH_LONG).show();
+            navigateAfterIpCheck();
+        }
+    }
+
+    private void saveIpCheckTimestamp() {
+        SecurePrefs.get(this, PREFS_SECURITY)
+                .edit()
+                .putLong(KEY_LAST_IP_CHECK, System.currentTimeMillis())
+                .apply();
+    }
+
+    private void navigateAfterIpCheck() {
         firebaseManager.userHasMasterPassword()
                 .addOnSuccessListener(hasMaster -> {
                     setLoading(false);
