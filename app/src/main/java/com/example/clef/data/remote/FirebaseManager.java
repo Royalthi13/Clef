@@ -85,13 +85,19 @@ public class FirebaseManager {
      * A-4 FIX: incluye version=0 en el documento inicial para que las
      * operaciones versionadas posteriores funcionen correctamente.
      */
+    /**
+     * Sube los datos iniciales del usuario al documento de Firestore.
+     * Usa SetOptions.merge() para no sobreescribir campos gestionados por otras
+     * partes del sistema, como knownDevices y knownCountries que escribe la
+     * Cloud Function checkLoginIp.
+     */
     public Task<Void> uploadAll(String salt, String cajaA, String cajaB, String vault) {
         Map<String, Object> data = new HashMap<>();
         data.put(FIELD_SALT,    salt);
         data.put(FIELD_CAJA_A,  cajaA);
         data.put(FIELD_CAJA_B,  cajaB);
         data.put(FIELD_VAULT,   vault);
-        data.put(FIELD_VERSION, 0L); // A-4 FIX: campo version presente desde el inicio
+        data.put(FIELD_VERSION, 0L);
         return userDoc().set(data, com.google.firebase.firestore.SetOptions.merge());
     }
 

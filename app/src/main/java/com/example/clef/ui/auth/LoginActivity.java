@@ -119,11 +119,22 @@ public class LoginActivity extends AppCompatActivity {
                 startActivity(new Intent(this, RegisterActivity.class)));
     }
 
-    private static final String PREFS_SECURITY      = "security";
-    private static final String KEY_LAST_IP_CHECK   = "last_ip_check";
-    private static final long   MAX_OFFLINE_DAYS    = 7;
-    private static final long   MS_PER_DAY          = 86_400_000L;
+    /**
+     * Clave de preferencias cifradas donde se guarda el timestamp de la última
+     * verificación online correcta. Permite controlar el acceso offline.
+     */
+    private static final String PREFS_SECURITY    = "security";
+    private static final String KEY_LAST_IP_CHECK = "last_ip_check";
 
+    /** Días máximos que se permite el acceso sin verificación online. */
+    private static final long MAX_OFFLINE_DAYS = 7;
+    private static final long MS_PER_DAY       = 86_400_000L;
+
+    /**
+     * Llama a la Cloud Function checkLoginIp enviando el modelo del dispositivo.
+     * Si la verificación es exitosa guarda el timestamp y navega.
+     * Si falla (sin red), delega en handleOfflineAccess para decidir si bloquear.
+     */
     private void checkAndNavigate() {
         String device = android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL;
         FirebaseFunctions.getInstance("us-central1")
@@ -131,11 +142,6 @@ public class LoginActivity extends AppCompatActivity {
                 .call(new java.util.HashMap<String, Object>() {{ put("device", device); }})
                 .addOnSuccessListener(result -> {
                     saveIpCheckTimestamp();
-
-                    java.util.Map<String, Object> data = (java.util.Map<String, Object>) result.getData();
-                    boolean isNew = data != null && Boolean.TRUE.equals(data.get("isNew"));
-                    String ip = data != null ? (String) data.get("ip") : "";
-
                     navigateAfterIpCheck();
                 })
                 .addOnFailureListener(e -> {
@@ -144,12 +150,17 @@ public class LoginActivity extends AppCompatActivity {
                 });
     }
 
+    /**
+     * Gestiona el acceso cuando la Cloud Function no está disponible (sin red).
+     * - Sin verificación previa (primer uso): deja pasar y guarda timestamp.
+     * - Verificación reciente (< MAX_OFFLINE_DAYS): deja pasar con aviso.
+     * - Sin verificación durante más de MAX_OFFLINE_DAYS: bloquea el acceso.
+     */
     private void handleOfflineAccess() {
         long lastCheck = SecurePrefs.get(this, PREFS_SECURITY)
                 .getLong(KEY_LAST_IP_CHECK, 0L);
 
         if (lastCheck == 0L) {
-            // Primer uso o error de red en registro — guardamos timestamp y dejamos pasar
             saveIpCheckTimestamp();
             navigateAfterIpCheck();
             return;
@@ -170,6 +181,7 @@ public class LoginActivity extends AppCompatActivity {
         }
     }
 
+    /** Guarda el timestamp actual como última verificación online exitosa. */
     private void saveIpCheckTimestamp() {
         SecurePrefs.get(this, PREFS_SECURITY)
                 .edit()

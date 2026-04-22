@@ -6,8 +6,30 @@ const nodemailer = require("nodemailer");
 
 admin.initializeApp();
 
+/**
+ * Secreto que almacena la contraseña de aplicación de Gmail usada para enviar
+ * emails de alerta. Se guarda en Google Cloud Secret Manager para no exponerla
+ * en el código fuente.
+ */
 const gmailAppPassword = defineSecret("GMAIL_APP_PASSWORD");
 
+/**
+ * Cloud Function callable: checkLoginIp
+ *
+ * Se invoca desde la app Android justo después de autenticar al usuario.
+ * Detecta accesos sospechosos comparando el dispositivo y el país de origen
+ * con los valores conocidos guardados en Firestore.
+ *
+ * Lógica de detección:
+ *  - Si el documento del usuario no existe → primer login, se registra sin alerta.
+ *  - Si el dispositivo NO está en knownDevices → acceso sospechoso.
+ *  - Si el país NO está en knownCountries → acceso sospechoso.
+ *  - En caso sospechoso: guarda los nuevos valores y envía email de alerta al usuario.
+ *
+ * Campos que gestiona en Firestore (colección "users"):
+ *  - knownDevices  : array de strings con los modelos de dispositivo conocidos.
+ *  - knownCountries: array de códigos de país (ISO 3166-1 alpha-2) conocidos.
+ */
 exports.checkLoginIp = onCall({ secrets: [gmailAppPassword] }, async (request) => {
     if (!request.auth) {
         throw new HttpsError("unauthenticated", "El usuario no está autenticado.");
@@ -15,14 +37,20 @@ exports.checkLoginIp = onCall({ secrets: [gmailAppPassword] }, async (request) =
 
     const uid = request.auth.uid;
     const userEmail = request.auth.token.email;
+
+    /* Obtener la IP real del cliente. x-forwarded-for puede contener varias IPs
+       separadas por coma cuando hay proxies intermedios; la primera es la del cliente. */
     const ip = request.rawRequest.headers["x-forwarded-for"]
         ? request.rawRequest.headers["x-forwarded-for"].split(",")[0].trim()
         : request.rawRequest.ip;
+
+    /* El modelo del dispositivo lo envía la app Android como parámetro. */
     const device = (request.data && request.data.device) ? request.data.device : "Dispositivo desconocido";
 
     console.log(`[checkLoginIp] uid=${uid} ip=${ip} device=${device}`);
 
-    // Geolocalización
+    /* Geolocalización de la IP mediante ip-api.com (gratuito, sin API key).
+       Se usa para detectar cambios de país, no para mostrar la IP al usuario. */
     let country = null;
     let city = "Ubicación desconocida";
     try {
@@ -40,25 +68,31 @@ exports.checkLoginIp = onCall({ secrets: [gmailAppPassword] }, async (request) =
     const doc = await userRef.get();
 
     const data = doc.exists ? doc.data() : {};
-    const knownDevices = data.knownDevices || [];
+    const knownDevices   = data.knownDevices   || [];
     const knownCountries = data.knownCountries || [];
+
+    /* Si el documento no existe es el primer login: se registra sin enviar alerta. */
     const isFirstLogin = !doc.exists;
 
-    const deviceKnown = knownDevices.some(d => d === device);
+    const deviceKnown  = knownDevices.some(d => d === device);
     const countryKnown = country === null || knownCountries.includes(country);
 
+    /* Se considera acceso sospechoso si el usuario ya existe y el dispositivo
+       o el país no están entre los valores conocidos. */
     const isNew = !isFirstLogin && (!deviceKnown || !countryKnown);
 
     console.log(`[checkLoginIp] device=${device} deviceKnown=${deviceKnown} country=${country} countryKnown=${countryKnown} isNew=${isNew}`);
 
-    // Guardar dispositivo y país si son nuevos
+    /* Guardar dispositivo y/o país nuevos usando set+merge para no sobreescribir
+       otros campos del documento (salt, vault, cajaA, etc.). */
     const updates = {};
-    if (!deviceKnown) updates.knownDevices = admin.firestore.FieldValue.arrayUnion(device);
+    if (!deviceKnown) updates.knownDevices   = admin.firestore.FieldValue.arrayUnion(device);
     if (country && !countryKnown) updates.knownCountries = admin.firestore.FieldValue.arrayUnion(country);
     if (Object.keys(updates).length > 0) {
         await userRef.set(updates, { merge: true });
     }
 
+    /* Enviar email de alerta al usuario si el acceso es sospechoso. */
     if (isNew) {
         const reason = !deviceKnown ? "dispositivo nuevo" : "país nuevo";
         try {
@@ -89,6 +123,7 @@ exports.checkLoginIp = onCall({ secrets: [gmailAppPassword] }, async (request) =
                 `,
             });
         } catch (emailError) {
+            /* El error de email no debe interrumpir el login del usuario. */
             console.error("Error enviando email:", emailError);
         }
     }
