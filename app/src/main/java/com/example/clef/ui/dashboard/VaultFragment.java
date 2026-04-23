@@ -48,7 +48,11 @@ public class VaultFragment extends Fragment {
     private enum SortOrder { RECENT, ALPHABETICAL, EXPIRY }
 
     private VaultAdapter      adapter;
+    private VaultAdapter      adapterExpired;
     private RecyclerView      recyclerView;
+    private RecyclerView      recyclerExpired;
+    private View              tvExpiredHeader;
+    private View              nestedScrollVault;
     private View              layoutEmpty;
     private TextInputEditText etSearch;
     private ChipGroup         chipGroupCategories;
@@ -81,8 +85,11 @@ public class VaultFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        recyclerView        = view.findViewById(R.id.recyclerViewVault);
-        layoutEmpty         = view.findViewById(R.id.layoutEmpty);
+        recyclerView      = view.findViewById(R.id.recyclerViewVault);
+        recyclerExpired   = view.findViewById(R.id.recyclerExpired);
+        tvExpiredHeader   = view.findViewById(R.id.tvExpiredHeader);
+        nestedScrollVault = view.findViewById(R.id.nestedScrollVault);
+        layoutEmpty       = view.findViewById(R.id.layoutEmpty);
         etSearch            = view.findViewById(R.id.etSearch);
         chipGroupCategories = view.findViewById(R.id.chipGroupCategories);
         btnSort             = view.findViewById(R.id.btnSort);
@@ -100,8 +107,8 @@ public class VaultFragment extends Fragment {
 
         chipGroupCategories.setOnCheckedStateChangeListener((group, checkedIds) -> applyFilters());
 
-        adapter = new VaultAdapter(requireContext());
-        adapter.setOnCredentialActionListener(new VaultAdapter.OnCredentialActionListener() {
+        VaultAdapter.OnCredentialActionListener credentialListener =
+                new VaultAdapter.OnCredentialActionListener() {
             @Override
             public void onSave(Credential credential) { saveCredential(credential); }
 
@@ -131,7 +138,14 @@ public class VaultFragment extends Fragment {
                         .setNegativeButton("Cancelar", null)
                         .show();
             }
-        });
+        };
+
+        adapter = new VaultAdapter(requireContext());
+        adapter.setOnCredentialActionListener(credentialListener);
+
+        adapterExpired = new VaultAdapter(requireContext());
+        adapterExpired.setSuppressRedBorder(true);
+        adapterExpired.setOnCredentialActionListener(credentialListener);
 
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
         recyclerView.setAdapter(adapter);
@@ -140,6 +154,16 @@ public class VaultFragment extends Fragment {
                 recyclerView.getItemAnimator();
         if (animator instanceof androidx.recyclerview.widget.SimpleItemAnimator) {
             ((androidx.recyclerview.widget.SimpleItemAnimator) animator)
+                    .setSupportsChangeAnimations(false);
+        }
+
+        recyclerExpired.setLayoutManager(new LinearLayoutManager(requireContext()));
+        recyclerExpired.setAdapter(adapterExpired);
+
+        androidx.recyclerview.widget.RecyclerView.ItemAnimator animatorExpired =
+                recyclerExpired.getItemAnimator();
+        if (animatorExpired instanceof androidx.recyclerview.widget.SimpleItemAnimator) {
+            ((androidx.recyclerview.widget.SimpleItemAnimator) animatorExpired)
                     .setSupportsChangeAnimations(false);
         }
 
@@ -314,7 +338,7 @@ public class VaultFragment extends Fragment {
                                     session.setCloudVaultVersion(expectedVersion + 1);
                                     session.updateVault(vault);
                                     mainHandler.post(() -> {
-                                        if (isAdded()) adapter.refreshWithoutCollapse();
+                                        if (isAdded()) applyFilters();
                                     });
                                 }
 
@@ -331,7 +355,7 @@ public class VaultFragment extends Fragment {
                                         session.updateVault(vault);
                                         mainHandler.post(() -> {
                                             if (!isAdded()) return;
-                                            adapter.refreshWithoutCollapse();
+                                            applyFilters();
                                             android.widget.Toast.makeText(requireContext(),
                                                     "Guardado local. Error al sincronizar.",
                                                     android.widget.Toast.LENGTH_SHORT).show();
@@ -341,7 +365,7 @@ public class VaultFragment extends Fragment {
                             });
                 } else {
                     session.updateVault(vault);
-                    mainHandler.post(() -> { if (isAdded()) adapter.refreshWithoutCollapse(); });
+                    mainHandler.post(() -> { if (isAdded()) applyFilters(); });
                 }
             } catch (Exception e) {
                 Log.e(TAG, "saveCredential: error", e);
@@ -399,7 +423,7 @@ public class VaultFragment extends Fragment {
                                                 session.setCloudVaultVersion(newExpected + 1);
                                                 session.updateVault(freshVault);
                                                 mainHandler.post(() -> {
-                                                    if (isAdded()) adapter.refreshWithoutCollapse();
+                                                    if (isAdded()) applyFilters();
                                                 });
                                             }
                                             @Override
@@ -407,7 +431,7 @@ public class VaultFragment extends Fragment {
                                                 session.updateVault(freshVault);
                                                 mainHandler.post(() -> {
                                                     if (!isAdded()) return;
-                                                    adapter.refreshWithoutCollapse();
+                                                    applyFilters();
                                                     android.widget.Toast.makeText(requireContext(),
                                                             "Guardado local. Error al sincronizar.",
                                                             android.widget.Toast.LENGTH_SHORT).show();
@@ -601,46 +625,67 @@ public class VaultFragment extends Fragment {
 
     private void applyFilters() {
         Vault vault = SessionManager.getInstance().getVault();
-        if (vault == null) { showList(Collections.emptyList()); return; }
+        if (vault == null) {
+            showEmptyState(true);
+            return;
+        }
 
         ExpiryHelper.saveMetadata(requireContext(), vault.getCredentials());
         PasswordExpiryWorker.checkAndNotify(requireContext());
 
-        List<Credential> list = new ArrayList<>(vault.getCredentials());
+        android.content.SharedPreferences prefs =
+                SecurePrefs.get(requireContext(), ExpiryHelper.PREFS_NAME);
+        long periodMs    = prefs.getLong(ExpiryHelper.PREF_PERIOD, ExpiryHelper.PERIOD_ONE_YEAR);
+        boolean colorsOn = prefs.getBoolean(ExpiryHelper.PREF_COLORS, false);
 
+        // Separar caducadas del resto
+        List<Credential> mainList    = new ArrayList<>();
+        List<Credential> expiredList = new ArrayList<>();
+        for (Credential c : vault.getCredentials()) {
+            if (colorsOn && ExpiryHelper.getStatus(c.getUpdatedAt(), periodMs) == ExpiryHelper.Status.EXPIRED) {
+                expiredList.add(c);
+            } else {
+                mainList.add(c);
+            }
+        }
+
+        // Filtros (búsqueda y categoría) sobre ambas listas
         int checkedId = chipGroupCategories.getCheckedChipId();
         if (checkedId != View.NO_ID && checkedId != R.id.chipAll) {
             Chip chip = chipGroupCategories.findViewById(checkedId);
             if (chip != null && chip.getTag() instanceof Credential.Category) {
                 Credential.Category cat = (Credential.Category) chip.getTag();
-                list.removeIf(c -> c.getCategory() != cat);
+                mainList   .removeIf(c -> c.getCategory() != cat);
+                expiredList.removeIf(c -> c.getCategory() != cat);
             }
         }
 
         String query = etSearch.getText() != null
                 ? etSearch.getText().toString().trim().toLowerCase() : "";
         if (!query.isEmpty()) {
-            list.removeIf(c -> {
+            mainList.removeIf(c -> {
+                String t = c.getTitle()    != null ? c.getTitle()   .toLowerCase() : "";
+                String u = c.getUsername() != null ? c.getUsername().toLowerCase() : "";
+                return !t.contains(query) && !u.contains(query);
+            });
+            expiredList.removeIf(c -> {
                 String t = c.getTitle()    != null ? c.getTitle()   .toLowerCase() : "";
                 String u = c.getUsername() != null ? c.getUsername().toLowerCase() : "";
                 return !t.contains(query) && !u.contains(query);
             });
         }
 
-        android.content.SharedPreferences prefs =
-                SecurePrefs.get(requireContext(), ExpiryHelper.PREFS_NAME);
-        long periodMs = prefs.getLong(ExpiryHelper.PREF_PERIOD, ExpiryHelper.PERIOD_ONE_YEAR);
-
+        // Ordenación sobre la lista principal
         switch (currentSort) {
             case ALPHABETICAL:
-                list.sort((a, b) -> {
+                mainList.sort((a, b) -> {
                     String ta = a.getTitle() != null ? a.getTitle().toLowerCase() : "";
                     String tb = b.getTitle() != null ? b.getTitle().toLowerCase() : "";
                     return ta.compareTo(tb);
                 });
                 break;
             case EXPIRY:
-                list.sort((a, b) -> {
+                mainList.sort((a, b) -> {
                     ExpiryHelper.Status sa = ExpiryHelper.getStatus(a.getUpdatedAt(), periodMs);
                     ExpiryHelper.Status sb = ExpiryHelper.getStatus(b.getUpdatedAt(), periodMs);
                     return sb.ordinal() - sa.ordinal();
@@ -648,7 +693,7 @@ public class VaultFragment extends Fragment {
                 break;
             case RECENT:
             default:
-                list.sort((a, b) -> {
+                mainList.sort((a, b) -> {
                     long ta = a.getLastUsedAt() > 0 ? a.getLastUsedAt() : a.getUpdatedAt();
                     long tb = b.getLastUsedAt() > 0 ? b.getLastUsedAt() : b.getUpdatedAt();
                     return Long.compare(tb, ta);
@@ -656,14 +701,24 @@ public class VaultFragment extends Fragment {
                 break;
         }
 
-        showList(list);
+        boolean totalEmpty = vault.getCredentials().isEmpty();
+        showEmptyState(totalEmpty);
+
+        if (!totalEmpty) {
+            adapter.setCredentials(mainList);
+
+            boolean hasExpired = !expiredList.isEmpty();
+            tvExpiredHeader.setVisibility(hasExpired ? View.VISIBLE : View.GONE);
+            recyclerExpired.setVisibility(hasExpired ? View.VISIBLE : View.GONE);
+            if (hasExpired) {
+                adapterExpired.setCredentials(expiredList);
+            }
+        }
     }
 
-    private void showList(List<Credential> credentials) {
-        adapter.setCredentials(credentials);
-        boolean empty = credentials.isEmpty();
-        layoutEmpty .setVisibility(empty ? View.VISIBLE : View.GONE);
-        recyclerView.setVisibility(empty ? View.GONE    : View.VISIBLE);
+    private void showEmptyState(boolean empty) {
+        layoutEmpty      .setVisibility(empty ? View.VISIBLE : View.GONE);
+        nestedScrollVault.setVisibility(empty ? View.GONE    : View.VISIBLE);
     }
 
     private void openAddDialog() {

@@ -52,6 +52,11 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
     private final Context context;
     private OnCredentialActionListener actionListener;
     private int expandedPosition = -1;
+    private boolean suppressRedBorder = false;
+
+    public void setSuppressRedBorder(boolean suppress) {
+        this.suppressRedBorder = suppress;
+    }
 
     public VaultAdapter(Context context) { this.context = context; }
 
@@ -100,7 +105,12 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
         int strokeColor;
         if (prefs.getBoolean(ExpiryHelper.PREF_COLORS, false)) {
             long periodMs = prefs.getLong(ExpiryHelper.PREF_PERIOD, ExpiryHelper.PERIOD_ONE_YEAR);
-            strokeColor = ExpiryHelper.getStrokeColor(context, credential.getUpdatedAt(), periodMs);
+            if (suppressRedBorder &&
+                    ExpiryHelper.getStatus(credential.getUpdatedAt(), periodMs) == ExpiryHelper.Status.EXPIRED) {
+                strokeColor = ContextCompat.getColor(context, R.color.clef_border);
+            } else {
+                strokeColor = ExpiryHelper.getStrokeColor(context, credential.getUpdatedAt(), periodMs);
+            }
         } else {
             strokeColor = ContextCompat.getColor(context, R.color.clef_border);
         }
