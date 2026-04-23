@@ -515,9 +515,12 @@ public class VaultFragment extends Fragment {
 
         String titulo = credential.getTitle() != null ? credential.getTitle() : "Credencial";
 
+        java.util.concurrent.atomic.AtomicBoolean undone = new java.util.concurrent.atomic.AtomicBoolean(false);
+
         com.google.android.material.snackbar.Snackbar
                 .make(root, "\"" + titulo + "\" eliminada", 5000)
                 .setAction("Deshacer", v -> {
+                    if (!undone.compareAndSet(false, true)) return;
                     // Restaurar en memoria — dek sigue vivo hasta onDismissed
                     list.add(idx, credential);
                     session.updateVault(vault);
