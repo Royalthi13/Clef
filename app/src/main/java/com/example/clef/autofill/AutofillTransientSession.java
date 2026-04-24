@@ -1,6 +1,5 @@
 package com.example.clef.autofill;
 
-import android.view.autofill.AutofillId;
 import com.example.clef.data.model.Credential;
 
 /**
