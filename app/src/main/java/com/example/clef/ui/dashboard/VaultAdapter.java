@@ -319,6 +319,8 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
 
     // B-5 FIX: delegar en FaviconHelper
     private void loadServiceIcon(ViewHolder holder, Credential credential, String title) {
+        holder.ivServiceLogo.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP);
+        holder.ivServiceLogo.clearColorFilter();
         String faviconUrl = FaviconHelper.buildFaviconUrl(credential, title);
         if (faviconUrl != null) {
             holder.tvInitial.setVisibility(View.GONE);
@@ -336,9 +338,7 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
                                                     Object model,
                                                     com.bumptech.glide.request.target.Target<android.graphics.drawable.Drawable> target,
                                                     boolean isFirstResource) {
-                            holder.ivServiceLogo.setVisibility(View.GONE);
-                            holder.tvInitial.setVisibility(View.VISIBLE);
-                            holder.tvInitial.setText(title.substring(0, 1).toUpperCase());
+                            showCategoryIcon(holder, credential);
                             return true;
                         }
                         @Override
@@ -350,10 +350,18 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
                     })
                     .into(holder.ivServiceLogo);
         } else {
-            holder.ivServiceLogo.setVisibility(View.GONE);
-            holder.tvInitial.setVisibility(View.VISIBLE);
-            holder.tvInitial.setText(title.substring(0, 1).toUpperCase());
+            showCategoryIcon(holder, credential);
         }
+    }
+
+    private void showCategoryIcon(ViewHolder holder, Credential credential) {
+        Credential.Category cat = credential.getCategory();
+        if (cat == null) cat = Credential.Category.OTHER;
+        holder.ivServiceLogo.setScaleType(android.widget.ImageView.ScaleType.CENTER);
+        holder.ivServiceLogo.setImageDrawable(
+                ContextCompat.getDrawable(context, cat.getIconRes()));
+        holder.ivServiceLogo.setVisibility(View.VISIBLE);
+        holder.tvInitial.setVisibility(View.GONE);
     }
 
     private void updateFavoriteStar(ViewHolder holder, boolean favorite) {

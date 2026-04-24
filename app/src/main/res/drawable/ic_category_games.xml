@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Cuerpo del mando (forma redondeada) -->
+    <path
+        android:fillColor="@color/clef_primary"
+        android:pathData="M17,5H7C4.24,5,2,7.24,2,10v4c0,2.76,2.24,5,5,5h10c2.76,0,5,-2.24,5,-5V10C22,7.24,19.76,5,17,5z" />
+    <!-- Cruceta izquierda + 2 botones circulares derecha -->
+    <path
+        android:fillColor="@color/clef_on_primary"
+        android:pathData="M7,9H5v2H3v2h2v2h2v-2h2v-2H7zM14.5,10A1.5,1.5,0,1,0,14.5,13A1.5,1.5,0,0,0,14.5,10zM18.5,10A1.5,1.5,0,1,0,18.5,13A1.5,1.5,0,0,0,18.5,10z" />
+</vector>

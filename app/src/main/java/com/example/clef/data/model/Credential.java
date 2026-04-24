@@ -42,6 +42,19 @@ public class Credential {
                 default:        return R.string.category_other;
             }
         }
+        public int getIconRes() {
+            switch (this) {
+                case BANK:      return R.drawable.ic_category_bank;
+                case SOCIAL:    return R.drawable.ic_category_social;
+                case WORK:      return R.drawable.ic_category_work;
+                case GAMES:     return R.drawable.ic_category_games;
+                case SHOPPING:  return R.drawable.ic_category_shopping;
+                case TRANSPORT: return R.drawable.ic_category_transport;
+                case LEISURE:   return R.drawable.ic_category_leisure;
+                case SPORTS:    return R.drawable.ic_category_sports;
+                default:        return R.drawable.ic_category_other;
+            }
+        }
     }
     private String title;
     private String username;

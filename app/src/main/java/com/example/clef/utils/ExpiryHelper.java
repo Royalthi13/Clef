@@ -46,7 +46,6 @@ public class ExpiryHelper {
     public static int getStrokeColor(Context ctx, long updatedAt, long periodMs) {
         switch (getStatus(updatedAt, periodMs)) {
             case EXPIRED: return ContextCompat.getColor(ctx, R.color.expiry_expired);
-            case WARNING: return ContextCompat.getColor(ctx, R.color.expiry_warning);
             default:      return ContextCompat.getColor(ctx, R.color.clef_border);
         }
     }
