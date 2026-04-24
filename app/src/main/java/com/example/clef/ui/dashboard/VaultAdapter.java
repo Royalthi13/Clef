@@ -127,6 +127,13 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
                     android.widget.Toast.LENGTH_SHORT).show();
         });
 
+        updateFavoriteStar(holder, credential.isFavorite());
+        holder.btnFavorite.setOnClickListener(v -> {
+            credential.setFavorite(!credential.isFavorite());
+            updateFavoriteStar(holder, credential.isFavorite());
+            if (actionListener != null) actionListener.onSave(credential);
+        });
+
         holder.itemView.setOnClickListener(v -> {
             int prev = expandedPosition;
             expandedPosition = (holder.getAdapterPosition() == expandedPosition)
@@ -158,12 +165,11 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
         holder.etNotes.setText(credential.getNotes() != null ? credential.getNotes() : "");
         holder.btnSave.setEnabled(false);
 
-        holder.etPassword.setFocusable(true);
-        holder.etPassword.setFocusableInTouchMode(true);
-        holder.etPassword.setLongClickable(true);
-        holder.etPassword.setTextIsSelectable(true);
-        holder.etPassword.setCursorVisible(true);
-        holder.etPassword.setHorizontallyScrolling(true);
+        holder.etPassword.setFocusable(false);
+        holder.etPassword.setFocusableInTouchMode(false);
+        holder.etPassword.setLongClickable(false);
+        holder.etPassword.setTextIsSelectable(false);
+        holder.etPassword.setCursorVisible(false);
         holder.tilPassword.setStartIconOnClickListener(null);
         holder.tilPassword.setStartIconDrawable(null);
 
@@ -175,12 +181,6 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
         holder.etExpandedUsername.addTextChangedListener(holder.usernameWatcher);
         holder.etUrl             .addTextChangedListener(holder.urlWatcher);
         holder.etNotes           .addTextChangedListener(holder.notesWatcher);
-
-        if (holder.passwordWatcher != null) {
-            holder.etPassword.removeTextChangedListener(holder.passwordWatcher);
-        }
-        holder.passwordWatcher = new SimpleTextWatcher(() -> holder.btnSave.setEnabled(true));
-        holder.etPassword.addTextChangedListener(holder.passwordWatcher);
 
         com.example.clef.utils.PasswordVisibilityToggle.attach(
                 holder.etPassword, holder.btnShowPassword);
@@ -236,12 +236,9 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
                         if (newPwd.isEmpty()) return;
                         String oldPwd = holder.etPassword.getText() != null
                                 ? holder.etPassword.getText().toString() : "";
-                        credential.addToHistory(oldPwd);
                         holder.etPreviousPassword.setText(oldPwd);
                         holder.layoutPreviousPassword.setVisibility(View.VISIBLE);
-                        refreshHistorySection(holder, credential);
                         holder.etPassword.setText(newPwd);
-                        holder.etPassword.setSelection(newPwd.length());
                         holder.btnSave.setEnabled(true);
                     })
                     .setNegativeButton("Cancelar", null)
@@ -260,14 +257,18 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
 
             if (!newTitle.isEmpty()) credential.setTitle(newTitle);
             credential.setUsername(newUsername);
+            if (passwordChanged) {
+                credential.addToHistory(credential.getPassword());
+                credential.setUpdatedAt(System.currentTimeMillis());
+            }
             credential.setPassword(newPassword);
             credential.setUrl(text(holder.etUrl));
             credential.setNotes(text(holder.etNotes));
-            if (passwordChanged) credential.setUpdatedAt(System.currentTimeMillis());
 
             holder.tvTitle   .setText(newTitle.isEmpty() ? "Sin Título" : newTitle);
             holder.tvUsername.setText(newUsername);
             holder.btnSave.setEnabled(false);
+            if (passwordChanged) refreshHistorySection(holder, credential);
             if (actionListener != null) actionListener.onSave(credential);
         });
 
@@ -355,6 +356,18 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
         }
     }
 
+    private void updateFavoriteStar(ViewHolder holder, boolean favorite) {
+        if (favorite) {
+            holder.btnFavorite.setImageResource(R.drawable.ic_star_filled_24);
+            holder.btnFavorite.setColorFilter(
+                    android.graphics.Color.parseColor("#FFC107"));
+        } else {
+            holder.btnFavorite.setImageResource(R.drawable.ic_star_border_24);
+            holder.btnFavorite.setColorFilter(
+                    ContextCompat.getColor(context, R.color.clef_text_muted));
+        }
+    }
+
     private void animateExpand(View view) {
         view.setVisibility(View.VISIBLE);
         view.measure(
@@ -424,6 +437,7 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
         final TextView         tvTitle;
         final TextView         tvUsername;
         final ImageButton      btnCopy;
+        final ImageButton      btnFavorite;
         final View              expandedSection;
         final TextInputLayout   tilExpandedTitle;
         final TextInputEditText etExpandedTitle;
@@ -459,6 +473,7 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
             tvUsername              = itemView.findViewById(R.id.tvUsername);
             ivSyncStatus            = itemView.findViewById(R.id.ivSyncStatus);
             btnCopy                 = itemView.findViewById(R.id.btnCopyPassword);
+            btnFavorite             = itemView.findViewById(R.id.btnFavorite);
             expandedSection         = itemView.findViewById(R.id.expandedSection);
             tilExpandedTitle        = itemView.findViewById(R.id.tilExpandedTitle);
             etExpandedTitle         = itemView.findViewById(R.id.etExpandedTitle);

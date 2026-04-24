@@ -42,7 +42,7 @@ public class Credential {
                 default:        return R.string.category_other;
             }
         }
-        }
+    }
     private String title;
     private String username;
     private String password;
@@ -54,6 +54,7 @@ public class Credential {
     private long updatedAt;
     private long lastUsedAt;
     private java.util.List<String> packageHints;
+    private boolean favorite;
     /**
      * Constructor vacío necesario para que GSON pueda reconstruir
      * el objeto cuando descifra el JSON.
@@ -144,6 +145,9 @@ public class Credential {
     public java.util.List<String> getPackageHints() {
         return packageHints != null ? packageHints : new java.util.ArrayList<>();
     }
+
+    public boolean isFavorite() { return favorite; }
+    public void setFavorite(boolean favorite) { this.favorite = favorite; }
 
     public void addPackageHint(String pkg) {
         if (pkg == null || pkg.isEmpty()) return;

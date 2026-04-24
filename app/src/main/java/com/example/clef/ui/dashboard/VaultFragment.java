@@ -109,36 +109,36 @@ public class VaultFragment extends Fragment {
 
         VaultAdapter.OnCredentialActionListener credentialListener =
                 new VaultAdapter.OnCredentialActionListener() {
-            @Override
-            public void onSave(Credential credential) { saveCredential(credential); }
+                    @Override
+                    public void onSave(Credential credential) { saveCredential(credential); }
 
-            @Override
-            public void onDelete(Credential credential) {
-                String titulo = credential.getTitle() != null
-                        ? credential.getTitle() : "esta credencial";
-                new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                        .setTitle("Eliminar credencial")
-                        .setMessage("¿Eliminar \"" + titulo + "\"?")
-                        .setPositiveButton("Eliminar", (dialog, which) -> {
-                            if (BiometricHelper.isAvailable(requireContext())) {
-                                BiometricHelper.confirmIdentity(
-                                        requireActivity(),
-                                        "Confirmar eliminación",
-                                        "Verifica tu identidad para eliminar \"" + titulo + "\"",
-                                        new BiometricHelper.ConfirmCallback() {
-                                            @Override public void onConfirmed() {
-                                                deleteCredential(credential);
-                                            }
-                                            @Override public void onCancelled() {}
-                                        });
-                            } else {
-                                confirmWithMasterPassword(credential);
-                            }
-                        })
-                        .setNegativeButton("Cancelar", null)
-                        .show();
-            }
-        };
+                    @Override
+                    public void onDelete(Credential credential) {
+                        String titulo = credential.getTitle() != null
+                                ? credential.getTitle() : "esta credencial";
+                        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                                .setTitle("Eliminar credencial")
+                                .setMessage("¿Eliminar \"" + titulo + "\"?")
+                                .setPositiveButton("Eliminar", (dialog, which) -> {
+                                    if (BiometricHelper.isAvailable(requireContext())) {
+                                        BiometricHelper.confirmIdentity(
+                                                requireActivity(),
+                                                "Confirmar eliminación",
+                                                "Verifica tu identidad para eliminar \"" + titulo + "\"",
+                                                new BiometricHelper.ConfirmCallback() {
+                                                    @Override public void onConfirmed() {
+                                                        deleteCredential(credential);
+                                                    }
+                                                    @Override public void onCancelled() {}
+                                                });
+                                    } else {
+                                        confirmWithMasterPassword(credential);
+                                    }
+                                })
+                                .setNegativeButton("Cancelar", null)
+                                .show();
+                    }
+                };
 
         adapter = new VaultAdapter(requireContext());
         adapter.setOnCredentialActionListener(credentialListener);
@@ -649,9 +649,12 @@ public class VaultFragment extends Fragment {
             }
         }
 
-        // Filtros (búsqueda y categoría) sobre ambas listas
+        // Filtros (búsqueda, favoritas y categoría) sobre ambas listas
         int checkedId = chipGroupCategories.getCheckedChipId();
-        if (checkedId != View.NO_ID && checkedId != R.id.chipAll) {
+        if (checkedId == R.id.chipFavorites) {
+            mainList   .removeIf(c -> !c.isFavorite());
+            expiredList.removeIf(c -> !c.isFavorite());
+        } else if (checkedId != View.NO_ID && checkedId != R.id.chipAll) {
             Chip chip = chipGroupCategories.findViewById(checkedId);
             if (chip != null && chip.getTag() instanceof Credential.Category) {
                 Credential.Category cat = (Credential.Category) chip.getTag();

@@ -96,6 +96,14 @@
                     android:checkable="true"
                     android:checked="true" />
 
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipFavorites"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Favoritas"
+                    android:checkable="true" />
+
             </com.google.android.material.chip.ChipGroup>
         </HorizontalScrollView>
 
