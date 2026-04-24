@@ -53,7 +53,7 @@ public class Credential {
     private boolean synced;
     private long updatedAt;
     private long lastUsedAt;
-
+    private java.util.List<String> packageHints;
     /**
      * Constructor vacío necesario para que GSON pueda reconstruir
      * el objeto cuando descifra el JSON.
@@ -140,4 +140,14 @@ public class Credential {
     public long getLastUsedAt() { return lastUsedAt; }
     public void setLastUsedAt(long lastUsedAt) { this.lastUsedAt = lastUsedAt; }
 
+    /** PackageNames de apps a las que esta credencial aplica (para autofill). */
+    public java.util.List<String> getPackageHints() {
+        return packageHints != null ? packageHints : new java.util.ArrayList<>();
+    }
+
+    public void addPackageHint(String pkg) {
+        if (pkg == null || pkg.isEmpty()) return;
+        if (packageHints == null) packageHints = new java.util.ArrayList<>();
+        if (!packageHints.contains(pkg)) packageHints.add(pkg);
+    }
 }

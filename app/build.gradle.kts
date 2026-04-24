@@ -65,4 +65,7 @@ dependencies {
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
     // WorkManager (notificaciones en background)
     implementation("androidx.work:work-runtime:2.9.0")
+
+    implementation("androidx.autofill:autofill:1.3.0")
+    implementation("androidx.recyclerview:recyclerview:1.3.2")
 }

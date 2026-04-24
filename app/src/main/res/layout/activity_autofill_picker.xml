@@ -1,0 +1,19 @@
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:layout_width="match_parent" android:layout_height="match_parent" android:background="?attr/colorSurface" android:fitsSystemWindows="true">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical">
+        <!--  Header  -->
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:paddingStart="20dp" android:paddingEnd="12dp" android:paddingTop="20dp" android:paddingBottom="16dp">
+            <ImageView android:layout_width="36dp" android:layout_height="36dp" android:src="@drawable/ic_clef_autofill" android:contentDescription="@null"/>
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="14dp" android:orientation="vertical">
+                <TextView android:id="@+id/tvPickerHeaderTitle" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="?attr/colorOnSurface" android:textSize="18sp" android:textStyle="bold" android:maxLines="1" android:ellipsize="end"/>
+                <TextView android:id="@+id/tvPickerHeaderSubtitle" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:textColor="?attr/colorOnSurfaceVariant" android:textSize="13sp" android:maxLines="1" android:ellipsize="end"/>
+            </LinearLayout>
+            <com.google.android.material.button.MaterialButton android:id="@+id/btnPickerClose" style="@style/Widget.Material3.Button.IconButton" android:layout_width="44dp" android:layout_height="44dp" app:icon="@drawable/ic_arrow_back_24" app:iconTint="?attr/colorOnSurfaceVariant" app:iconSize="22dp" android:contentDescription="Cerrar"/>
+        </LinearLayout>
+        <!--  Separador sutil  -->
+        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/clef_border"/>
+        <!--  Mensaje de vacío / info  -->
+        <TextView android:id="@+id/tvPickerEmpty" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingStart="20dp" android:paddingEnd="20dp" android:paddingTop="14dp" android:paddingBottom="6dp" android:textSize="13sp" android:textColor="?attr/colorOnSurfaceVariant" android:visibility="gone"/>
+        <!--  Lista de credenciales  -->
+        <androidx.recyclerview.widget.RecyclerView android:id="@+id/rvPicker" android:layout_width="match_parent" android:layout_height="match_parent" android:clipToPadding="false" android:paddingTop="8dp" android:paddingBottom="24dp" android:scrollbars="vertical"/>
+    </LinearLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
