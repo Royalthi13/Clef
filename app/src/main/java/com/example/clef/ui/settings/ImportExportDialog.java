@@ -21,6 +21,9 @@ import com.example.clef.data.model.Vault;
 import com.example.clef.data.remote.FirebaseManager;
 import com.example.clef.data.repository.VaultRepository;
 import com.example.clef.utils.SessionManager;
+import android.content.res.Configuration;
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -40,6 +43,19 @@ public class ImportExportDialog extends BottomSheetDialogFragment {
     private final Handler         mainHandler = new Handler(Looper.getMainLooper());
 
     public static ImportExportDialog newInstance() { return new ImportExportDialog(); }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            BottomSheetDialog dialog = (BottomSheetDialog) getDialog();
+            if (dialog != null) {
+                BottomSheetBehavior<android.widget.FrameLayout> behavior = dialog.getBehavior();
+                behavior.setSkipCollapsed(true);
+                behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+            }
+        }
+    }
 
     @Nullable
     @Override

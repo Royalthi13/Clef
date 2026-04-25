@@ -31,6 +31,9 @@ import com.bumptech.glide.load.resource.bitmap.CircleCrop;
 import com.bumptech.glide.signature.ObjectKey;
 import com.example.clef.R;
 import com.example.clef.utils.SecurePrefs;
+import android.content.res.Configuration;
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
@@ -128,6 +131,19 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
 
     public static ProfileEditDialog newInstance() { return new ProfileEditDialog(); }
     public void setOnProfileUpdatedListener(OnProfileUpdatedListener l) { this.listener = l; }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            BottomSheetDialog dialog = (BottomSheetDialog) getDialog();
+            if (dialog != null) {
+                BottomSheetBehavior<android.widget.FrameLayout> behavior = dialog.getBehavior();
+                behavior.setSkipCollapsed(true);
+                behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+            }
+        }
+    }
 
     @Nullable
     @Override

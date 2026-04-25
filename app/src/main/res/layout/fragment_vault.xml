@@ -19,6 +19,7 @@
             app:title="Bóveda"
             app:titleCentered="false" />
 
+
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/searchLayout"
             android:layout_width="match_parent"

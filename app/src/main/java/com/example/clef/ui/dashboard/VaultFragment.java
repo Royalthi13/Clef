@@ -176,14 +176,17 @@ public class VaultFragment extends Fragment {
         android.content.SharedPreferences tipPrefs =
                 SecurePrefs.get(requireContext(), "generator_prefs_" + tipUid);
         View cardTip = view.findViewById(R.id.cardGeneratorTip);
-        if (tipPrefs.getBoolean("tip_dismissed", false)) {
+        if (cardTip != null && tipPrefs.getBoolean("tip_dismissed", false)) {
             cardTip.setVisibility(View.GONE);
         } else {
-            view.findViewById(R.id.btnTipDismiss).setOnClickListener(v -> {
+            View btnTipDismiss = view.findViewById(R.id.btnTipDismiss);
+            if (cardTip != null && btnTipDismiss != null) {
+                btnTipDismiss.setOnClickListener(v -> {
                 tipPrefs.edit().putBoolean("tip_dismissed", true).apply();
                 cardTip.animate().alpha(0f).setDuration(250)
                         .withEndAction(() -> cardTip.setVisibility(View.GONE)).start();
             });
+        }
         }
 
         etSearch.addTextChangedListener(new TextWatcher() {

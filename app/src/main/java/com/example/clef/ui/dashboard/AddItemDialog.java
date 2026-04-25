@@ -19,6 +19,9 @@ import com.example.clef.data.repository.VaultRepository;
 import com.example.clef.utils.PasswordGenerator;
 import com.example.clef.utils.SecurePrefs;
 import com.example.clef.utils.SessionManager;
+import android.content.res.Configuration;
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
@@ -134,6 +137,19 @@ public class AddItemDialog extends BottomSheetDialogFragment {
         });
 
         btnSave.setOnClickListener(v -> onSave());
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            BottomSheetDialog dialog = (BottomSheetDialog) getDialog();
+            if (dialog != null) {
+                BottomSheetBehavior<android.widget.FrameLayout> behavior = dialog.getBehavior();
+                behavior.setSkipCollapsed(true);
+                behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+            }
+        }
     }
 
     @Override

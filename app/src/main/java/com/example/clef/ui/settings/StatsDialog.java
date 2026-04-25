@@ -16,6 +16,9 @@ import com.example.clef.utils.ExpiryHelper;
 import com.example.clef.utils.PasswordStrengthHelper;
 import com.example.clef.utils.SecurePrefs;
 import com.example.clef.utils.SessionManager;
+import android.content.res.Configuration;
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 
 import java.util.List;
@@ -77,5 +80,18 @@ public class StatsDialog extends BottomSheetDialogFragment {
         tvCloud  .setText(String.valueOf(cloud));
         tvExpired.setText(String.valueOf(expired));
         tvWeak   .setText(String.valueOf(weak));
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            BottomSheetDialog dialog = (BottomSheetDialog) getDialog();
+            if (dialog != null) {
+                BottomSheetBehavior<android.widget.FrameLayout> behavior = dialog.getBehavior();
+                behavior.setSkipCollapsed(true);
+                behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+            }
+        }
     }
 }
