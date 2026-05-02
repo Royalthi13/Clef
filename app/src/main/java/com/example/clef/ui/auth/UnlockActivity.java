@@ -19,6 +19,8 @@ import com.example.clef.data.remote.FirebaseManager;
 import com.example.clef.data.repository.VaultRepository;
 import com.example.clef.ui.dashboard.MainActivity;
 import com.example.clef.ui.recovery.RecoverVaultActivity;
+import com.example.clef.data.remote.AuthManager;
+import com.example.clef.utils.AccountBlocker;
 import com.example.clef.utils.BiometricHelper;
 import com.example.clef.utils.BruteForceGuard;
 import com.example.clef.utils.SessionManager;
@@ -65,6 +67,11 @@ public class UnlockActivity extends AppCompatActivity {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         String uid = (user != null) ? user.getUid() : "anon";
         bruteForceGuard = new BruteForceGuard(this, uid, "unlock");
+
+        if (user != null && AccountBlocker.isBlocked(this, uid)) {
+            showBlockedDialog();
+            return;
+        }
 
         btnUnlock.setOnClickListener(v -> onMasterPasswordSubmit());
 
@@ -275,5 +282,24 @@ public class UnlockActivity extends AppCompatActivity {
         btnUnlock   .setEnabled(!loading);
         btnBiometric.setEnabled(!loading);
         etPassword  .setEnabled(!loading);
+    }
+
+    /**
+     * Muestra el diálogo informativo de cuenta bloqueada y cierra sesión al aceptar.
+     * No se puede cancelar: el usuario debe pulsar "Entendido" para continuar.
+     */
+    private void showBlockedDialog() {
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle("Cuenta bloqueada")
+                .setMessage("Tu cuenta está bloqueada.\n\n" +
+                        "Deberás ponerte en contacto con el servicio técnico en un plazo " +
+                        "máximo de 3 meses para recuperar tu cuenta. Pasado ese plazo, " +
+                        "tu cuenta será eliminada de forma permanente.\n\n" +
+                        "Contacto: serviciotecnico@ejemplo.clef")
+                .setPositiveButton("Entendido", (d, w) ->
+                        new AuthManager(this, getString(R.string.default_web_client_id))
+                                .signOut(this, () -> goTo(LoginActivity.class)))
+                .setCancelable(false)
+                .show();
     }
 }

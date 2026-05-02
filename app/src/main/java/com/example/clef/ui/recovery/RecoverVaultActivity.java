@@ -16,6 +16,7 @@ import com.example.clef.data.remote.FirebaseManager;
 import com.example.clef.data.repository.VaultRepository;
 import com.example.clef.ui.auth.LoginActivity;
 import com.example.clef.ui.setup.ShowPukActivity;
+import com.example.clef.utils.AccountBlocker;
 import com.example.clef.utils.BruteForceGuard;
 import com.example.clef.utils.SessionManager;
 import com.google.android.material.appbar.MaterialToolbar;
@@ -223,17 +224,12 @@ public class RecoverVaultActivity extends AppCompatActivity {
                 if (remaining <= 0) {
                     bruteForceGuard.recordSuccess();
                     SessionManager.getInstance().lock();
-                    new com.example.clef.data.remote.AuthManager(
-                            RecoverVaultActivity.this,
-                            getString(R.string.default_web_client_id))
-                            .signOut(RecoverVaultActivity.this, () -> {
-                                Intent i = new Intent(RecoverVaultActivity.this,
-                                        LoginActivity.class);
-                                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK |
-                                        Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                startActivity(i);
-                                finish();
-                            });
+                    com.google.firebase.auth.FirebaseUser blockedUser =
+                            com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
+                    if (blockedUser != null) {
+                        AccountBlocker.block(RecoverVaultActivity.this, blockedUser.getUid());
+                    }
+                    showBlockedDialog();
                     return;
                 }
                 tilPuk.setError("Código PUK incorrecto (" + remaining + " intentos restantes)");
@@ -273,5 +269,32 @@ public class RecoverVaultActivity extends AppCompatActivity {
         etPuk            .setEnabled(!loading);
         etNewPassword    .setEnabled(!loading);
         etConfirmPassword.setEnabled(!loading);
+    }
+
+    /**
+     * Muestra el diálogo informativo de cuenta bloqueada y cierra sesión al aceptar.
+     * No se puede cancelar: el usuario debe pulsar "Entendido" para continuar.
+     */
+    private void showBlockedDialog() {
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle("Cuenta bloqueada")
+                .setMessage("Tu cuenta ha sido bloqueada por superar el número máximo de " +
+                        "intentos permitidos.\n\n" +
+                        "Deberás ponerte en contacto con el servicio técnico en un plazo " +
+                        "máximo de 3 meses para recuperar tu cuenta. Pasado ese plazo, " +
+                        "tu cuenta será eliminada de forma permanente.\n\n" +
+                        "Contacto: serviciotecnico@ejemplo.clef")
+                .setPositiveButton("Entendido", (d, w) ->
+                        new com.example.clef.data.remote.AuthManager(
+                                this, getString(R.string.default_web_client_id))
+                                .signOut(this, () -> {
+                                    Intent i = new Intent(this, LoginActivity.class);
+                                    i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK |
+                                            Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                    startActivity(i);
+                                    finish();
+                                }))
+                .setCancelable(false)
+                .show();
     }
 }
