@@ -213,10 +213,12 @@ public class SettingsFragment extends Fragment {
 
     private void setupThemeToggle(View view) {
         MaterialButtonToggleGroup toggleTheme = view.findViewById(R.id.toggleTheme);
+        ImageView ivThemeIcon = view.findViewById(R.id.ivThemeIcon);
         int savedMode = ThemeManager.load(requireContext());
         toggleTheme.clearChecked();
         if (savedMode == ThemeManager.MODE_LIGHT) toggleTheme.check(R.id.btnThemeLight);
         else if (savedMode == ThemeManager.MODE_DARK) toggleTheme.check(R.id.btnThemeDark);
+        updateThemeIcon(ivThemeIcon, savedMode);
 
         toggleTheme.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
             int newMode;
@@ -230,7 +232,16 @@ public class SettingsFragment extends Fragment {
             if (newMode != ThemeManager.load(requireContext())) {
                 ThemeManager.apply(requireContext(), newMode);
             }
+            updateThemeIcon(ivThemeIcon, newMode);
         });
+    }
+
+    /** Muestra luna (tema oscuro) o sol (tema claro/sistema) en el icono de tema. */
+    private void updateThemeIcon(ImageView iv, int mode) {
+        if (iv == null) return;
+        iv.setImageResource(mode == ThemeManager.MODE_DARK
+                ? R.drawable.ic_dark_mode_24
+                : R.drawable.ic_light_mode_24);
     }
 
     // ── Auto-lock ─────────────────────────────────────────────────────────────
