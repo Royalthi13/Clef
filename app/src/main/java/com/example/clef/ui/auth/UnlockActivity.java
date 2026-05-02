@@ -23,6 +23,7 @@ import com.example.clef.data.remote.AuthManager;
 import com.example.clef.utils.AccountBlocker;
 import com.example.clef.utils.BiometricHelper;
 import com.example.clef.utils.BruteForceGuard;
+import com.example.clef.utils.SecurePrefs;
 import com.example.clef.utils.SessionManager;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
@@ -44,6 +45,11 @@ public class UnlockActivity extends AppCompatActivity {
     private FirebaseManager.UserData userData;
     private BruteForceGuard          bruteForceGuard;
     private CountDownTimer           countDownTimer;
+    private String                   uid;
+
+    private static final long   BIOMETRIC_PWD_INTERVAL_MS = 3 * 24 * 60 * 60 * 1000L;
+    private static final String PREFS_BIO_CHECK           = "bio_pwd_check";
+    private static final String KEY_LAST_PWD              = "last_pwd_";
 
     private final ExecutorService cryptoExecutor = Executors.newSingleThreadExecutor();
     private final Handler         mainHandler    = new Handler(Looper.getMainLooper());
@@ -65,7 +71,7 @@ public class UnlockActivity extends AppCompatActivity {
         loadingOverlay = findViewById(R.id.loadingOverlay);
 
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        String uid = (user != null) ? user.getUid() : "anon";
+        uid = (user != null) ? user.getUid() : "anon";
         bruteForceGuard = new BruteForceGuard(this, uid, "unlock");
 
         if (user != null && AccountBlocker.isBlocked(this, uid)) {
@@ -172,12 +178,16 @@ public class UnlockActivity extends AppCompatActivity {
     private void onDataReady() {
         applyLockoutIfNeeded();
         boolean bioAvailable = BiometricHelper.isAvailable(this) && BiometricHelper.isEnabled(this);
-        if (bioAvailable) {
+        if (bioAvailable && !isPasswordCheckDue()) {
             btnBiometric.setVisibility(View.VISIBLE);
             btnBiometric.setOnClickListener(v -> launchBiometric());
             launchBiometric();
         } else {
             btnBiometric.setVisibility(View.GONE);
+            if (bioAvailable) {
+                tilPassword.setHelperText(
+                        "Por seguridad, introduce tu contraseña maestra cada 3 días.");
+            }
         }
     }
 
@@ -243,7 +253,10 @@ public class UnlockActivity extends AppCompatActivity {
                         new KeyManager().login(passwordChars, salt, cajaA, vault);
                 bruteForceGuard.recordSuccess();
                 SessionManager.getInstance().unlock(result.dek, result.vault);
-                mainHandler.post(this::goToMain);
+                mainHandler.post(() -> {
+                    savePasswordCheckTimestamp();
+                    goToMain();
+                });
             } catch (Exception e) {
                 bruteForceGuard.recordFailure();
                 mainHandler.post(() -> {
@@ -282,6 +295,27 @@ public class UnlockActivity extends AppCompatActivity {
         btnUnlock   .setEnabled(!loading);
         btnBiometric.setEnabled(!loading);
         etPassword  .setEnabled(!loading);
+    }
+
+    // ── Verificación periódica de contraseña con biometría activa ─────────────
+
+    /**
+     * Devuelve true si han pasado más de 3 días desde la última vez que el usuario
+     * introdujo su contraseña maestra. Fuerza una verificación periódica aunque
+     * la biometría esté habilitada.
+     */
+    private boolean isPasswordCheckDue() {
+        long last = SecurePrefs.get(this, PREFS_BIO_CHECK)
+                .getLong(KEY_LAST_PWD + uid, 0L);
+        return System.currentTimeMillis() - last >= BIOMETRIC_PWD_INTERVAL_MS;
+    }
+
+    /** Guarda el timestamp actual como última verificación de contraseña maestra. */
+    private void savePasswordCheckTimestamp() {
+        SecurePrefs.get(this, PREFS_BIO_CHECK)
+                .edit()
+                .putLong(KEY_LAST_PWD + uid, System.currentTimeMillis())
+                .apply();
     }
 
     /**
