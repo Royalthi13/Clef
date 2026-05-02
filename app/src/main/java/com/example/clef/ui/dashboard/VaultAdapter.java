@@ -300,15 +300,18 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
         holder.ivServiceLogo.clearColorFilter();
         String faviconUrl = FaviconHelper.buildFaviconUrl(credential, title);
         if (faviconUrl != null) {
+            Credential.Category cat = credential.getCategory() != null
+                    ? credential.getCategory() : Credential.Category.OTHER;
             holder.tvInitial.setVisibility(View.GONE);
             holder.ivServiceLogo.setVisibility(View.VISIBLE);
-            // Pre-cargar el icono genérico para evitar el flash del escudo en rebind
-            showCategoryIcon(holder, credential);
+            holder.ivServiceLogo.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP);
+            // El icono de categoría como placeholder evita cualquier frame vacío o de escudo
             Glide.with(context)
                     .load(faviconUrl)
                     .apply(new RequestOptions()
                             .transform(new CircleCrop())
-                            .diskCacheStrategy(DiskCacheStrategy.ALL))
+                            .diskCacheStrategy(DiskCacheStrategy.ALL)
+                            .placeholder(ContextCompat.getDrawable(context, cat.getIconRes())))
                     .listener(new com.bumptech.glide.request.RequestListener<android.graphics.drawable.Drawable>() {
                         @Override
                         public boolean onLoadFailed(com.bumptech.glide.load.engine.GlideException e,
@@ -323,10 +326,7 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
                                                        Object model,
                                                        com.bumptech.glide.request.target.Target<android.graphics.drawable.Drawable> target,
                                                        com.bumptech.glide.load.DataSource dataSource,
-                                                       boolean isFirstResource) {
-                            holder.ivServiceLogo.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP);
-                            return false;
-                        }
+                                                       boolean isFirstResource) { return false; }
                     })
                     .into(holder.ivServiceLogo);
         } else {
