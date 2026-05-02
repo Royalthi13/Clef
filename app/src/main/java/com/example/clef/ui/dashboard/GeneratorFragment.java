@@ -93,13 +93,12 @@ public class GeneratorFragment extends Fragment {
         sliderLength.addOnChangeListener((slider, value, fromUser) -> {
             updateLengthLabel((int) value);
             saveConfig();
-            regenerate(); // Vista previa en tiempo real
         });
 
-        switchUppercase.setOnCheckedChangeListener((btn, checked) -> { saveConfig(); regenerate(); });
-        switchLowercase.setOnCheckedChangeListener((btn, checked) -> { saveConfig(); regenerate(); });
-        switchNumbers  .setOnCheckedChangeListener((btn, checked) -> { saveConfig(); regenerate(); });
-        switchSymbols  .setOnCheckedChangeListener((btn, checked) -> { saveConfig(); regenerate(); });
+        switchUppercase.setOnCheckedChangeListener((btn, checked) -> saveConfig());
+        switchLowercase.setOnCheckedChangeListener((btn, checked) -> saveConfig());
+        switchNumbers  .setOnCheckedChangeListener((btn, checked) -> saveConfig());
+        switchSymbols  .setOnCheckedChangeListener((btn, checked) -> saveConfig());
     }
 
     private void regenerate() {
