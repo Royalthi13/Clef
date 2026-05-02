@@ -295,38 +295,18 @@ public class SettingsFragment extends Fragment {
     // ── Notificaciones ────────────────────────────────────────────────────────
 
     private void setupNotifications(View view) {
-        SwitchMaterial switchColors        = view.findViewById(R.id.switchColors);
         SwitchMaterial switchNotifications = view.findViewById(R.id.switchNotifications);
         TextView tvPeriodValue = view.findViewById(R.id.tvExpiryPeriodValue);
         SharedPreferences prefs = SecurePrefs.get(requireContext(), ExpiryHelper.PREFS_NAME);
 
-        boolean notificationsOn = prefs.getBoolean(ExpiryHelper.PREF_NOTIFICATIONS, false);
-
-        // Si las notificaciones están on, los colores se fuerzan on y se bloquean
-        if (notificationsOn) {
-            switchColors.setChecked(true);
-            switchColors.setEnabled(false);
-        } else {
-            switchColors.setChecked(prefs.getBoolean(ExpiryHelper.PREF_COLORS, false));
-            switchColors.setEnabled(true);
-        }
-        switchNotifications.setChecked(notificationsOn);
+        switchNotifications.setChecked(prefs.getBoolean(ExpiryHelper.PREF_NOTIFICATIONS, false));
         tvPeriodValue.setText(periodLabel(prefs.getLong(ExpiryHelper.PREF_PERIOD, ExpiryHelper.PERIOD_ONE_YEAR)));
-
-        switchColors.setOnCheckedChangeListener((btn, isChecked) ->
-                prefs.edit().putBoolean(ExpiryHelper.PREF_COLORS, isChecked).apply());
 
         switchNotifications.setOnCheckedChangeListener((btn, isChecked) -> {
             prefs.edit().putBoolean(ExpiryHelper.PREF_NOTIFICATIONS, isChecked).apply();
             if (isChecked) {
-                // Forzar colores encendidos y bloquear el switch
-                prefs.edit().putBoolean(ExpiryHelper.PREF_COLORS, true).apply();
-                switchColors.setChecked(true);
-                switchColors.setEnabled(false);
                 PasswordExpiryWorker.schedule(requireContext());
             } else {
-                // Liberar el switch de colores
-                switchColors.setEnabled(true);
                 PasswordExpiryWorker.cancel(requireContext());
             }
         });

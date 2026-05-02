@@ -20,11 +20,9 @@ import com.bumptech.glide.request.RequestOptions;
 import com.example.clef.R;
 import com.example.clef.data.model.Credential;
 import com.example.clef.utils.ClipboardHelper;
-import com.example.clef.utils.ExpiryHelper;
 import com.example.clef.utils.FaviconHelper;
 import com.example.clef.utils.PasswordGenerator;
 import com.example.clef.utils.PasswordStrengthHelper;
-import com.example.clef.utils.SecurePrefs;
 
 
 import androidx.core.content.ContextCompat;
@@ -52,12 +50,6 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
     private final Context context;
     private OnCredentialActionListener actionListener;
     private int expandedPosition = -1;
-    private boolean suppressRedBorder = false;
-
-    public void setSuppressRedBorder(boolean suppress) {
-        this.suppressRedBorder = suppress;
-    }
-
     public VaultAdapter(Context context) { this.context = context; }
 
     public void setOnCredentialActionListener(OnCredentialActionListener listener) {
@@ -100,22 +92,8 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
         holder.tvUsername.setText(credential.getUsername());
         holder.ivSyncStatus.setVisibility(credential.isSynced() ? View.VISIBLE : View.GONE);
 
-        android.content.SharedPreferences prefs =
-                SecurePrefs.get(context, ExpiryHelper.PREFS_NAME);
-        int strokeColor;
-        if (prefs.getBoolean(ExpiryHelper.PREF_COLORS, false)) {
-            long periodMs = prefs.getLong(ExpiryHelper.PREF_PERIOD, ExpiryHelper.PERIOD_ONE_YEAR);
-            if (suppressRedBorder &&
-                    ExpiryHelper.getStatus(credential.getUpdatedAt(), periodMs) == ExpiryHelper.Status.EXPIRED) {
-                strokeColor = ContextCompat.getColor(context, R.color.clef_border);
-            } else {
-                strokeColor = ExpiryHelper.getStrokeColor(context, credential.getUpdatedAt(), periodMs);
-            }
-        } else {
-            strokeColor = ContextCompat.getColor(context, R.color.clef_border);
-        }
         ((com.google.android.material.card.MaterialCardView) holder.itemView)
-                .setStrokeColor(strokeColor);
+                .setStrokeColor(ContextCompat.getColor(context, R.color.clef_border));
 
         loadServiceIcon(holder, credential, title);
 

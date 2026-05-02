@@ -144,7 +144,6 @@ public class VaultFragment extends Fragment {
         adapter.setOnCredentialActionListener(credentialListener);
 
         adapterExpired = new VaultAdapter(requireContext());
-        adapterExpired.setSuppressRedBorder(true);
         adapterExpired.setOnCredentialActionListener(credentialListener);
 
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
@@ -182,11 +181,11 @@ public class VaultFragment extends Fragment {
             View btnTipDismiss = view.findViewById(R.id.btnTipDismiss);
             if (cardTip != null && btnTipDismiss != null) {
                 btnTipDismiss.setOnClickListener(v -> {
-                tipPrefs.edit().putBoolean("tip_dismissed", true).apply();
-                cardTip.animate().alpha(0f).setDuration(250)
-                        .withEndAction(() -> cardTip.setVisibility(View.GONE)).start();
-            });
-        }
+                    tipPrefs.edit().putBoolean("tip_dismissed", true).apply();
+                    cardTip.animate().alpha(0f).setDuration(250)
+                            .withEndAction(() -> cardTip.setVisibility(View.GONE)).start();
+                });
+            }
         }
 
         etSearch.addTextChangedListener(new TextWatcher() {
@@ -638,14 +637,13 @@ public class VaultFragment extends Fragment {
 
         android.content.SharedPreferences prefs =
                 SecurePrefs.get(requireContext(), ExpiryHelper.PREFS_NAME);
-        long periodMs    = prefs.getLong(ExpiryHelper.PREF_PERIOD, ExpiryHelper.PERIOD_ONE_YEAR);
-        boolean colorsOn = prefs.getBoolean(ExpiryHelper.PREF_COLORS, false);
+        long periodMs = prefs.getLong(ExpiryHelper.PREF_PERIOD, ExpiryHelper.PERIOD_ONE_YEAR);
 
         // Separar caducadas del resto
         List<Credential> mainList    = new ArrayList<>();
         List<Credential> expiredList = new ArrayList<>();
         for (Credential c : vault.getCredentials()) {
-            if (colorsOn && ExpiryHelper.getStatus(c.getUpdatedAt(), periodMs) == ExpiryHelper.Status.EXPIRED) {
+            if (ExpiryHelper.getStatus(c.getUpdatedAt(), periodMs) == ExpiryHelper.Status.EXPIRED) {
                 expiredList.add(c);
             } else {
                 mainList.add(c);

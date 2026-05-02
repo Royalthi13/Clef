@@ -5,9 +5,6 @@ import android.content.SharedPreferences;
 
 import com.example.clef.utils.SecurePrefs;
 
-import androidx.core.content.ContextCompat;
-
-import com.example.clef.R;
 import com.example.clef.data.model.Credential;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -25,7 +22,6 @@ public class ExpiryHelper {
 
     public static final String PREFS_NAME         = "settings";
     public static final String PREF_NOTIFICATIONS = "notifications_enabled";
-    public static final String PREF_COLORS        = "expiry_colors_enabled";
     public static final String PREF_PERIOD        = "expiry_period_ms";
 
     private static final String METADATA_PREFS = "expiry_metadata";
@@ -40,14 +36,6 @@ public class ExpiryHelper {
         if (elapsed >= periodMs)       return Status.EXPIRED;
         if (elapsed >= periodMs * 0.8) return Status.WARNING;
         return Status.OK;
-    }
-
-    /** Devuelve el color de borde que corresponde al estado de caducidad. */
-    public static int getStrokeColor(Context ctx, long updatedAt, long periodMs) {
-        switch (getStatus(updatedAt, periodMs)) {
-            case EXPIRED: return ContextCompat.getColor(ctx, R.color.expiry_expired);
-            default:      return ContextCompat.getColor(ctx, R.color.clef_border);
-        }
     }
 
     // ── Metadata para WorkManager (solo título + updatedAt, sin contraseñas) ──
