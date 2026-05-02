@@ -304,8 +304,8 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
                     ? credential.getCategory() : Credential.Category.OTHER;
             holder.tvInitial.setVisibility(View.GONE);
             holder.ivServiceLogo.setVisibility(View.VISIBLE);
-            holder.ivServiceLogo.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP);
-            // El icono de categoría como placeholder evita cualquier frame vacío o de escudo
+            // CENTER para el placeholder (icono genérico); CENTER_CROP solo si carga el favicon
+            holder.ivServiceLogo.setScaleType(android.widget.ImageView.ScaleType.CENTER);
             Glide.with(context)
                     .load(faviconUrl)
                     .apply(new RequestOptions()
@@ -326,7 +326,10 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
                                                        Object model,
                                                        com.bumptech.glide.request.target.Target<android.graphics.drawable.Drawable> target,
                                                        com.bumptech.glide.load.DataSource dataSource,
-                                                       boolean isFirstResource) { return false; }
+                                                       boolean isFirstResource) {
+                            holder.ivServiceLogo.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP);
+                            return false;
+                        }
                     })
                     .into(holder.ivServiceLogo);
         } else {
