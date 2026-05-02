@@ -40,6 +40,7 @@ public class UnlockActivity extends AppCompatActivity {
     private TextInputEditText etPassword;
     private MaterialButton    btnUnlock;
     private MaterialButton    btnBiometric;
+    private MaterialButton    btnSwitchAccount;
     private View              loadingOverlay;
 
     private FirebaseManager.UserData userData;
@@ -64,11 +65,12 @@ public class UnlockActivity extends AppCompatActivity {
                     .setText("Tu sesión ha expirado");
         }
 
-        tilPassword    = findViewById(R.id.tilMasterPassword);
-        etPassword     = findViewById(R.id.etMasterPassword);
-        btnUnlock      = findViewById(R.id.btnUnlock);
-        btnBiometric   = findViewById(R.id.btnBiometric);
-        loadingOverlay = findViewById(R.id.loadingOverlay);
+        tilPassword      = findViewById(R.id.tilMasterPassword);
+        etPassword       = findViewById(R.id.etMasterPassword);
+        btnUnlock        = findViewById(R.id.btnUnlock);
+        btnBiometric     = findViewById(R.id.btnBiometric);
+        btnSwitchAccount = findViewById(R.id.btnSwitchAccount);
+        loadingOverlay   = findViewById(R.id.loadingOverlay);
 
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         uid = (user != null) ? user.getUid() : "anon";
@@ -80,6 +82,7 @@ public class UnlockActivity extends AppCompatActivity {
         }
 
         btnUnlock.setOnClickListener(v -> onMasterPasswordSubmit());
+        btnSwitchAccount.setOnClickListener(v -> switchAccount());
 
         TextView tvForgotMaster = findViewById(R.id.tvForgotMasterPassword);
         if (tvForgotMaster != null) {
@@ -278,6 +281,12 @@ public class UnlockActivity extends AppCompatActivity {
 
     // ── Navegación ─────────────────────────────────────────────────────────────
 
+    private void switchAccount() {
+        SessionManager.getInstance().lock();
+        new AuthManager(this, getString(R.string.default_web_client_id))
+                .signOut(this, () -> goTo(LoginActivity.class));
+    }
+
     private void goToMain() {
         startActivity(new Intent(this, MainActivity.class));
         finish();
@@ -292,9 +301,10 @@ public class UnlockActivity extends AppCompatActivity {
 
     private void setLoading(boolean loading) {
         loadingOverlay.setVisibility(loading ? View.VISIBLE : View.GONE);
-        btnUnlock   .setEnabled(!loading);
-        btnBiometric.setEnabled(!loading);
-        etPassword  .setEnabled(!loading);
+        btnUnlock       .setEnabled(!loading);
+        btnBiometric    .setEnabled(!loading);
+        btnSwitchAccount.setEnabled(!loading);
+        etPassword      .setEnabled(!loading);
     }
 
     // ── Verificación periódica de contraseña con biometría activa ─────────────
