@@ -294,8 +294,11 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
 
     // B-5 FIX: delegar en FaviconHelper
     private void loadServiceIcon(ViewHolder holder, Credential credential, String title) {
-        holder.ivServiceLogo.clearColorFilter();
         String faviconUrl = FaviconHelper.buildFaviconUrl(credential, title);
+        String urlKey = faviconUrl != null ? faviconUrl : "";
+        if (urlKey.equals(holder.lastFaviconUrl) && holder.ivServiceLogo.getVisibility() == View.VISIBLE) return;
+        holder.lastFaviconUrl = urlKey;
+        holder.ivServiceLogo.clearColorFilter();
         if (faviconUrl != null) {
             Credential.Category cat = credential.getCategory() != null
                     ? credential.getCategory() : Credential.Category.OTHER;
@@ -452,6 +455,7 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
         TextWatcher notesWatcher;
         TextWatcher passwordWatcher;
         // B-6 FIX: eliminado campo previousPassword (dead code)
+        String lastFaviconUrl = "";
 
         ViewHolder(@NonNull View itemView) {
             super(itemView);

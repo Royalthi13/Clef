@@ -149,9 +149,21 @@
 
     </LinearLayout>
 
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnChangeEmail"
+        style="@style/Widget.Material3.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:layout_marginTop="16dp"
+        android:text="Cambiar correo electrónico"
+        app:icon="@drawable/ic_mail"
+        app:iconGravity="textStart"
+        app:iconPadding="8dp" />
+
     <!-- Botón eliminar cuenta -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnDeleteAccount"
+
         style="@style/Widget.Material3.Button.OutlinedButton"
         android:layout_width="match_parent"
         android:layout_height="52dp"

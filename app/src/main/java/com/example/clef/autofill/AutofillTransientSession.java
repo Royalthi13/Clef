@@ -16,7 +16,7 @@ import com.example.clef.data.model.Credential;
  *   - Más tiempo empezaría a ser un riesgo si el usuario olvida el móvil
  *     desbloqueado con Clef de autofill activo en algún form.
  */
-final class AutofillTransientSession {
+public final class AutofillTransientSession {
 
     private static final long TIMEOUT_MS = 30_000L;
 

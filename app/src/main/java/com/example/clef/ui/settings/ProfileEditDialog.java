@@ -1,7 +1,6 @@
 package com.example.clef.ui.settings;
 
 import android.Manifest;
-import com.google.firebase.functions.FirebaseFunctions;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -196,6 +195,7 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
         btnCancelProfile.setOnClickListener(v -> dismiss());
 
         view.findViewById(R.id.btnDeleteAccount).setOnClickListener(v -> confirmDeleteAccount());
+        view.findViewById(R.id.btnChangeEmail).setOnClickListener(v -> showChangeEmailDialog());
     }
 
     @Override
@@ -580,5 +580,80 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
             loadingOverlay.setVisibility(loading ? View.VISIBLE : View.GONE);
         btnSaveProfile  .setEnabled(!loading);
         btnCancelProfile.setEnabled(!loading);
+    }
+
+    private void showChangeEmailDialog() {
+        if (!isAdded()) return;
+        android.widget.FrameLayout container = new android.widget.FrameLayout(requireContext());
+        int pad = (int)(20 * getResources().getDisplayMetrics().density);
+        container.setPadding(pad, pad / 2, pad, 0);
+        com.google.android.material.textfield.TextInputEditText etNew =
+                new com.google.android.material.textfield.TextInputEditText(requireContext());
+        etNew.setHint("Nuevo correo electrónico");
+        etNew.setInputType(android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
+                | android.text.InputType.TYPE_CLASS_TEXT);
+        container.addView(etNew);
+
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Cambiar correo")
+                .setMessage("Se enviará un enlace de verificación al nuevo correo.")
+                .setView(container)
+                .setPositiveButton("Continuar", (d, w) -> {
+                    String newEmail = etNew.getText() != null
+                            ? etNew.getText().toString().trim() : "";
+                    if (newEmail.isEmpty() || !android.util.Patterns.EMAIL_ADDRESS
+                            .matcher(newEmail).matches()) {
+                        android.widget.Toast.makeText(requireContext(),
+                                "Introduce un correo válido",
+                                android.widget.Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    confirmarYCambiarEmail(newEmail);
+                })
+                .setNegativeButton("Cancelar", null)
+                .show();
+    }
+
+    private void confirmarYCambiarEmail(String newEmail) {
+        if (!isAdded()) return;
+        android.view.View dialogView = android.view.LayoutInflater.from(requireContext())
+                .inflate(R.layout.dialog_verify_password, null);
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Confirma tu identidad")
+                .setMessage("Introduce tu contraseña de Firebase para continuar.")
+                .setView(dialogView)
+                .setPositiveButton("Confirmar", (d, w) -> {
+                    com.google.android.material.textfield.TextInputEditText et =
+                            dialogView.findViewById(R.id.etVerifyPassword);
+                    android.text.Editable editable = et.getText();
+                    if (editable == null || editable.length() == 0) return;
+                    String firebasePwd = editable.toString();
+
+                    com.google.firebase.auth.FirebaseUser u =
+                            com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
+                    if (u == null || u.getEmail() == null) return;
+
+                    com.google.firebase.auth.AuthCredential credential =
+                            com.google.firebase.auth.EmailAuthProvider
+                                    .getCredential(u.getEmail(), firebasePwd);
+
+                    u.reauthenticate(credential)
+                            .addOnSuccessListener(unused ->
+                                    u.verifyBeforeUpdateEmail(newEmail)
+                                            .addOnSuccessListener(x ->
+                                                    android.widget.Toast.makeText(requireContext(),
+                                                            "Enlace enviado a " + newEmail,
+                                                            android.widget.Toast.LENGTH_LONG).show())
+                                            .addOnFailureListener(e ->
+                                                    android.widget.Toast.makeText(requireContext(),
+                                                            "Error: " + e.getMessage(),
+                                                            android.widget.Toast.LENGTH_LONG).show()))
+                            .addOnFailureListener(e ->
+                                    android.widget.Toast.makeText(requireContext(),
+                                            "Contraseña incorrecta",
+                                            android.widget.Toast.LENGTH_SHORT).show());
+                })
+                .setNegativeButton("Cancelar", null)
+                .show();
     }
 }
