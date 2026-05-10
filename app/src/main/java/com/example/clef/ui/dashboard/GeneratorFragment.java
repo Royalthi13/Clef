@@ -14,6 +14,7 @@ import androidx.fragment.app.Fragment;
 import com.example.clef.R;
 import com.example.clef.utils.ClipboardHelper;
 import com.example.clef.utils.PasswordGenerator;
+import com.example.clef.utils.PasswordStrengthHelper;
 import com.example.clef.utils.SecurePrefs;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.slider.Slider;
@@ -35,11 +36,15 @@ public class GeneratorFragment extends Fragment {
 
     private TextView       tvGeneratedPassword;
     private TextView       tvLengthValue;
+    private TextView       tvStrengthLabel;
     private Slider         sliderLength;
     private MaterialSwitch switchUppercase;
     private MaterialSwitch switchLowercase;
     private MaterialSwitch switchNumbers;
     private MaterialSwitch switchSymbols;
+    private android.widget.LinearLayout strengthBar1;
+    private android.widget.LinearLayout strengthBar2;
+    private android.widget.LinearLayout strengthBar3;
 
     @Nullable
     @Override
@@ -55,11 +60,15 @@ public class GeneratorFragment extends Fragment {
 
         tvGeneratedPassword = view.findViewById(R.id.tvGeneratedPassword);
         tvLengthValue       = view.findViewById(R.id.tvLengthValue);
+        tvStrengthLabel     = view.findViewById(R.id.tvStrengthLabel);
         sliderLength        = view.findViewById(R.id.sliderLength);
         switchUppercase     = view.findViewById(R.id.switchUppercase);
         switchLowercase     = view.findViewById(R.id.switchLowercase);
         switchNumbers       = view.findViewById(R.id.switchNumbers);
         switchSymbols       = view.findViewById(R.id.switchSymbols);
+        strengthBar1        = view.findViewById(R.id.strengthBar1);
+        strengthBar2        = view.findViewById(R.id.strengthBar2);
+        strengthBar3        = view.findViewById(R.id.strengthBar3);
 
 // FIX: Mostrar y conectar los botones — ya no se ocultan
         View btnCopy     = view.findViewById(R.id.btnCopy);
@@ -105,6 +114,8 @@ public class GeneratorFragment extends Fragment {
         String pwd = PasswordGenerator.generateFromPrefs(requireContext());
         if (tvGeneratedPassword != null) {
             tvGeneratedPassword.setText(pwd);
+            PasswordStrengthHelper.update(requireContext(), pwd,
+                    strengthBar1, strengthBar2, strengthBar3, tvStrengthLabel);
         }
     }
 

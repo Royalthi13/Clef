@@ -11,6 +11,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
@@ -21,11 +22,7 @@ import com.example.clef.R;
 import com.example.clef.data.model.Credential;
 import com.example.clef.utils.ClipboardHelper;
 import com.example.clef.utils.FaviconHelper;
-import com.example.clef.utils.PasswordGenerator;
 import com.example.clef.utils.PasswordStrengthHelper;
-
-
-import androidx.core.content.ContextCompat;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
@@ -179,29 +176,29 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
                         .show());
 
         holder.btnChangePassword.setOnClickListener(v -> {
-            android.view.View dialogView = android.view.LayoutInflater.from(context)
+            View dialogView = LayoutInflater.from(context)
                     .inflate(R.layout.dialog_change_password, null);
-            com.google.android.material.textfield.TextInputLayout tilNew =
+            TextInputLayout tilNew =
                     dialogView.findViewById(R.id.tilNewPassword);
-            com.google.android.material.textfield.TextInputEditText etNew =
+            TextInputEditText etNew =
                     dialogView.findViewById(R.id.etNewPassword);
-            android.widget.ImageButton btnShowNew =
+            ImageButton btnShowNew =
                     dialogView.findViewById(R.id.btnShowNewPassword);
             android.widget.LinearLayout sBar1 = dialogView.findViewById(R.id.strengthBar1);
             android.widget.LinearLayout sBar2 = dialogView.findViewById(R.id.strengthBar2);
             android.widget.LinearLayout sBar3 = dialogView.findViewById(R.id.strengthBar3);
-            android.widget.TextView     sLabel = dialogView.findViewById(R.id.tvStrengthLabel);
+            TextView     sLabel = dialogView.findViewById(R.id.tvStrengthLabel);
 
             etNew.addTextChangedListener(new SimpleTextWatcher(() ->
                     PasswordStrengthHelper.update(context,
                             etNew.getText() != null ? etNew.getText().toString() : "",
                             sBar1, sBar2, sBar3, sLabel)));
 
-            tilNew.setStartIconOnClickListener(gen -> {
-                String generated = PasswordGenerator.generateFromPrefs(context);
-                etNew.setText(generated);
-                etNew.setSelection(generated.length());
-            });
+            tilNew.setStartIconOnClickListener(gen ->
+                    PasswordGeneratorSheet.show(context, password -> {
+                        etNew.setText(password);
+                        etNew.setSelection(password.length());
+                    }));
 
             com.example.clef.utils.PasswordVisibilityToggle.attach(etNew, btnShowNew);
 
@@ -270,12 +267,12 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
         holder.btnToggleHistory.setText("Ver historial (" + older.size() + ")");
         holder.layoutPasswordHistory.removeAllViews();
 
-        android.view.LayoutInflater inflater = android.view.LayoutInflater.from(context);
+        LayoutInflater inflater = LayoutInflater.from(context);
         for (String pwd : older) {
-            android.view.View row = inflater.inflate(
+            View row = inflater.inflate(
                     R.layout.item_history_row, holder.layoutPasswordHistory, false);
             TextInputEditText etHist = row.findViewById(R.id.etHistoryPassword);
-            android.widget.ImageButton btnEye = row.findViewById(R.id.btnShowHistoryPassword);
+            ImageButton btnEye = row.findViewById(R.id.btnShowHistoryPassword);
             etHist.setText(pwd);
             com.example.clef.utils.PasswordVisibilityToggle.attach(etHist, btnEye);
             holder.layoutPasswordHistory.addView(row);
@@ -305,7 +302,7 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
             holder.tvInitial.setVisibility(View.GONE);
             holder.ivServiceLogo.setVisibility(View.VISIBLE);
             // CENTER para el placeholder (icono genérico); CENTER_CROP solo si carga el favicon
-            holder.ivServiceLogo.setScaleType(android.widget.ImageView.ScaleType.CENTER);
+            holder.ivServiceLogo.setScaleType(ImageView.ScaleType.CENTER);
             Glide.with(context)
                     .load(faviconUrl)
                     .apply(new RequestOptions()
@@ -327,7 +324,7 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
                                                        com.bumptech.glide.request.target.Target<android.graphics.drawable.Drawable> target,
                                                        com.bumptech.glide.load.DataSource dataSource,
                                                        boolean isFirstResource) {
-                            holder.ivServiceLogo.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP);
+                            holder.ivServiceLogo.setScaleType(ImageView.ScaleType.CENTER_CROP);
                             return false;
                         }
                     })
@@ -340,7 +337,7 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
     private void showCategoryIcon(ViewHolder holder, Credential credential) {
         Credential.Category cat = credential.getCategory();
         if (cat == null) cat = Credential.Category.OTHER;
-        holder.ivServiceLogo.setScaleType(android.widget.ImageView.ScaleType.CENTER);
+        holder.ivServiceLogo.setScaleType(ImageView.ScaleType.CENTER);
         holder.ivServiceLogo.setImageDrawable(
                 ContextCompat.getDrawable(context, cat.getIconRes()));
         holder.ivServiceLogo.setVisibility(View.VISIBLE);

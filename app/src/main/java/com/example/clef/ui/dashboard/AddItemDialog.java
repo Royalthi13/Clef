@@ -1,5 +1,6 @@
 package com.example.clef.ui.dashboard;
 
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -16,10 +17,8 @@ import com.example.clef.crypto.KeyManager;
 import com.example.clef.data.model.Credential;
 import com.example.clef.data.model.Vault;
 import com.example.clef.data.repository.VaultRepository;
-import com.example.clef.utils.PasswordGenerator;
 import com.example.clef.utils.SecurePrefs;
 import com.example.clef.utils.SessionManager;
-import android.content.res.Configuration;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
@@ -29,6 +28,7 @@ import com.google.android.material.textfield.TextInputLayout;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
 public class AddItemDialog extends BottomSheetDialogFragment {
 
     public interface OnCredentialSavedListener {
@@ -113,11 +113,11 @@ public class AddItemDialog extends BottomSheetDialogFragment {
         tilPassword.setEndIconMode(TextInputLayout.END_ICON_CUSTOM);
         tilPassword.setEndIconDrawable(R.drawable.ic_generator);
         tilPassword.setEndIconContentDescription("Generar contraseña");
-        tilPassword.setEndIconOnClickListener(v -> {
-            String generated = PasswordGenerator.generateFromPrefs(requireContext());
-            etPassword.setText(generated);
-            etPassword.setSelection(generated.length());
-        });
+        tilPassword.setEndIconOnClickListener(v ->
+                PasswordGeneratorSheet.show(requireContext(), password -> {
+                    etPassword.setText(password);
+                    etPassword.setSelection(password.length());
+                }));
 
         android.widget.ImageButton btnShowPassword = view.findViewById(R.id.btnShowPassword);
         com.example.clef.utils.PasswordVisibilityToggle.attach(etPassword, btnShowPassword);
