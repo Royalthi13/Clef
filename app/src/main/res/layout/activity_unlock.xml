@@ -115,7 +115,7 @@
                 android:layout_marginTop="16dp"
                 android:clickable="true"
                 android:focusable="true"
-                android:text="¿Olvidaste tu contraseña maestra? Usar código PUK"
+                android:text="@string/unlock_forgot_master"
                 android:textColor="?attr/colorPrimary"
                 android:textSize="13sp"
                 android:gravity="center" />
@@ -131,7 +131,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="top|start"
         android:layout_margin="8dp"
-        android:text="Volver al login"
+        android:text="@string/unlock_back_to_login"
         app:icon="@drawable/ic_arrow_back_24"
         app:iconGravity="textStart"
         app:iconPadding="4dp" />

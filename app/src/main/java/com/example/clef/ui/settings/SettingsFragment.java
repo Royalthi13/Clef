@@ -14,6 +14,8 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatDelegate;
+import androidx.core.os.LocaleListCompat;
 import androidx.fragment.app.Fragment;
 
 import com.bumptech.glide.Glide;
@@ -72,6 +74,7 @@ public class SettingsFragment extends Fragment {
 
         setupBiometricSwitch(view);
         setupThemeToggle(view);
+        setupLanguage(view);
         setupAutoLock(view);
         setupSyncSwitch(view);
         setupImportExport(view);
@@ -178,7 +181,7 @@ public class SettingsFragment extends Fragment {
                 byte[] dek = SessionManager.getInstance().getDek();
                 if (dek == null) {
                     Toast.makeText(requireContext(),
-                            "La sesión expiró. Desbloquea la app de nuevo.",
+                            getString(R.string.add_item_error_session),
                             Toast.LENGTH_SHORT).show();
                     switchBiometrics.setChecked(false);
                     return;
@@ -244,6 +247,45 @@ public class SettingsFragment extends Fragment {
                 : R.drawable.ic_light_mode_24);
     }
 
+    // ── Idioma ────────────────────────────────────────────────────────────────
+
+    private void setupLanguage(View view) {
+        TextView tvLanguageValue = view.findViewById(R.id.tvLanguageValue);
+        if (tvLanguageValue == null) return;
+        tvLanguageValue.setText(currentLanguageLabel());
+
+        view.findViewById(R.id.rowLanguage).setOnClickListener(v -> {
+            String[] labels = {
+                    getString(R.string.lang_system),
+                    getString(R.string.lang_es),
+                    getString(R.string.lang_en)
+            };
+            String[] tags = { "", "es", "en" };
+
+            new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                    .setTitle(getString(R.string.settings_language))
+                    .setItems(labels, (d, which) -> {
+                        if (tags[which].isEmpty()) {
+                            AppCompatDelegate.setApplicationLocales(LocaleListCompat.getEmptyLocaleList());
+                        } else {
+                            AppCompatDelegate.setApplicationLocales(
+                                    LocaleListCompat.forLanguageTags(tags[which]));
+                        }
+                        tvLanguageValue.setText(labels[which]);
+                    })
+                    .show();
+        });
+    }
+
+    private String currentLanguageLabel() {
+        LocaleListCompat locales = AppCompatDelegate.getApplicationLocales();
+        if (locales.isEmpty()) return getString(R.string.lang_system);
+        String tag = locales.get(0).getLanguage();
+        if ("es".equals(tag)) return getString(R.string.lang_es);
+        if ("en".equals(tag)) return getString(R.string.lang_en);
+        return getString(R.string.lang_system);
+    }
+
     // ── Auto-lock ─────────────────────────────────────────────────────────────
 
     private void setupAutoLock(View view) {
@@ -252,10 +294,16 @@ public class SettingsFragment extends Fragment {
         tvAutoLockValue.setText(msToLabel(prefs.getLong("auto_lock_ms", 300_000)));
 
         view.findViewById(R.id.rowAutoLock).setOnClickListener(v -> {
-            String[] opciones = {"1 minuto", "5 minutos", "15 minutos", "30 minutos", "Nunca"};
-            long[]   valores  = {60_000, 300_000, 900_000, 1_800_000, Long.MAX_VALUE};
+            String[] opciones = {
+                    getString(R.string.auto_lock_1min),
+                    getString(R.string.auto_lock_5min),
+                    getString(R.string.auto_lock_15min),
+                    getString(R.string.auto_lock_30min),
+                    getString(R.string.auto_lock_never)
+            };
+            long[] valores = {60_000, 300_000, 900_000, 1_800_000, Long.MAX_VALUE};
             new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                    .setTitle("Bloqueo automático")
+                    .setTitle(getString(R.string.auto_lock_dialog_title))
                     .setItems(opciones, (d, which) -> {
                         long ms = valores[which];
                         prefs.edit().putLong("auto_lock_ms", ms).apply();
@@ -280,7 +328,7 @@ public class SettingsFragment extends Fragment {
                 new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
                         .setTitle(getString(R.string.settings_sync))
                         .setMessage(getString(R.string.sync_info_message))
-                        .setPositiveButton("Entendido", null)
+                        .setPositiveButton(getString(R.string.btn_understood), null)
                         .show());
     }
 
@@ -312,7 +360,12 @@ public class SettingsFragment extends Fragment {
         });
 
         view.findViewById(R.id.rowExpiryPeriod).setOnClickListener(v -> {
-            String[] options = {"Test (10 min)", "3 meses", "6 meses", "1 año"};
+            String[] options = {
+                    getString(R.string.expiry_period_test),
+                    getString(R.string.expiry_period_3months),
+                    getString(R.string.expiry_period_6months),
+                    getString(R.string.settings_expiry_period_default)
+            };
             long[] values = {
                     ExpiryHelper.PERIOD_TEST,
                     ExpiryHelper.PERIOD_THREE_MONTHS,
@@ -320,7 +373,7 @@ public class SettingsFragment extends Fragment {
                     ExpiryHelper.PERIOD_ONE_YEAR
             };
             new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                    .setTitle("Plazo de caducidad")
+                    .setTitle(getString(R.string.settings_expiry_period))
                     .setItems(options, (d, which) -> {
                         prefs.edit().putLong(ExpiryHelper.PREF_PERIOD, values[which]).apply();
                         tvPeriodValue.setText(options[which]);
@@ -330,10 +383,10 @@ public class SettingsFragment extends Fragment {
     }
 
     private String periodLabel(long ms) {
-        if (ms == ExpiryHelper.PERIOD_TEST)          return "Test (10 min)";
-        if (ms == ExpiryHelper.PERIOD_THREE_MONTHS)  return "3 meses";
-        if (ms == ExpiryHelper.PERIOD_SIX_MONTHS)    return "6 meses";
-        return "1 año";
+        if (ms == ExpiryHelper.PERIOD_TEST)          return getString(R.string.expiry_period_test);
+        if (ms == ExpiryHelper.PERIOD_THREE_MONTHS)  return getString(R.string.expiry_period_3months);
+        if (ms == ExpiryHelper.PERIOD_SIX_MONTHS)    return getString(R.string.expiry_period_6months);
+        return getString(R.string.settings_expiry_period_default);
     }
 
     // ── Cerrar sesión ─────────────────────────────────────────────────────────
@@ -341,14 +394,14 @@ public class SettingsFragment extends Fragment {
     private void setupSignOut(View view) {
         view.findViewById(R.id.btnSignOut).setOnClickListener(v ->
                 new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                        .setTitle("Cerrar sesión")
-                        .setMessage("Se cerrará tu sesión en este dispositivo.")
-                        .setPositiveButton("Cerrar sesión", (d, w) -> performSignOut())
-                        .setNegativeButton("Cancelar", null)
+                        .setTitle(getString(R.string.settings_sign_out))
+                        .setMessage(getString(R.string.sign_out_message))
+                        .setPositiveButton(getString(R.string.settings_sign_out), (d, w) -> performSignOut())
+                        .setNegativeButton(getString(R.string.cancel), null)
                         .show());
 
         view.findViewById(R.id.rowHelp).setOnClickListener(v ->
-                Toast.makeText(requireContext(), "Próximamente", Toast.LENGTH_SHORT).show());
+                Toast.makeText(requireContext(), getString(R.string.coming_soon), Toast.LENGTH_SHORT).show());
     }
 
     private void performSignOut() {
@@ -366,10 +419,10 @@ public class SettingsFragment extends Fragment {
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private String msToLabel(long ms) {
-        if (ms == 60_000)    return "1 minuto";
-        if (ms == 300_000)   return "5 minutos";
-        if (ms == 900_000)   return "15 minutos";
-        if (ms == 1_800_000) return "30 minutos";
-        return "Nunca";
+        if (ms == 60_000)    return getString(R.string.auto_lock_1min);
+        if (ms == 300_000)   return getString(R.string.auto_lock_5min);
+        if (ms == 900_000)   return getString(R.string.auto_lock_15min);
+        if (ms == 1_800_000) return getString(R.string.auto_lock_30min);
+        return getString(R.string.auto_lock_never);
     }
 }

@@ -35,13 +35,13 @@ public class SplashActivity extends AppCompatActivity {
         // B-7 FIX: si hay usuario autenticado, ofrecer reintento en lugar de logout forzado
         if (authManager != null && authManager.getCurrentUser() != null) {
             new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-                    .setTitle("Sin conexión")
-                    .setMessage("No se pudo conectar con el servidor. ¿Intentar de nuevo?")
-                    .setPositiveButton("Reintentar", (d, w) -> {
+                    .setTitle(getString(R.string.splash_no_connection_title))
+                    .setMessage(getString(R.string.splash_no_connection_message))
+                    .setPositiveButton(getString(R.string.btn_retry), (d, w) -> {
                         navigated = false;
                         startFirebaseCheck();
                     })
-                    .setNegativeButton("Usar offline", (d, w) -> goTo(LoginActivity.class))
+                    .setNegativeButton(getString(R.string.splash_use_offline), (d, w) -> goTo(LoginActivity.class))
                     .setCancelable(false)
                     .show();
         } else {
@@ -58,13 +58,12 @@ public class SplashActivity extends AppCompatActivity {
         RootDetector.Result rootResult = RootDetector.check(this);
         if (rootResult.blocked) {
             setContentView(R.layout.activity_splash);
-            String titulo = rootResult.isClear ? "Dispositivo no seguro"
-                    : "Múltiples indicios de riesgo";
+            String titulo = rootResult.isClear ? getString(R.string.splash_root_clear_title)
+                    : getString(R.string.splash_root_risk_title);
             new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
                     .setTitle(titulo)
-                    .setMessage(rootResult.reason +
-                            "\n\nEl acceso ha sido bloqueado para proteger tus datos.")
-                    .setPositiveButton("Cerrar app", (d, w) -> finish())
+                    .setMessage(rootResult.reason + getString(R.string.splash_root_blocked_suffix))
+                    .setPositiveButton(getString(R.string.splash_close_app), (d, w) -> finish())
                     .setCancelable(false)
                     .show();
             return;

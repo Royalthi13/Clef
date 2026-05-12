@@ -42,7 +42,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Clef"
+                android:text="@string/app_name"
                 android:textSize="28sp"
                 android:textStyle="bold"
                 android:textColor="@color/clef_on_surface" />
@@ -50,7 +50,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Tu bóveda de contraseñas segura"
+                android:text="@string/login_tagline"
                 android:textSize="14sp"
                 android:textColor="?attr/colorOnSurfaceVariant"
                 android:layout_marginTop="4dp"
@@ -116,7 +116,7 @@
                     android:layout_height="wrap_content"
                     android:clickable="true"
                     android:focusable="true"
-                    android:text="¿Olvidaste tu contraseña?"
+                    android:text="@string/login_forgot_password"
                     android:textColor="@color/clef_primary"
                     android:textSize="12sp"
                     android:textStyle="bold"
@@ -130,7 +130,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="56dp"
                     android:layout_marginTop="8dp"
-                    android:text="ACCEDER"
+                    android:text="@string/login_access"
                     android:textSize="14sp"
                     android:letterSpacing="0.08"
                     app:icon="@drawable/ic_arrow_forward"
@@ -154,7 +154,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="o continúa con"
+                        android:text="@string/login_or_continue"
                         android:textSize="11sp"
                         android:textColor="?attr/colorOnSurfaceVariant"
                         android:paddingHorizontal="12dp" />
@@ -191,7 +191,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="¿No tienes cuenta? "
+                android:text="@string/login_no_account"
                 android:textSize="14sp"
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -200,7 +200,7 @@
                 style="@style/Widget.Material3.Button.TextButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Crear cuenta"
+                android:text="@string/register_email"
                 android:textSize="14sp"
                 android:textStyle="bold"
                 android:textColor="@color/clef_primary"
@@ -221,7 +221,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="TÉRMINOS"
+                android:text="@string/login_terms"
                 android:textSize="10sp"
                 android:letterSpacing="0.1"
                 android:textColor="?attr/colorOnSurfaceVariant" />
@@ -236,7 +236,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="PRIVACIDAD"
+                android:text="@string/login_privacy"
                 android:textSize="10sp"
                 android:letterSpacing="0.1"
                 android:textColor="?attr/colorOnSurfaceVariant" />
@@ -251,7 +251,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="SOPORTE"
+                android:text="@string/login_support"
                 android:textSize="10sp"
                 android:letterSpacing="0.1"
                 android:textColor="?attr/colorOnSurfaceVariant" />

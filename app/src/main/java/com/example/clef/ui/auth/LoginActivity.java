@@ -41,7 +41,7 @@ public class LoginActivity extends AppCompatActivity {
                             checkAndNavigate();
                         } else {
                             setLoading(false);
-                            Toast.makeText(this, "Error al iniciar sesión con Google", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(this, getString(R.string.login_error_google), Toast.LENGTH_SHORT).show();
                         }
                     });
                 }
@@ -67,12 +67,12 @@ public class LoginActivity extends AppCompatActivity {
             String email = getEmail();
             if (email == null) return;
             new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-                    .setTitle("Recuperar contraseña")
-                    .setMessage("Se enviará un enlace a " + email + ". Revisa también la carpeta de spam.")
-                    .setPositiveButton("Enviar", (d, w) ->
+                    .setTitle(getString(R.string.login_recover_title))
+                    .setMessage(getString(R.string.login_recover_message, email))
+                    .setPositiveButton(getString(R.string.btn_send), (d, w) ->
                             authManager.sendPasswordReset(email, (u, e) ->
-                                    Toast.makeText(this, "Enlace de recuperación enviado", Toast.LENGTH_LONG).show()))
-                    .setNegativeButton("Cancelar", null)
+                                    Toast.makeText(this, getString(R.string.login_recover_sent), Toast.LENGTH_LONG).show()))
+                    .setNegativeButton(getString(R.string.cancel), null)
                     .show();
         });
 
@@ -93,24 +93,24 @@ public class LoginActivity extends AppCompatActivity {
                         setLoading(false);
                         authManager.signOut(this, () -> {});
                         new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-                                .setTitle("Email no verificado")
-                                .setMessage("Debes verificar tu correo antes de acceder.")
-                                .setPositiveButton("Reenviar", (d, w) ->
+                                .setTitle(getString(R.string.login_email_unverified_title))
+                                .setMessage(getString(R.string.login_email_unverified_message))
+                                .setPositiveButton(getString(R.string.btn_resend), (d, w) ->
                                         authManager.signInWithEmail(email, password, (u, e) -> {
                                             if (u != null) {
                                                 authManager.sendEmailVerification((v2, e2) ->
-                                                        Toast.makeText(this, "Email reenviado", Toast.LENGTH_LONG).show());
+                                                        Toast.makeText(this, getString(R.string.login_email_resent), Toast.LENGTH_LONG).show());
                                                 authManager.signOut(this, () -> {});
                                             }
                                         }))
-                                .setNegativeButton("Cerrar", null)
+                                .setNegativeButton(getString(R.string.btn_close), null)
                                 .show();
                     } else {
                         checkAndNavigate();
                     }
                 } else {
                     setLoading(false);
-                    Toast.makeText(this, "Correo o contraseña incorrectos", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, getString(R.string.login_error_credentials), Toast.LENGTH_SHORT).show();
                 }
             });
         });
@@ -170,13 +170,13 @@ public class LoginActivity extends AppCompatActivity {
         if (daysSinceCheck > MAX_OFFLINE_DAYS) {
             setLoading(false);
             new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-                    .setTitle("Verificación requerida")
-                    .setMessage("No se ha podido verificar tu acceso en los últimos " + MAX_OFFLINE_DAYS + " días. Necesitas conexión a internet para continuar.")
-                    .setPositiveButton("Entendido", null)
+                    .setTitle(getString(R.string.login_verification_title))
+                    .setMessage(getString(R.string.login_verification_message, MAX_OFFLINE_DAYS))
+                    .setPositiveButton(getString(R.string.btn_understood), null)
                     .setCancelable(false)
                     .show();
         } else {
-            Toast.makeText(this, "Sin conexión — verificación pendiente (" + daysSinceCheck + " días)", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, getString(R.string.login_offline_pending, daysSinceCheck), Toast.LENGTH_LONG).show();
             navigateAfterIpCheck();
         }
     }
@@ -201,7 +201,7 @@ public class LoginActivity extends AppCompatActivity {
                 })
                 .addOnFailureListener(e -> {
                     setLoading(false);
-                    Toast.makeText(this, "Error al conectar con el servidor", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, getString(R.string.login_error_server), Toast.LENGTH_SHORT).show();
                 });
     }
 
@@ -212,14 +212,14 @@ public class LoginActivity extends AppCompatActivity {
 
     private String getEmail() {
         String email = etEmail.getText() != null ? etEmail.getText().toString().trim() : "";
-        if (email.isEmpty()) { etEmail.setError("Introduce tu correo"); return null; }
-        if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) { etEmail.setError("Correo no válido"); return null; }
+        if (email.isEmpty()) { etEmail.setError(getString(R.string.login_error_email)); return null; }
+        if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) { etEmail.setError(getString(R.string.login_error_email_invalid)); return null; }
         return email;
     }
 
     private String getPassword() {
         String pwd = etPassword.getText() != null ? etPassword.getText().toString() : "";
-        if (pwd.length() < 6) { etPassword.setError("Mínimo 6 caracteres"); return null; }
+        if (pwd.length() < 6) { etPassword.setError(getString(R.string.login_error_password_short)); return null; }
         return pwd;
     }
 

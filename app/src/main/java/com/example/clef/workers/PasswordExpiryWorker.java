@@ -49,7 +49,7 @@ public class PasswordExpiryWorker extends Worker {
         long periodMs = prefs.getLong(ExpiryHelper.PREF_PERIOD, ExpiryHelper.PERIOD_ONE_YEAR);
         List<ExpiryHelper.CredentialMeta> metas = ExpiryHelper.loadMetadata(ctx);
 
-        String text = buildNotificationText(metas, periodMs);
+        String text = buildNotificationText(ctx, metas, periodMs);
         if (text == null) return Result.success();
 
         sendNotification(ctx, text);
@@ -67,7 +67,7 @@ public class PasswordExpiryWorker extends Worker {
         long periodMs = prefs.getLong(ExpiryHelper.PREF_PERIOD, ExpiryHelper.PERIOD_ONE_YEAR);
         List<ExpiryHelper.CredentialMeta> metas = ExpiryHelper.loadMetadata(ctx);
 
-        String text = buildNotificationText(metas, periodMs);
+        String text = buildNotificationText(ctx, metas, periodMs);
         if (text == null) return;
 
         prefs.edit().putLong(PREF_LAST_NOTIFIED, now).apply();
@@ -77,7 +77,7 @@ public class PasswordExpiryWorker extends Worker {
     // B-4 FIX: lógica unificada de conteo y construcción del mensaje.
     @Nullable
     private static String buildNotificationText(
-            List<ExpiryHelper.CredentialMeta> metas, long periodMs) {
+            Context ctx, List<ExpiryHelper.CredentialMeta> metas, long periodMs) {
         int expired = 0, warning = 0;
         for (ExpiryHelper.CredentialMeta meta : metas) {
             ExpiryHelper.Status status = ExpiryHelper.getStatus(meta.updatedAt, periodMs);
@@ -86,10 +86,10 @@ public class PasswordExpiryWorker extends Worker {
         }
         if (expired == 0 && warning == 0) return null;
         if (expired > 0 && warning > 0)
-            return expired + " contraseña(s) caducada(s), " + warning + " próxima(s) a caducar.";
+            return ctx.getString(R.string.notif_text_both, expired, warning);
         if (expired > 0)
-            return expired + " contraseña(s) han caducado. ¡Cámbialas!";
-        return warning + " contraseña(s) próximas a caducar.";
+            return ctx.getString(R.string.notif_text_expired, expired);
+        return ctx.getString(R.string.notif_text_warning, warning);
     }
 
     private static void sendNotification(Context ctx, String text) {
@@ -100,7 +100,7 @@ public class PasswordExpiryWorker extends Worker {
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(ctx, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notifications_24)
-                .setContentTitle("Clef · Contraseñas")
+                .setContentTitle(ctx.getString(R.string.notif_title))
                 .setContentText(text)
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(text))
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)

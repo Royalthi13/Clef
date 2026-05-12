@@ -162,6 +162,17 @@
                 </LinearLayout>
 
                 <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnChangeEmail"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="10dp"
+                    android:text="@string/profile_change_email"
+                    app:icon="@drawable/ic_mail"
+                    app:iconGravity="textStart"
+                    app:iconPadding="8dp" />
+
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnDeleteAccount"
                     style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="match_parent"

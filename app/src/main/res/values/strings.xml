@@ -165,6 +165,195 @@
     <!-- Dialog añadir credencial -->
     <string name="add_item_hint_url">URL del sitio (opcional)</string>
 
+    <!-- Botones genéricos -->
+    <string name="btn_send">Enviar</string>
+    <string name="btn_resend">Reenviar</string>
+    <string name="btn_close">Cerrar</string>
+    <string name="btn_understood">Entendido</string>
+    <string name="btn_confirm">Confirmar</string>
+    <string name="btn_retry">Reintentar</string>
+    <string name="btn_continue">Continuar</string>
+    <string name="btn_accept">Aceptar</string>
+    <string name="btn_import">Importar</string>
+    <string name="coming_soon">Próximamente</string>
+
+    <!-- Login errores y diálogos -->
+    <string name="login_error_google">Error al iniciar sesión con Google</string>
+    <string name="login_recover_title">Recuperar contraseña</string>
+    <string name="login_recover_message">Se enviará un enlace a %1$s. Revisa también la carpeta de spam.</string>
+    <string name="login_recover_sent">Enlace de recuperación enviado</string>
+    <string name="login_email_unverified_title">Email no verificado</string>
+    <string name="login_email_unverified_message">Debes verificar tu correo antes de acceder.</string>
+    <string name="login_email_resent">Email reenviado</string>
+    <string name="login_verification_title">Verificación requerida</string>
+    <string name="login_verification_message">No se ha podido verificar tu acceso en los últimos %1$d días. Necesitas conexión a internet para continuar.</string>
+    <string name="login_offline_pending">Sin conexión — verificación pendiente (%1$d días)</string>
+    <string name="login_error_credentials">Correo o contraseña incorrectos</string>
+    <string name="login_error_server">Error al conectar con el servidor</string>
+    <string name="login_error_email">Introduce tu correo</string>
+    <string name="login_error_email_invalid">Correo no válido</string>
+    <string name="login_error_password_short">Mínimo 6 caracteres</string>
+
+    <!-- Splash -->
+    <string name="splash_no_connection_title">Sin conexión</string>
+    <string name="splash_no_connection_message">No se pudo conectar con el servidor. ¿Intentar de nuevo?</string>
+    <string name="splash_use_offline">Usar offline</string>
+    <string name="splash_close_app">Cerrar app</string>
+    <string name="splash_root_clear_title">Dispositivo no seguro</string>
+    <string name="splash_root_risk_title">Múltiples indicios de riesgo</string>
+    <string name="splash_root_blocked_suffix">\n\nEl acceso ha sido bloqueado para proteger tus datos.</string>
+
+    <!-- Registro -->
+    <string name="register_success">Cuenta creada. Verifica tu correo.</string>
+    <string name="register_error">Error al crear la cuenta</string>
+
+    <!-- Cuenta bloqueada -->
+    <string name="account_blocked_title">Cuenta bloqueada</string>
+    <string name="account_blocked_message">Tu cuenta está bloqueada.\n\nDeberás ponerte en contacto con el servicio técnico en un plazo máximo de 3 meses para recuperar tu cuenta. Pasado ese plazo, tu cuenta será eliminada de forma permanente.\n\nContacto: serviciotecnico@ejemplo.clef</string>
+
+    <!-- Bóveda: ordenar y eliminar -->
+    <string name="sort_dialog_title">Ordenar por</string>
+    <string name="sort_recent">Más reciente</string>
+    <string name="sort_alphabetical">Alfabético</string>
+    <string name="sort_by_expiry">Por caducidad</string>
+    <string name="delete_credential_title">Eliminar credencial</string>
+    <string name="delete_credential_message">¿Eliminar \"%1$s\"?</string>
+    <string name="biometric_confirm_delete_title">Confirmar eliminación</string>
+    <string name="biometric_confirm_delete_message">Verifica tu identidad para eliminar \"%1$s\"</string>
+    <string name="master_confirm_delete_message">Introduce tu contraseña maestra para confirmar</string>
+    <string name="toast_password_copied">Contraseña copiada</string>
+    <string name="change_password_info_message">La contraseña anterior quedará visible abajo para que puedas usarla al cambiarla en el sitio web.</string>
+
+    <!-- Auto-lock opciones -->
+    <string name="auto_lock_dialog_title">Bloqueo automático</string>
+    <string name="auto_lock_1min">1 minuto</string>
+    <string name="auto_lock_5min">5 minutos</string>
+    <string name="auto_lock_15min">15 minutos</string>
+    <string name="auto_lock_30min">30 minutos</string>
+    <string name="auto_lock_never">Nunca</string>
+
+    <!-- Caducidad opciones -->
+    <string name="expiry_period_test">Test (10 min)</string>
+    <string name="expiry_period_3months">3 meses</string>
+    <string name="expiry_period_6months">6 meses</string>
+
+    <!-- Cerrar sesión -->
+    <string name="sign_out_message">Se cerrará tu sesión en este dispositivo.</string>
+
+    <!-- Perfil: diálogos -->
+    <string name="profile_photo_options_title">Cambiar foto de perfil</string>
+    <string name="profile_photo_camera">Cámara</string>
+    <string name="profile_photo_gallery">Galería</string>
+    <string name="profile_error_camera">Error al abrir la cámara</string>
+    <string name="profile_confirm_identity_title">Confirma tu identidad</string>
+    <string name="profile_change_email_title">Cambiar correo</string>
+    <string name="profile_change_email_message">Se enviará un enlace de verificación al nuevo correo.</string>
+    <string name="profile_new_email_hint">Nuevo correo electrónico</string>
+    <string name="profile_email_invalid">Introduce un correo válido</string>
+    <string name="profile_email_sent">Enlace enviado a %1$s</string>
+    <string name="profile_wrong_password">Contraseña incorrecta</string>
+    <string name="profile_firebase_password_message">Introduce tu contraseña de Firebase para continuar.</string>
+
+    <!-- Importar/Exportar diálogo -->
+    <string name="import_confirm_title">¿Importar desde la nube?</string>
+    <string name="import_confirm_message">Esto reemplazará las credenciales actuales del dispositivo con las que están guardadas en la nube. Los datos locales no sincronizados se perderán.</string>
+
+    <!-- Autofill -->
+    <string name="autofill_vault_empty">Tu bóveda está vacía</string>
+
+    <!-- Login -->
+    <string name="login_tagline">Tu bóveda de contraseñas segura</string>
+    <string name="login_forgot_password">¿Olvidaste tu contraseña?</string>
+    <string name="login_access">ACCEDER</string>
+    <string name="login_or_continue">o continúa con</string>
+    <string name="login_no_account">¿No tienes cuenta? </string>
+    <string name="login_terms">TÉRMINOS</string>
+    <string name="login_privacy">PRIVACIDAD</string>
+    <string name="login_support">SOPORTE</string>
+
+    <!-- Registro -->
+    <string name="register_subtitle">Regístrate en Clef</string>
+    <string name="register_cta">CREAR CUENTA</string>
+    <string name="register_have_account">¿Ya tienes cuenta? </string>
+
+    <!-- Recuperar acceso -->
+    <string name="recover_title">Recuperar acceso</string>
+    <string name="recover_description">Introduce tu código PUK y elige una nueva Contraseña Maestra.</string>
+    <string name="recover_puk_hint">Código PUK (XXXX-XXXX-XXXX-…)</string>
+    <string name="recover_new_password_hint">Nueva Contraseña Maestra</string>
+    <string name="recover_confirm_password_hint">Confirmar nueva contraseña</string>
+    <string name="recover_puk_warning">⚠ El código PUK solo puede usarse una vez. Tras la recuperación quedará invalidado.</string>
+
+    <!-- Unlock -->
+    <string name="unlock_forgot_master">¿Olvidaste tu contraseña maestra? Usar código PUK</string>
+    <string name="unlock_back_to_login">Volver al login</string>
+
+    <!-- Estadísticas -->
+    <string name="stats_title">Estadísticas de la bóveda</string>
+    <string name="stats_total">Total</string>
+    <string name="stats_cloud">En la nube</string>
+    <string name="stats_expired">Caducadas</string>
+    <string name="stats_weak">Débiles</string>
+
+    <!-- Perfil -->
+    <string name="profile_change_email">Cambiar correo electrónico</string>
+
+    <!-- Generador -->
+    <string name="generator_password_placeholder">Contraseña generada</string>
+    <string name="generator_icon_hint">este icono la genera por ti</string>
+
+    <!-- Idioma -->
+    <string name="settings_language">Idioma</string>
+    <string name="lang_system">Sistema</string>
+    <string name="lang_es">Español</string>
+    <string name="lang_en">English</string>
+
+    <!-- Settings secciones -->
+    <string name="settings_profile">Perfil</string>
+    <string name="settings_auto_lock_default">60 s</string>
+    <string name="settings_notifications">Notificaciones</string>
+    <string name="settings_expiry_alerts">Avisos de caducidad</string>
+    <string name="settings_expiry_alerts_desc">Notificación cuando una contraseña caduca</string>
+    <string name="settings_expiry_period">Plazo de caducidad</string>
+    <string name="settings_expiry_period_default">1 año</string>
+    <string name="settings_account">Cuenta</string>
+
+    <!-- Bóveda -->
+    <string name="vault_sort_recent">Reciente ▾</string>
+    <string name="vault_chip_favorites">Favoritas</string>
+    <string name="vault_tip_title">¿Sabías que...?</string>
+    <string name="vault_tip_body">Al expandir cualquier cuenta verás este icono junto al campo de contraseña. Púlsalo para generar una contraseña segura al instante, siguiendo las normas que hayas configurado en la pestaña Generador.</string>
+    <string name="vault_tip_search_icon">Busca este icono: </string>
+    <string name="vault_tip_dismiss">No volver a mostrar</string>
+    <string name="vault_expired_header">Caducadas</string>
+    <string name="vault_add_first">Añadir primera cuenta</string>
+
+    <!-- Credencial expandida -->
+    <string name="credential_hint_title">Título</string>
+    <string name="credential_hint_username">Usuario</string>
+    <string name="credential_hint_prev_password">Contraseña anterior</string>
+    <string name="credential_hint_notes">Descripción</string>
+    <string name="credential_change_password">Cambiar contraseña</string>
+    <string name="credential_view_history">Ver historial</string>
+    <string name="credential_delete">Eliminar</string>
+    <string name="credential_save">Guardar</string>
+    <string name="credential_copy_desc">Copiar contraseña</string>
+    <string name="credential_favorite_desc">Marcar como favorita</string>
+    <string name="credential_show_password_desc">Ver contraseña</string>
+    <string name="credential_info_desc">Información</string>
+    <string name="credential_show_prev_password_desc">Ver contraseña anterior</string>
+
+    <!-- Autofill -->
+    <string name="autofill_suggested">Sugerido</string>
+
+    <!-- Notificaciones sistema -->
+    <string name="notif_channel_name">Caducidad de contraseñas</string>
+    <string name="notif_channel_desc">Avisos diarios sobre contraseñas próximas a caducar</string>
+    <string name="notif_title">Clef · Contraseñas</string>
+    <string name="notif_text_both">%1$d contraseña(s) caducada(s), %2$d próxima(s) a caducar.</string>
+    <string name="notif_text_expired">%1$d contraseña(s) han caducado. ¡Cámbialas!</string>
+    <string name="notif_text_warning">%1$d contraseña(s) próximas a caducar.</string>
+
     <!-- Eliminar cuenta -->
     <string name="profile_delete_account">Eliminar cuenta</string>
     <string name="delete_account_confirm_title">¿Eliminar cuenta?</string>

@@ -246,8 +246,8 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
     private void showPhotoOptions() {
         if (!isAdded()) return;
         new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                .setTitle("Cambiar foto de perfil")
-                .setItems(new String[]{"Cámara", "Galería"}, (d, which) -> {
+                .setTitle(getString(R.string.profile_photo_options_title))
+                .setItems(new String[]{getString(R.string.profile_photo_camera), getString(R.string.profile_photo_gallery)}, (d, which) -> {
                     if (which == 0) requestCameraPermission();
                     else openGallery();
                 })
@@ -274,7 +274,7 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
             cameraLauncher.launch(cameraUri);
         } catch (IOException e) {
             if (isAdded()) Toast.makeText(requireContext(),
-                    "Error al abrir la cámara", Toast.LENGTH_SHORT).show();
+                    getString(R.string.profile_error_camera), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -344,9 +344,9 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
                 .inflate(R.layout.dialog_verify_password, null);
 
         new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                .setTitle("Confirma tu identidad")
+                .setTitle(getString(R.string.profile_confirm_identity_title))
                 .setView(dialogView)
-                .setPositiveButton("Confirmar", (d, w) -> {
+                .setPositiveButton(getString(R.string.btn_confirm), (d, w) -> {
                     com.google.android.material.textfield.TextInputEditText et =
                             dialogView.findViewById(R.id.etVerifyPassword);
                     Editable editable = et.getText();
@@ -376,7 +376,7 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
                 requireActivity().runOnUiThread(() -> {
                     setLoading(false);
                     Toast.makeText(requireContext(),
-                            "Contraseña incorrecta", Toast.LENGTH_SHORT).show();
+                            getString(R.string.profile_wrong_password), Toast.LENGTH_SHORT).show();
                 });
                 return;
             }
@@ -530,7 +530,7 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
                 .addOnSuccessListener(unused -> {
                     if (!isAdded()) return; // FIX: guardia — el diálogo puede haberse cerrado
                     setLoading(false);
-                    Toast.makeText(requireContext(), "Perfil actualizado", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireContext(), getString(R.string.profile_saved), Toast.LENGTH_SHORT).show();
                     if (listener != null) listener.onProfileUpdated(newName, selectedPhotoFile);
                     dismiss();
                 })
@@ -589,28 +589,28 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
         container.setPadding(pad, pad / 2, pad, 0);
         com.google.android.material.textfield.TextInputEditText etNew =
                 new com.google.android.material.textfield.TextInputEditText(requireContext());
-        etNew.setHint("Nuevo correo electrónico");
+        etNew.setHint(getString(R.string.profile_new_email_hint));
         etNew.setInputType(android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
                 | android.text.InputType.TYPE_CLASS_TEXT);
         container.addView(etNew);
 
         new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                .setTitle("Cambiar correo")
-                .setMessage("Se enviará un enlace de verificación al nuevo correo.")
+                .setTitle(getString(R.string.profile_change_email_title))
+                .setMessage(getString(R.string.profile_change_email_message))
                 .setView(container)
-                .setPositiveButton("Continuar", (d, w) -> {
+                .setPositiveButton(getString(R.string.btn_continue), (d, w) -> {
                     String newEmail = etNew.getText() != null
                             ? etNew.getText().toString().trim() : "";
                     if (newEmail.isEmpty() || !android.util.Patterns.EMAIL_ADDRESS
                             .matcher(newEmail).matches()) {
                         android.widget.Toast.makeText(requireContext(),
-                                "Introduce un correo válido",
+                                getString(R.string.profile_email_invalid),
                                 android.widget.Toast.LENGTH_SHORT).show();
                         return;
                     }
                     confirmarYCambiarEmail(newEmail);
                 })
-                .setNegativeButton("Cancelar", null)
+                .setNegativeButton(getString(R.string.cancel), null)
                 .show();
     }
 
@@ -619,10 +619,10 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
         android.view.View dialogView = android.view.LayoutInflater.from(requireContext())
                 .inflate(R.layout.dialog_verify_password, null);
         new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                .setTitle("Confirma tu identidad")
-                .setMessage("Introduce tu contraseña de Firebase para continuar.")
+                .setTitle(getString(R.string.profile_confirm_identity_title))
+                .setMessage(getString(R.string.profile_firebase_password_message))
                 .setView(dialogView)
-                .setPositiveButton("Confirmar", (d, w) -> {
+                .setPositiveButton(getString(R.string.btn_confirm), (d, w) -> {
                     com.google.android.material.textfield.TextInputEditText et =
                             dialogView.findViewById(R.id.etVerifyPassword);
                     android.text.Editable editable = et.getText();
@@ -642,7 +642,7 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
                                     u.verifyBeforeUpdateEmail(newEmail)
                                             .addOnSuccessListener(x ->
                                                     android.widget.Toast.makeText(requireContext(),
-                                                            "Enlace enviado a " + newEmail,
+                                                            getString(R.string.profile_email_sent, newEmail),
                                                             android.widget.Toast.LENGTH_LONG).show())
                                             .addOnFailureListener(e ->
                                                     android.widget.Toast.makeText(requireContext(),
@@ -650,10 +650,10 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
                                                             android.widget.Toast.LENGTH_LONG).show()))
                             .addOnFailureListener(e ->
                                     android.widget.Toast.makeText(requireContext(),
-                                            "Contraseña incorrecta",
+                                            getString(R.string.profile_wrong_password),
                                             android.widget.Toast.LENGTH_SHORT).show());
                 })
-                .setNegativeButton("Cancelar", null)
+                .setNegativeButton(getString(R.string.cancel), null)
                 .show();
     }
 }

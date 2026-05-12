@@ -79,9 +79,9 @@ public class ClefApp extends Application {
     private void createNotificationChannel() {
         NotificationChannel channel = new NotificationChannel(
                 PasswordExpiryWorker.CHANNEL_ID,
-                "Caducidad de contraseñas",
+                getString(R.string.notif_channel_name),
                 NotificationManager.IMPORTANCE_DEFAULT);
-        channel.setDescription("Avisos diarios sobre contraseñas próximas a caducar");
+        channel.setDescription(getString(R.string.notif_channel_desc));
         NotificationManager nm = getSystemService(NotificationManager.class);
         if (nm != null) nm.createNotificationChannel(channel);
     }

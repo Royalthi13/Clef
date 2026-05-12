@@ -65,7 +65,7 @@
                         android:layout_marginTop="16dp"
                         android:layout_marginBottom="12dp"
                         android:letterSpacing="0.1"
-                        android:text="Contraseña generada"
+                        android:text="@string/generator_password_placeholder"
                         android:textColor="?attr/colorOnSurface"
                         android:textSize="28sp"
                         android:textStyle="bold" />
@@ -144,7 +144,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="6dp"
-                            android:text="este icono la genera por ti"
+                            android:text="@string/generator_icon_hint"
                             android:textSize="12sp"
                             android:textColor="?attr/colorOnSurfaceVariant" />
 

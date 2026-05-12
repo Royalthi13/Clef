@@ -118,7 +118,7 @@ public class AutofillAuthActivity extends AppCompatActivity {
     private void showPicker(Vault vault) {
         if (vault == null || vault.getCredentials() == null
                 || vault.getCredentials().isEmpty()) {
-            Toast.makeText(this, "Tu bóveda está vacía", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.autofill_vault_empty), Toast.LENGTH_SHORT).show();
             finishWithFailure();
             return;
         }

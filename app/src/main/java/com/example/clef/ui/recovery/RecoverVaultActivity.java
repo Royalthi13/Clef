@@ -277,14 +277,9 @@ public class RecoverVaultActivity extends AppCompatActivity {
      */
     private void showBlockedDialog() {
         new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-                .setTitle("Cuenta bloqueada")
-                .setMessage("Tu cuenta ha sido bloqueada por superar el número máximo de " +
-                        "intentos permitidos.\n\n" +
-                        "Deberás ponerte en contacto con el servicio técnico en un plazo " +
-                        "máximo de 3 meses para recuperar tu cuenta. Pasado ese plazo, " +
-                        "tu cuenta será eliminada de forma permanente.\n\n" +
-                        "Contacto: serviciotecnico@ejemplo.clef")
-                .setPositiveButton("Entendido", (d, w) ->
+                .setTitle(getString(R.string.account_blocked_title))
+                .setMessage(getString(R.string.account_blocked_message))
+                .setPositiveButton(getString(R.string.btn_understood), (d, w) ->
                         new com.example.clef.data.remote.AuthManager(
                                 this, getString(R.string.default_web_client_id))
                                 .signOut(this, () -> {

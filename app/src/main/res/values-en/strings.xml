@@ -1,0 +1,357 @@
+<resources>
+    <string name="sign_in_google">Continue with Google</string>
+    <string name="sign_in_email">Sign in</string>
+    <string name="register_email">Create account</string>
+    <string name="hint_email">Email</string>
+    <string name="hint_password">Password</string>
+    <string name="divider_or">or</string>
+    <string name="nav_vault">Vault</string>
+    <string name="nav_settings">Settings</string>
+    <string name="nav_generator">Generator</string>
+
+    <!-- Setup: Master password -->
+    <string name="master_title">Set up Master Password</string>
+    <string name="master_description">This password is the only key to access your saved data and encrypt your personal vault.</string>
+    <string name="master_password_hint">Master password</string>
+    <string name="master_confirm_hint">Confirm password</string>
+    <string name="master_warning">This password is not synced to any server. If you forget it, Clef won\'t be able to help you recover access to your data.</string>
+    <string name="master_cta">Create vault</string>
+    <string name="master_strength_placeholder">Strength</string>
+    <string name="master_error_required">Enter your password</string>
+    <string name="master_error_min_len">Minimum 8 characters</string>
+    <string name="master_error_mismatch">Passwords don\'t match</string>
+    <string name="master_error_crypto_failed">Could not create vault. Try again.</string>
+    <string name="master_error_register_failed">Error saving your vault. Check your connection and try again.</string>
+
+    <!-- Setup: PUK -->
+    <string name="puk_title">Your emergency code (PUK)</string>
+    <string name="puk_description">Save it in a safe place. You\'ll need it if you forget your master password.</string>
+    <string name="puk_copy">Copy PUK</string>
+    <string name="puk_warning">This code is shown only once. Clef cannot recover it for you.</string>
+    <string name="puk_continue">Continue</string>
+    <string name="puk_copied">PUK copied</string>
+    <string name="puk_missing">PUK not found. Continuing…</string>
+
+    <!-- Generator -->
+    <string name="generator_new_password">YOUR NEW PASSWORD</string>
+    <string name="generator_copy_password">Copy Password</string>
+    <string name="generator_config">SETTINGS</string>
+    <string name="generator_length">Length</string>
+    <string name="generator_capitalcase">Uppercase</string>
+    <string name="generator_lowercase">Lowercase</string>
+    <string name="generator_numbers">Numbers</string>
+    <string name="generator_symbols">Symbols</string>
+    <string name="generator_generate_password">Generate password</string>
+
+    <!-- Import / Export -->
+    <string name="import_export_title">Export backup</string>
+    <string name="export_section_title">Export</string>
+    <string name="export_description">Upload your vault to the cloud as a backup. You can restore it on another device.</string>
+    <string name="export_button">Upload to cloud</string>
+    <string name="export_success">Credentials uploaded successfully</string>
+    <string name="export_error_no_data">No local data to export</string>
+    <string name="export_error_network">Error connecting to server</string>
+    <string name="export_all_synced">All credentials are already in the cloud</string>
+    <string name="export_select_title">Select what to upload</string>
+    <string name="export_upload_button">Upload</string>
+    <string name="cancel">Cancel</string>
+    <string name="delete_cloud_button">Delete cloud data</string>
+    <string name="delete_cloud_confirm_title">Delete cloud data?</string>
+    <string name="delete_cloud_confirm_message">All credentials will be deleted from Firebase. Your local data will not be affected.</string>
+    <string name="delete_cloud_confirm_action">Delete</string>
+    <string name="delete_cloud_success">Data deleted from cloud</string>
+    <string name="delete_cloud_error">Error deleting cloud data</string>
+    <string name="import_section_title">Import</string>
+    <string name="import_description">Download your vault from the cloud. You\'ll need your PUK code.</string>
+    <string name="import_button">Fetch from cloud</string>
+    <string name="import_success">Vault imported successfully</string>
+    <string name="import_error_no_cloud_data">No cloud data for this user</string>
+    <string name="import_error_network">Error connecting to server</string>
+    <string name="import_error_wrong_puk">Incorrect PUK</string>
+
+    <!-- Vault -->
+    <string name="vault_empty_title">Your vault is empty</string>
+    <string name="vault_empty_subtitle">Tap the + button to add your first account</string>
+    <string name="vault_search">Search credentials</string>
+    <string name="vault_fab_add">Add account</string>
+    <string name="credential_copy_password">Copy password</string>
+    <string name="vault_filter_all">All</string>
+    <string name="vault_filter_bank">Banks</string>
+    <string name="vault_filter_social">Social media</string>
+    <string name="vault_filter_work">Work</string>
+    <string name="vault_filter_game">Games</string>
+    <string name="vault_filter_shopping">Shopping</string>
+    <string name="vault_filter_transport">Transport</string>
+    <string name="vault_filter_leisure">Leisure</string>
+    <string name="vault_filter_sports">Sports</string>
+    <string name="vault_filter_others">Others</string>
+
+    <!-- Add credential -->
+    <string name="add_item_title">New account</string>
+    <string name="add_item_hint_title">Title (Gmail, Instagram…)</string>
+    <string name="add_item_hint_username">Email or username</string>
+    <string name="add_item_hint_password">Password</string>
+    <string name="add_item_hint_description">Description (optional)</string>
+    <string name="add_item_save">Save</string>
+    <string name="add_item_error_required">Required field</string>
+    <string name="add_item_error_session">Session expired. Unlock the app again.</string>
+    <string name="add_item_error_save">Error saving. Check your connection.</string>
+
+    <!-- Unlock -->
+    <string name="unlock_title">Welcome back</string>
+    <string name="unlock_subtitle">Enter your master password to access your vault</string>
+    <string name="unlock_biometric">Use biometrics</string>
+    <string name="unlock_cta">Unlock</string>
+    <string name="unlock_wrong_password">Incorrect password</string>
+    <string name="unlock_offline_warning">Offline — using local data</string>
+    <string name="unlock_no_data">No data available. Check your connection.</string>
+
+    <!-- Settings -->
+    <string name="settings_search">Search</string>
+    <string name="settings_security">Security</string>
+    <string name="settings_preferences">Preferences</string>
+    <string name="settings_biometrics">Biometrics</string>
+    <string name="settings_auto_lock">Auto-lock</string>
+    <string name="settings_theme">Theme</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_system">System</string>
+    <string name="theme_dark">Dark</string>
+    <string name="settings_import_export">Import/Export Data</string>
+    <string name="settings_sync">Cloud sync</string>
+    <string name="sync_info_message">When sync is enabled, every time you save a credential it will be automatically uploaded to the cloud. If disabled, you\'ll need to do it manually from Import/Export Data.</string>
+    <string name="settings_help">Help &amp; Support</string>
+    <string name="settings_sign_out">Sign Out</string>
+    <string name="settings_version">Clef Password Manager v2.4.0</string>
+    <string name="settings_biometrics_enabled">Biometrics enabled</string>
+    <string name="settings_biometrics_disabled">Biometrics disabled</string>
+
+    <!-- User profile -->
+    <string name="profile_edit_title">Edit profile</string>
+    <string name="profile_change_photo">Change photo</string>
+    <string name="profile_name_hint">Username</string>
+    <string name="profile_save">Save</string>
+    <string name="profile_cancel">Cancel</string>
+    <string name="profile_saved">Profile updated</string>
+    <string name="profile_photo_desc">Profile photo</string>
+    <string name="profile_default_name">User</string>
+    <string name="profile_error_name_required">Name cannot be empty</string>
+    <string name="profile_error_name_too_long">Maximum 40 characters</string>
+    <string name="profile_error_no_session">Session expired. Sign in again.</string>
+    <string name="profile_error_save">Error saving profile. Try again.</string>
+
+    <!-- Categories -->
+    <string name="category_bank">Bank</string>
+    <string name="category_social">Social Networks</string>
+    <string name="category_work">Work</string>
+    <string name="category_games">Games</string>
+    <string name="category_shopping">Shopping</string>
+    <string name="category_transport">Transport</string>
+    <string name="category_leisure">Leisure</string>
+    <string name="category_sports">Sports</string>
+    <string name="category_other">Other</string>
+    <string name="category_all">All</string>
+    <string name="add_item_hint_category">Category</string>
+
+    <!-- Splash -->
+    <string name="splash_tagline">The key was always with you</string>
+
+    <!-- Add credential dialog -->
+    <string name="add_item_hint_url">Website URL (optional)</string>
+
+    <!-- Delete account -->
+    <string name="profile_delete_account">Delete account</string>
+    <string name="delete_account_confirm_title">Delete account?</string>
+    <string name="delete_account_confirm_message">Your account, all your passwords and cloud data will be permanently deleted. This action cannot be undone.</string>
+    <string name="delete_account_confirm_action">Delete</string>
+    <string name="delete_account_success">Account deleted successfully</string>
+    <string name="delete_account_error">Error deleting account. Try again.</string>
+
+    <!-- Language -->
+    <string name="settings_language">Language</string>
+    <string name="lang_system">System</string>
+    <string name="lang_es">Español</string>
+    <string name="lang_en">English</string>
+
+    <!-- Login -->
+    <string name="login_tagline">Your secure password vault</string>
+    <string name="login_forgot_password">Forgot your password?</string>
+    <string name="login_access">SIGN IN</string>
+    <string name="login_or_continue">or continue with</string>
+    <string name="login_no_account">Don\'t have an account? </string>
+    <string name="login_terms">TERMS</string>
+    <string name="login_privacy">PRIVACY</string>
+    <string name="login_support">SUPPORT</string>
+
+    <!-- Register -->
+    <string name="register_subtitle">Sign up for Clef</string>
+    <string name="register_cta">CREATE ACCOUNT</string>
+    <string name="register_have_account">Already have an account? </string>
+
+    <!-- Recover access -->
+    <string name="recover_title">Recover access</string>
+    <string name="recover_description">Enter your PUK code and choose a new Master Password.</string>
+    <string name="recover_puk_hint">PUK code (XXXX-XXXX-XXXX-…)</string>
+    <string name="recover_new_password_hint">New Master Password</string>
+    <string name="recover_confirm_password_hint">Confirm new password</string>
+    <string name="recover_puk_warning">⚠ The PUK code can only be used once. After recovery it will be invalidated.</string>
+
+    <!-- Unlock -->
+    <string name="unlock_forgot_master">Forgot your master password? Use PUK code</string>
+    <string name="unlock_back_to_login">Back to login</string>
+
+    <!-- Stats -->
+    <string name="stats_title">Vault statistics</string>
+    <string name="stats_total">Total</string>
+    <string name="stats_cloud">In cloud</string>
+    <string name="stats_expired">Expired</string>
+    <string name="stats_weak">Weak</string>
+
+    <!-- Profile -->
+    <string name="profile_change_email">Change email address</string>
+
+    <!-- Generator -->
+    <string name="generator_password_placeholder">Generated password</string>
+    <string name="generator_icon_hint">this icon generates it for you</string>
+
+    <!-- Settings sections -->
+    <string name="settings_profile">Profile</string>
+    <string name="settings_auto_lock_default">60 s</string>
+    <string name="settings_notifications">Notifications</string>
+    <string name="settings_expiry_alerts">Expiry alerts</string>
+    <string name="settings_expiry_alerts_desc">Notification when a password expires</string>
+    <string name="settings_expiry_period">Expiry period</string>
+    <string name="settings_expiry_period_default">1 year</string>
+    <string name="settings_account">Account</string>
+
+    <!-- Vault -->
+    <string name="vault_sort_recent">Recent ▾</string>
+    <string name="vault_chip_favorites">Favorites</string>
+    <string name="vault_tip_title">Did you know…?</string>
+    <string name="vault_tip_body">When you expand any account you\'ll see this icon next to the password field. Tap it to instantly generate a secure password, following the rules you\'ve configured in the Generator tab.</string>
+    <string name="vault_tip_search_icon">Look for this icon: </string>
+    <string name="vault_tip_dismiss">Don\'t show again</string>
+    <string name="vault_expired_header">Expired</string>
+    <string name="vault_add_first">Add first account</string>
+
+    <!-- Expanded credential -->
+    <string name="credential_hint_title">Title</string>
+    <string name="credential_hint_username">Username</string>
+    <string name="credential_hint_prev_password">Previous password</string>
+    <string name="credential_hint_notes">Description</string>
+    <string name="credential_change_password">Change password</string>
+    <string name="credential_view_history">View history</string>
+    <string name="credential_delete">Delete</string>
+    <string name="credential_save">Save</string>
+    <string name="credential_copy_desc">Copy password</string>
+    <string name="credential_favorite_desc">Mark as favorite</string>
+    <string name="credential_show_password_desc">Show password</string>
+    <string name="credential_info_desc">Information</string>
+    <string name="credential_show_prev_password_desc">Show previous password</string>
+
+    <!-- Autofill -->
+    <string name="autofill_suggested">Suggested</string>
+
+    <!-- Notifications -->
+    <string name="notif_channel_name">Password expiry</string>
+    <string name="notif_channel_desc">Daily alerts about passwords about to expire</string>
+    <string name="notif_title">Clef · Passwords</string>
+    <string name="notif_text_both">%1$d password(s) expired, %2$d about to expire.</string>
+    <string name="notif_text_expired">%1$d password(s) have expired. Change them!</string>
+    <string name="notif_text_warning">%1$d password(s) about to expire.</string>
+
+    <!-- Generic buttons -->
+    <string name="btn_send">Send</string>
+    <string name="btn_resend">Resend</string>
+    <string name="btn_close">Close</string>
+    <string name="btn_understood">Got it</string>
+    <string name="btn_confirm">Confirm</string>
+    <string name="btn_retry">Retry</string>
+    <string name="btn_continue">Continue</string>
+    <string name="btn_accept">Accept</string>
+    <string name="btn_import">Import</string>
+    <string name="coming_soon">Coming soon</string>
+
+    <!-- Login errors and dialogs -->
+    <string name="login_error_google">Google sign-in failed</string>
+    <string name="login_recover_title">Reset password</string>
+    <string name="login_recover_message">A link will be sent to %1$s. Check your spam folder too.</string>
+    <string name="login_recover_sent">Recovery link sent</string>
+    <string name="login_email_unverified_title">Email not verified</string>
+    <string name="login_email_unverified_message">You must verify your email before signing in.</string>
+    <string name="login_email_resent">Verification email resent</string>
+    <string name="login_verification_title">Verification required</string>
+    <string name="login_verification_message">Your access could not be verified in the last %1$d days. An internet connection is required to continue.</string>
+    <string name="login_offline_pending">Offline — verification pending (%1$d days)</string>
+    <string name="login_error_credentials">Incorrect email or password</string>
+    <string name="login_error_server">Error connecting to server</string>
+    <string name="login_error_email">Enter your email</string>
+    <string name="login_error_email_invalid">Invalid email address</string>
+    <string name="login_error_password_short">Minimum 6 characters</string>
+
+    <!-- Splash -->
+    <string name="splash_no_connection_title">No connection</string>
+    <string name="splash_no_connection_message">Could not connect to the server. Try again?</string>
+    <string name="splash_use_offline">Use offline</string>
+    <string name="splash_close_app">Close app</string>
+    <string name="splash_root_clear_title">Insecure device</string>
+    <string name="splash_root_risk_title">Multiple risk indicators</string>
+    <string name="splash_root_blocked_suffix">\n\nAccess has been blocked to protect your data.</string>
+
+    <!-- Register -->
+    <string name="register_success">Account created. Please verify your email.</string>
+    <string name="register_error">Error creating account</string>
+
+    <!-- Account blocked -->
+    <string name="account_blocked_title">Account blocked</string>
+    <string name="account_blocked_message">Your account is blocked.\n\nYou must contact technical support within 3 months to recover your account. After that period, your account will be permanently deleted.\n\nContact: serviciotecnico@ejemplo.clef</string>
+
+    <!-- Vault: sort and delete -->
+    <string name="sort_dialog_title">Sort by</string>
+    <string name="sort_recent">Most recent</string>
+    <string name="sort_alphabetical">Alphabetical</string>
+    <string name="sort_by_expiry">By expiry</string>
+    <string name="delete_credential_title">Delete credential</string>
+    <string name="delete_credential_message">Delete \"%1$s\"?</string>
+    <string name="biometric_confirm_delete_title">Confirm deletion</string>
+    <string name="biometric_confirm_delete_message">Verify your identity to delete \"%1$s\"</string>
+    <string name="master_confirm_delete_message">Enter your master password to confirm</string>
+    <string name="toast_password_copied">Password copied</string>
+    <string name="change_password_info_message">The previous password will remain visible below so you can use it when changing it on the website.</string>
+
+    <!-- Auto-lock options -->
+    <string name="auto_lock_dialog_title">Auto-lock</string>
+    <string name="auto_lock_1min">1 minute</string>
+    <string name="auto_lock_5min">5 minutes</string>
+    <string name="auto_lock_15min">15 minutes</string>
+    <string name="auto_lock_30min">30 minutes</string>
+    <string name="auto_lock_never">Never</string>
+
+    <!-- Expiry period options -->
+    <string name="expiry_period_test">Test (10 min)</string>
+    <string name="expiry_period_3months">3 months</string>
+    <string name="expiry_period_6months">6 months</string>
+
+    <!-- Sign out -->
+    <string name="sign_out_message">You will be signed out on this device.</string>
+
+    <!-- Profile dialogs -->
+    <string name="profile_photo_options_title">Change profile photo</string>
+    <string name="profile_photo_camera">Camera</string>
+    <string name="profile_photo_gallery">Gallery</string>
+    <string name="profile_error_camera">Error opening camera</string>
+    <string name="profile_confirm_identity_title">Confirm your identity</string>
+    <string name="profile_change_email_title">Change email</string>
+    <string name="profile_change_email_message">A verification link will be sent to the new email address.</string>
+    <string name="profile_new_email_hint">New email address</string>
+    <string name="profile_email_invalid">Enter a valid email address</string>
+    <string name="profile_email_sent">Link sent to %1$s</string>
+    <string name="profile_wrong_password">Incorrect password</string>
+    <string name="profile_firebase_password_message">Enter your Firebase password to continue.</string>
+
+    <!-- Import/Export dialog -->
+    <string name="import_confirm_title">Import from cloud?</string>
+    <string name="import_confirm_message">This will replace the credentials currently on your device with those stored in the cloud. Unsynced local data will be lost.</string>
+
+    <!-- Autofill -->
+    <string name="autofill_vault_empty">Your vault is empty</string>
+</resources>

@@ -155,7 +155,7 @@
         android:layout_width="match_parent"
         android:layout_height="52dp"
         android:layout_marginTop="16dp"
-        android:text="Cambiar correo electrónico"
+        android:text="@string/profile_change_email"
         app:icon="@drawable/ic_mail"
         app:iconGravity="textStart"
         app:iconPadding="8dp" />

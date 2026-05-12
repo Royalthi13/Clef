@@ -21,7 +21,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="20dp"
-        android:text="Estadísticas de la bóveda"
+        android:text="@string/stats_title"
         android:textSize="20sp"
         android:textStyle="bold"
         android:textColor="?attr/colorOnSurface" />
@@ -64,7 +64,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="Total"
+                    android:text="@string/stats_total"
                     android:textSize="13sp"
                     android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -102,7 +102,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="En la nube"
+                    android:text="@string/stats_cloud"
                     android:textSize="13sp"
                     android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -148,7 +148,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="Caducadas"
+                    android:text="@string/stats_expired"
                     android:textSize="13sp"
                     android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -186,7 +186,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="Débiles"
+                    android:text="@string/stats_weak"
                     android:textSize="13sp"
                     android:textColor="?attr/colorOnSurfaceVariant" />
 

@@ -256,12 +256,10 @@ public class ImportExportDialog extends BottomSheetDialogFragment {
     private void confirmImport() {
         if (!isAdded()) return;
         new MaterialAlertDialogBuilder(requireContext())
-                .setTitle("¿Importar desde la nube?")
-                .setMessage("Esto reemplazará las credenciales actuales del dispositivo " +
-                        "con las que están guardadas en la nube. " +
-                        "Los datos locales no sincronizados se perderán.")
-                .setPositiveButton("Importar", (d, w) -> onImport())
-                .setNegativeButton("Cancelar", null)
+                .setTitle(getString(R.string.import_confirm_title))
+                .setMessage(getString(R.string.import_confirm_message))
+                .setPositiveButton(getString(R.string.btn_import), (d, w) -> onImport())
+                .setNegativeButton(getString(R.string.cancel), null)
                 .show();
     }
 

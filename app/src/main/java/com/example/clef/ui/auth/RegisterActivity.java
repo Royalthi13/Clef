@@ -56,7 +56,7 @@ public class RegisterActivity extends AppCompatActivity {
                 if (user != null) {
                     authManager.sendEmailVerification((u, err) -> {
                         setLoading(false);
-                        Toast.makeText(this, "Cuenta creada. Verifica tu correo.", Toast.LENGTH_LONG).show();
+                        Toast.makeText(this, getString(R.string.register_success), Toast.LENGTH_LONG).show();
                         authManager.signOut(this, () -> {
                             startActivity(new Intent(this, LoginActivity.class));
                             finish();
@@ -64,7 +64,7 @@ public class RegisterActivity extends AppCompatActivity {
                     });
                 } else {
                     setLoading(false);
-                    String msg = error != null ? error.getMessage() : "Error al crear la cuenta";
+                    String msg = error != null ? error.getMessage() : getString(R.string.register_error);
                     Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
                 }
             });
@@ -75,9 +75,9 @@ public class RegisterActivity extends AppCompatActivity {
 
     private String getEmail() {
         String email = etEmail.getText() != null ? etEmail.getText().toString().trim() : "";
-        if (email.isEmpty()) { etEmail.setError("Introduce tu correo"); return null; }
+        if (email.isEmpty()) { etEmail.setError(getString(R.string.login_error_email)); return null; }
         if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            etEmail.setError("Correo no válido");
+            etEmail.setError(getString(R.string.login_error_email_invalid));
             return null;
         }
         return email;
@@ -94,13 +94,13 @@ public class RegisterActivity extends AppCompatActivity {
         if (confEditable != null) confEditable.getChars(0, confEditable.length(), confirm, 0);
 
         if (pwd.length < 6) {
-            etPassword.setError("Mínimo 6 caracteres");
+            etPassword.setError(getString(R.string.login_error_password_short));
             Arrays.fill(confirm, '\0');
             return null;
         }
 
         if (!Arrays.equals(pwd, confirm)) {
-            etPasswordConfirm.setError("Las contraseñas no coinciden");
+            etPasswordConfirm.setError(getString(R.string.master_error_mismatch));
             Arrays.fill(pwd,     '\0');
             Arrays.fill(confirm, '\0');
             return null;

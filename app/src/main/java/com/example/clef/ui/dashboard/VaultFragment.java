@@ -117,14 +117,14 @@ public class VaultFragment extends Fragment {
                         String titulo = credential.getTitle() != null
                                 ? credential.getTitle() : "esta credencial";
                         new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                                .setTitle("Eliminar credencial")
-                                .setMessage("¿Eliminar \"" + titulo + "\"?")
-                                .setPositiveButton("Eliminar", (dialog, which) -> {
+                                .setTitle(getString(R.string.delete_credential_title))
+                                .setMessage(getString(R.string.delete_credential_message, titulo))
+                                .setPositiveButton(getString(R.string.delete_account_confirm_action), (dialog, which) -> {
                                     if (BiometricHelper.isAvailable(requireContext())) {
                                         BiometricHelper.confirmIdentity(
                                                 requireActivity(),
-                                                "Confirmar eliminación",
-                                                "Verifica tu identidad para eliminar \"" + titulo + "\"",
+                                                getString(R.string.biometric_confirm_delete_title),
+                                                getString(R.string.biometric_confirm_delete_message, titulo),
                                                 new BiometricHelper.ConfirmCallback() {
                                                     @Override public void onConfirmed() {
                                                         deleteCredential(credential);
@@ -135,7 +135,7 @@ public class VaultFragment extends Fragment {
                                         confirmWithMasterPassword(credential);
                                     }
                                 })
-                                .setNegativeButton("Cancelar", null)
+                                .setNegativeButton(getString(R.string.cancel), null)
                                 .show();
                     }
                 };
@@ -195,11 +195,15 @@ public class VaultFragment extends Fragment {
         });
 
         btnSort.setOnClickListener(v -> {
-            String[] options = {"Más reciente", "Alfabético", "Por caducidad"};
+            String[] options = {
+                    getString(R.string.sort_recent),
+                    getString(R.string.sort_alphabetical),
+                    getString(R.string.sort_by_expiry)
+            };
             int checked = currentSort == SortOrder.RECENT ? 0
                     : currentSort == SortOrder.ALPHABETICAL ? 1 : 2;
             new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                    .setTitle("Ordenar por")
+                    .setTitle(getString(R.string.sort_dialog_title))
                     .setSingleChoiceItems(options, checked, (dialog, which) -> {
                         currentSort = which == 0 ? SortOrder.RECENT
                                 : which == 1 ? SortOrder.ALPHABETICAL : SortOrder.EXPIRY;
@@ -476,16 +480,16 @@ public class VaultFragment extends Fragment {
         com.google.android.material.textfield.TextInputEditText etPassword =
                 dialogView.findViewById(R.id.etVerifyPassword);
         new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                .setTitle("Confirmar eliminación")
-                .setMessage("Introduce tu contraseña maestra para confirmar")
+                .setTitle(getString(R.string.biometric_confirm_delete_title))
+                .setMessage(getString(R.string.master_confirm_delete_message))
                 .setView(dialogView)
-                .setPositiveButton("Confirmar", (d, w) -> {
+                .setPositiveButton(getString(R.string.btn_confirm), (d, w) -> {
                     String pwd = etPassword.getText() != null
                             ? etPassword.getText().toString() : "";
                     if (pwd.isEmpty()) return;
                     verifyMasterAndDelete(credential, pwd.toCharArray());
                 })
-                .setNegativeButton("Cancelar", null)
+                .setNegativeButton(getString(R.string.cancel), null)
                 .show();
     }
 

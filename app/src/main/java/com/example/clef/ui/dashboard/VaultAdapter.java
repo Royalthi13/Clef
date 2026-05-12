@@ -98,7 +98,7 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
             ClipboardHelper.copySensitive(context, title, credential.getPassword());
             credential.setLastUsedAt(System.currentTimeMillis());
             if (actionListener != null) actionListener.onSave(credential);
-            android.widget.Toast.makeText(context, "Contraseña copiada",
+            android.widget.Toast.makeText(context, context.getString(R.string.toast_password_copied),
                     android.widget.Toast.LENGTH_SHORT).show();
         });
 
@@ -170,9 +170,9 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
 
         holder.btnPasswordInfo.setOnClickListener(v ->
                 new com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
-                        .setTitle("Cambiar contraseña")
-                        .setMessage("La contraseña anterior quedará visible abajo para que puedas usarla al cambiarla en el sitio web.")
-                        .setPositiveButton("Entendido", null)
+                        .setTitle(context.getString(R.string.credential_change_password))
+                        .setMessage(context.getString(R.string.change_password_info_message))
+                        .setPositiveButton(context.getString(R.string.btn_understood), null)
                         .show());
 
         holder.btnChangePassword.setOnClickListener(v -> {
@@ -203,9 +203,9 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
             com.example.clef.utils.PasswordVisibilityToggle.attach(etNew, btnShowNew);
 
             new com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
-                    .setTitle("Cambiar contraseña")
+                    .setTitle(context.getString(R.string.credential_change_password))
                     .setView(dialogView)
-                    .setPositiveButton("Aceptar", (d, w) -> {
+                    .setPositiveButton(context.getString(R.string.btn_accept), (d, w) -> {
                         String newPwd = etNew.getText() != null
                                 ? etNew.getText().toString() : "";
                         if (newPwd.isEmpty()) return;
@@ -216,7 +216,7 @@ public class VaultAdapter extends RecyclerView.Adapter<VaultAdapter.ViewHolder> 
                         holder.etPassword.setText(newPwd);
                         holder.btnSave.setEnabled(true);
                     })
-                    .setNegativeButton("Cancelar", null)
+                    .setNegativeButton(context.getString(R.string.cancel), null)
                     .show();
         });
 

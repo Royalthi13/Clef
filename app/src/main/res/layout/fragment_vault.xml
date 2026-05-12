@@ -16,7 +16,7 @@
             android:id="@+id/topAppBar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:title="Bóveda"
+            app:title="@string/nav_vault"
             app:titleCentered="false" />
 
 
@@ -61,7 +61,7 @@
                 style="@style/Widget.Material3.Button.TextButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Reciente ▾"
+                android:text="@string/vault_sort_recent"
                 android:textSize="12sp"
                 android:minHeight="0dp"
                 android:paddingVertical="4dp" />
@@ -102,7 +102,7 @@
                     style="@style/Widget.Material3.Chip.Filter"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Favoritas"
+                    android:text="@string/vault_chip_favorites"
                     android:checkable="true" />
 
             </com.google.android.material.chip.ChipGroup>
@@ -145,7 +145,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:layout_marginStart="10dp"
-                        android:text="¿Sabías que...?"
+                        android:text="@string/vault_tip_title"
                         android:textStyle="bold"
                         android:textSize="14sp"
                         android:textColor="?attr/colorPrimary" />
@@ -156,7 +156,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
-                    android:text="Al expandir cualquier cuenta verás este icono junto al campo de contraseña. Púlsalo para generar una contraseña segura al instante, siguiendo las normas que hayas configurado en la pestaña Generador."
+                    android:text="@string/vault_tip_body"
                     android:textSize="13sp"
                     android:lineSpacingMultiplier="1.3"
                     android:textColor="?attr/colorOnSurfaceVariant" />
@@ -171,7 +171,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Busca este icono: "
+                        android:text="@string/vault_tip_search_icon"
                         android:textSize="13sp"
                         android:textColor="?attr/colorOnSurfaceVariant" />
 
@@ -191,7 +191,7 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="end"
                     android:layout_marginTop="4dp"
-                    android:text="No volver a mostrar"
+                    android:text="@string/vault_tip_dismiss"
                     android:textColor="?attr/colorPrimary"
                     android:minWidth="0dp"
                     android:paddingHorizontal="4dp" />
@@ -228,7 +228,7 @@
                 android:paddingHorizontal="16dp"
                 android:paddingTop="20dp"
                 android:paddingBottom="6dp"
-                android:text="Caducadas"
+                android:text="@string/vault_expired_header"
                 android:textSize="13sp"
                 android:textStyle="bold"
                 android:textColor="?attr/colorError"
@@ -296,7 +296,7 @@
             android:layout_width="wrap_content"
             android:layout_height="52dp"
             android:layout_marginTop="28dp"
-            android:text="Añadir primera cuenta"
+            android:text="@string/vault_add_first"
             android:textStyle="bold"
             app:icon="@android:drawable/ic_input_add"
             app:iconGravity="textStart"
