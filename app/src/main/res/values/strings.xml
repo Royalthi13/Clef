@@ -364,6 +364,30 @@
     <string name="notif_text_expired">%1$d contraseña(s) han caducado. ¡Cámbialas!</string>
     <string name="notif_text_warning">%1$d contraseña(s) próximas a caducar.</string>
 
+    <!-- Ayuda y Soporte -->
+    <string name="help_title">Ayuda y Soporte</string>
+    <string name="help_section_faq">Preguntas frecuentes</string>
+    <string name="help_faq_q1">¿Cómo protege Clef mis contraseñas?</string>
+    <string name="help_faq_a1">Clef cifra tu bóveda con AES-256 usando tu contraseña maestra como clave. Esta contraseña nunca se almacena en ningún servidor — ni siquiera nosotros podemos acceder a tus datos.</string>
+    <string name="help_faq_q2">¿Puedo recuperar mi bóveda si olvido la contraseña maestra?</string>
+    <string name="help_faq_a2">Sí. Durante el registro se te entregó un código PUK de emergencia. Con ese código puedes restablecer tu contraseña maestra desde la pantalla de desbloqueo.</string>
+    <string name="help_faq_q3">¿Qué ocurre si cambio de dispositivo?</string>
+    <string name="help_faq_a3">Activa la sincronización en Ajustes → Sincronización en la nube. Tus credenciales se subirán cifradas y podrás importarlas en el nuevo dispositivo usando tu código PUK.</string>
+    <string name="help_faq_q4">¿Es seguro activar la biometría?</string>
+    <string name="help_faq_a4">Sí. La biometría solo desbloquea la sesión local; nunca reemplaza la contraseña maestra. Tu clave de cifrado nunca sale del dispositivo.</string>
+    <string name="help_faq_q5">¿Para qué sirven las alertas de caducidad?</string>
+    <string name="help_faq_a5">Te avisan cuando una contraseña lleva más tiempo del configurado sin ser cambiada, ayudándote a mantener buenas prácticas de seguridad.</string>
+    <string name="help_section_contact">Contacto</string>
+    <string name="help_contact_label">¿Tienes algún problema o sugerencia?</string>
+    <string name="help_contact_email">soporteclef@gmail.com</string>
+    <string name="help_contact_copy">Copiar correo</string>
+    <string name="help_contact_copied">Correo copiado al portapapeles</string>
+    <string name="help_section_about">Acerca de</string>
+    <string name="help_about_name">Clef Password Manager</string>
+    <string name="help_about_version">Versión 2.4.0</string>
+    <string name="help_about_team">Desarrollado por el equipo Clef </string>
+    <string name="help_about_desc">Gestión segura de contraseñas para tu tranquilidad.</string>
+
     <!-- Eliminar cuenta -->
     <string name="profile_delete_account">Eliminar cuenta</string>
     <string name="delete_account_confirm_title">¿Eliminar cuenta?</string>

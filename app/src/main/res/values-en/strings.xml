@@ -364,4 +364,28 @@
 
     <!-- Autofill -->
     <string name="autofill_vault_empty">Your vault is empty</string>
+
+    <!-- Help & Support -->
+    <string name="help_title">Help &amp; Support</string>
+    <string name="help_section_faq">Frequently asked questions</string>
+    <string name="help_faq_q1">How does Clef protect my passwords?</string>
+    <string name="help_faq_a1">Clef encrypts your vault with AES-256 using your master password as the key. This password is never stored on any server — not even we can access your data.</string>
+    <string name="help_faq_q2">Can I recover my vault if I forget my master password?</string>
+    <string name="help_faq_a2">Yes. During registration, you were given an emergency PUK code. You can use it to reset your master password from the unlock screen.</string>
+    <string name="help_faq_q3">What happens if I switch devices?</string>
+    <string name="help_faq_a3">Enable cloud sync in Settings → Cloud sync. Your encrypted credentials will be uploaded and you can import them on the new device using your PUK code.</string>
+    <string name="help_faq_q4">Is it safe to enable biometrics?</string>
+    <string name="help_faq_a4">Yes. Biometrics only unlocks your local session — it never replaces your master password. Your encryption key never leaves the device.</string>
+    <string name="help_faq_q5">What are expiry alerts for?</string>
+    <string name="help_faq_a5">They notify you when a password hasn\'t been changed for longer than your configured period, helping you maintain good security practices.</string>
+    <string name="help_section_contact">Contact</string>
+    <string name="help_contact_label">Have an issue or suggestion?</string>
+    <string name="help_contact_email">soporteclef@gmail.com</string>
+    <string name="help_contact_copy">Copy email address</string>
+    <string name="help_contact_copied">Email copied to clipboard</string>
+    <string name="help_section_about">About</string>
+    <string name="help_about_name">Clef Password Manager</string>
+    <string name="help_about_version">Version 2.4.0</string>
+    <string name="help_about_team">Developed by the Clef team </string>
+    <string name="help_about_desc">Secure password management for your peace of mind.</string>
 </resources>

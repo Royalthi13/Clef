@@ -1,0 +1,549 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?attr/colorSurface">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingBottom="32dp">
+
+        <!-- Handle -->
+        <View
+            android:layout_width="40dp"
+            android:layout_height="4dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="16dp"
+            android:background="@color/clef_border" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="16dp">
+
+            <!-- Título -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="4dp"
+                android:paddingBottom="16dp">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    app:cardCornerRadius="12dp"
+                    app:cardBackgroundColor="?attr/colorPrimaryContainer"
+                    app:strokeWidth="0dp">
+
+                    <ImageView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:padding="8dp"
+                        android:src="@drawable/ic_help_24"
+                        app:tint="?attr/colorPrimary"
+                        android:contentDescription="@null" />
+                </com.google.android.material.card.MaterialCardView>
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="12dp"
+                    android:text="@string/help_title"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="?attr/colorOnSurface" />
+            </LinearLayout>
+
+            <!-- ── PREGUNTAS FRECUENTES ──────────────────────────────────── -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:paddingStart="4dp"
+                android:text="@string/help_section_faq"
+                android:textAllCaps="true"
+                android:letterSpacing="0.12"
+                android:textStyle="bold"
+                android:textSize="12sp"
+                android:textColor="@color/clef_primary" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardBackgroundColor="@color/clef_card_surface"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="1dp"
+                app:strokeColor="@color/clef_border"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <!-- FAQ 1 -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <LinearLayout
+                            android:id="@+id/rowFaq1"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:padding="14dp"
+                            android:gravity="center_vertical"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:foreground="?attr/selectableItemBackground">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/help_faq_q1"
+                                android:textSize="14sp"
+                                android:textColor="@color/clef_on_surface"
+                                android:textStyle="bold"
+                                android:paddingEnd="8dp" />
+
+                            <ImageView
+                                android:id="@+id/ivFaq1Chevron"
+                                android:layout_width="20dp"
+                                android:layout_height="20dp"
+                                android:src="@drawable/ic_chevron_right_24"
+                                android:rotation="90"
+                                app:tint="?attr/colorOnSurfaceVariant"
+                                android:contentDescription="@null" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/tvFaq1Answer"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:paddingHorizontal="14dp"
+                            android:paddingBottom="14dp"
+                            android:text="@string/help_faq_a1"
+                            android:textSize="13sp"
+                            android:lineSpacingMultiplier="1.4"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:visibility="gone" />
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/clef_border" />
+
+                    <!-- FAQ 2 -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <LinearLayout
+                            android:id="@+id/rowFaq2"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:padding="14dp"
+                            android:gravity="center_vertical"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:foreground="?attr/selectableItemBackground">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/help_faq_q2"
+                                android:textSize="14sp"
+                                android:textColor="@color/clef_on_surface"
+                                android:textStyle="bold"
+                                android:paddingEnd="8dp" />
+
+                            <ImageView
+                                android:id="@+id/ivFaq2Chevron"
+                                android:layout_width="20dp"
+                                android:layout_height="20dp"
+                                android:src="@drawable/ic_chevron_right_24"
+                                android:rotation="90"
+                                app:tint="?attr/colorOnSurfaceVariant"
+                                android:contentDescription="@null" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/tvFaq2Answer"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:paddingHorizontal="14dp"
+                            android:paddingBottom="14dp"
+                            android:text="@string/help_faq_a2"
+                            android:textSize="13sp"
+                            android:lineSpacingMultiplier="1.4"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:visibility="gone" />
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/clef_border" />
+
+                    <!-- FAQ 3 -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <LinearLayout
+                            android:id="@+id/rowFaq3"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:padding="14dp"
+                            android:gravity="center_vertical"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:foreground="?attr/selectableItemBackground">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/help_faq_q3"
+                                android:textSize="14sp"
+                                android:textColor="@color/clef_on_surface"
+                                android:textStyle="bold"
+                                android:paddingEnd="8dp" />
+
+                            <ImageView
+                                android:id="@+id/ivFaq3Chevron"
+                                android:layout_width="20dp"
+                                android:layout_height="20dp"
+                                android:src="@drawable/ic_chevron_right_24"
+                                android:rotation="90"
+                                app:tint="?attr/colorOnSurfaceVariant"
+                                android:contentDescription="@null" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/tvFaq3Answer"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:paddingHorizontal="14dp"
+                            android:paddingBottom="14dp"
+                            android:text="@string/help_faq_a3"
+                            android:textSize="13sp"
+                            android:lineSpacingMultiplier="1.4"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:visibility="gone" />
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/clef_border" />
+
+                    <!-- FAQ 4 -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <LinearLayout
+                            android:id="@+id/rowFaq4"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:padding="14dp"
+                            android:gravity="center_vertical"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:foreground="?attr/selectableItemBackground">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/help_faq_q4"
+                                android:textSize="14sp"
+                                android:textColor="@color/clef_on_surface"
+                                android:textStyle="bold"
+                                android:paddingEnd="8dp" />
+
+                            <ImageView
+                                android:id="@+id/ivFaq4Chevron"
+                                android:layout_width="20dp"
+                                android:layout_height="20dp"
+                                android:src="@drawable/ic_chevron_right_24"
+                                android:rotation="90"
+                                app:tint="?attr/colorOnSurfaceVariant"
+                                android:contentDescription="@null" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/tvFaq4Answer"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:paddingHorizontal="14dp"
+                            android:paddingBottom="14dp"
+                            android:text="@string/help_faq_a4"
+                            android:textSize="13sp"
+                            android:lineSpacingMultiplier="1.4"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:visibility="gone" />
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/clef_border" />
+
+                    <!-- FAQ 5 -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <LinearLayout
+                            android:id="@+id/rowFaq5"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:padding="14dp"
+                            android:gravity="center_vertical"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:foreground="?attr/selectableItemBackground">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/help_faq_q5"
+                                android:textSize="14sp"
+                                android:textColor="@color/clef_on_surface"
+                                android:textStyle="bold"
+                                android:paddingEnd="8dp" />
+
+                            <ImageView
+                                android:id="@+id/ivFaq5Chevron"
+                                android:layout_width="20dp"
+                                android:layout_height="20dp"
+                                android:src="@drawable/ic_chevron_right_24"
+                                android:rotation="90"
+                                app:tint="?attr/colorOnSurfaceVariant"
+                                android:contentDescription="@null" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/tvFaq5Answer"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:paddingHorizontal="14dp"
+                            android:paddingBottom="14dp"
+                            android:text="@string/help_faq_a5"
+                            android:textSize="13sp"
+                            android:lineSpacingMultiplier="1.4"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:visibility="gone" />
+                    </LinearLayout>
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ── CONTACTO ──────────────────────────────────────────────── -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:layout_marginBottom="8dp"
+                android:paddingStart="4dp"
+                android:text="@string/help_section_contact"
+                android:textAllCaps="true"
+                android:letterSpacing="0.12"
+                android:textStyle="bold"
+                android:textSize="12sp"
+                android:textColor="@color/clef_primary" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardBackgroundColor="@color/clef_card_surface"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="1dp"
+                app:strokeColor="@color/clef_border"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="14dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            app:cardCornerRadius="10dp"
+                            app:cardBackgroundColor="?attr/colorPrimaryContainer"
+                            app:strokeWidth="0dp">
+
+                            <ImageView
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:padding="8dp"
+                                android:src="@drawable/ic_info_24"
+                                app:tint="?attr/colorPrimary"
+                                android:contentDescription="@null" />
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="12dp"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/help_contact_label"
+                                android:textSize="13sp"
+                                android:textColor="?attr/colorOnSurfaceVariant" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:text="@string/help_contact_email"
+                                android:textSize="15sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/clef_on_surface" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnCopyEmail"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="@string/help_contact_copy"
+                        app:strokeColor="?attr/colorPrimary"
+                        android:textColor="?attr/colorPrimary" />
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ── ACERCA DE ─────────────────────────────────────────────── -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:layout_marginBottom="8dp"
+                android:paddingStart="4dp"
+                android:text="@string/help_section_about"
+                android:textAllCaps="true"
+                android:letterSpacing="0.12"
+                android:textStyle="bold"
+                android:textSize="12sp"
+                android:textColor="@color/clef_primary" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardBackgroundColor="@color/clef_card_surface"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="1dp"
+                app:strokeColor="@color/clef_border"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp"
+                    android:gravity="center">
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="56dp"
+                        android:layout_height="56dp"
+                        app:cardCornerRadius="16dp"
+                        app:cardBackgroundColor="?attr/colorPrimaryContainer"
+                        app:strokeWidth="0dp">
+
+                        <ImageView
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:padding="12dp"
+                            android:src="@drawable/ic_shield_lock"
+                            app:tint="?attr/colorPrimary"
+                            android:contentDescription="@null" />
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="@string/help_about_name"
+                        android:textSize="17sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/clef_on_surface"
+                        android:gravity="center" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/help_about_version"
+                        android:textSize="13sp"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:gravity="center" />
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginVertical="14dp"
+                        android:background="@color/clef_border" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/help_about_team"
+                        android:textSize="12sp"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:gravity="center" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/help_about_desc"
+                        android:textSize="12sp"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:gravity="center"
+                        android:fontStyle="italic" />
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+        </LinearLayout>
+    </LinearLayout>
+
+</androidx.core.widget.NestedScrollView>
