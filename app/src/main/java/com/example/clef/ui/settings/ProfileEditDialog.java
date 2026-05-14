@@ -580,6 +580,7 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
             loadingOverlay.setVisibility(loading ? View.VISIBLE : View.GONE);
         btnSaveProfile  .setEnabled(!loading);
         btnCancelProfile.setEnabled(!loading);
+        setCancelable(!loading);
     }
 
     private void showChangeEmailDialog() {

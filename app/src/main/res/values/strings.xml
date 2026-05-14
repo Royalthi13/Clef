@@ -233,7 +233,7 @@
     <string name="auto_lock_never">Nunca</string>
 
     <!-- Caducidad opciones -->
-    <string name="expiry_period_test">Test (10 min)</string>
+    <string name="expiry_period_test">Test (5 min)</string>
     <string name="expiry_period_3months">3 meses</string>
     <string name="expiry_period_6months">6 meses</string>
 
@@ -325,6 +325,16 @@
     <string name="vault_tip_body">Al expandir cualquier cuenta verás este icono junto al campo de contraseña. Púlsalo para generar una contraseña segura al instante, siguiendo las normas que hayas configurado en la pestaña Generador.</string>
     <string name="vault_tip_search_icon">Busca este icono: </string>
     <string name="vault_tip_dismiss">No volver a mostrar</string>
+    <string name="unlock_tip_title">¿Sabías que...?</string>
+    <string name="unlock_tip_body">Si olvidas tu contraseña maestra, puedes recuperarla con el código que aparece arriba. Guárdalo en un lugar seguro: sin él no podrás recuperar el acceso.</string>
+    <string name="generator_tip_title">¿Sabías que...?</string>
+    <string name="generator_tip_body">La configuración que estableces aquí también se aplica al botón de generación rápida que aparece dentro de cada credencial al expandirla.</string>
+    <string name="autofill_tip_title">¿Sabías que...?</string>
+    <string name="autofill_tip_body">Clef puede rellenar tus contraseñas automáticamente en otras apps. Actívalo en Ajustes del sistema → Contraseñas → Servicio de autocompletado → Clef.</string>
+    <string name="settings_tip_security_body">La sincronización sube tu bóveda cifrada a la nube. Solo tú puedes descifrarla — ni Clef tiene acceso a tus contraseñas.</string>
+    <string name="settings_tip_preferences_body">Con Importar/Exportar puedes hacer una copia de seguridad de tus contraseñas o transferirlas a otro dispositivo fácilmente.</string>
+    <string name="settings_tip_notifications_body">Los avisos de caducidad te recuerdan cuándo deberías cambiar tus contraseñas antes de que expiren.</string>
+    <string name="settings_tip_account_body">En Ayuda y Soporte encontrarás respuestas a preguntas frecuentes y podrás contactar con nosotros si tienes algún problema.</string>
     <string name="vault_expired_header">Caducadas</string>
     <string name="vault_add_first">Añadir primera cuenta</string>
 

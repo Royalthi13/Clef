@@ -52,7 +52,10 @@ public class CreateMasterActivity extends AppCompatActivity {
         setContentView(R.layout.activity_create_master);
 
         MaterialToolbar toolbar = findViewById(R.id.topAppBar);
-        toolbar.setNavigationOnClickListener(v -> finish());
+        toolbar.setNavigationOnClickListener(v -> {
+            startActivity(new Intent(this, LoginActivity.class));
+            finish();
+        });
 
         tilMaster      = findViewById(R.id.tilMasterPassword);
         tilConfirm     = findViewById(R.id.tilConfirmPassword);

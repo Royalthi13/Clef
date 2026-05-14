@@ -230,6 +230,16 @@
     <string name="vault_tip_body">When you expand any account you\'ll see this icon next to the password field. Tap it to instantly generate a secure password, following the rules you\'ve configured in the Generator tab.</string>
     <string name="vault_tip_search_icon">Look for this icon: </string>
     <string name="vault_tip_dismiss">Don\'t show again</string>
+    <string name="unlock_tip_title">Did you know…?</string>
+    <string name="unlock_tip_body">If you forget your master password, you can recover it using the code shown above. Keep it somewhere safe — without it you won\'t be able to regain access.</string>
+    <string name="generator_tip_title">Did you know…?</string>
+    <string name="generator_tip_body">The settings you configure here also apply to the quick-generate button that appears inside each credential when you expand it.</string>
+    <string name="autofill_tip_title">Did you know…?</string>
+    <string name="autofill_tip_body">Clef can fill in your passwords automatically in other apps. Enable it in System Settings → Passwords → Autofill service → Clef.</string>
+    <string name="settings_tip_security_body">Sync uploads your encrypted vault to the cloud. Only you can decrypt it — not even Clef can access your passwords.</string>
+    <string name="settings_tip_preferences_body">Use Import/Export to back up your passwords or transfer them to another device with ease.</string>
+    <string name="settings_tip_notifications_body">Expiry alerts remind you when you should update your passwords before they expire.</string>
+    <string name="settings_tip_account_body">In Help &amp; Support you\'ll find answers to common questions and can reach us if you run into any issues.</string>
     <string name="vault_expired_header">Expired</string>
     <string name="vault_add_first">Add first account</string>
 
@@ -327,7 +337,7 @@
     <string name="auto_lock_never">Never</string>
 
     <!-- Expiry period options -->
-    <string name="expiry_period_test">Test (10 min)</string>
+    <string name="expiry_period_test">Test (5 min)</string>
     <string name="expiry_period_3months">3 months</string>
     <string name="expiry_period_6months">6 months</string>
 

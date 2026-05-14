@@ -38,7 +38,8 @@
         <activity android:name=".ui.auth.RegisterActivity" />
         <activity android:name=".ui.dashboard.MainActivity" />
         <activity android:name=".ui.setup.CreateMasterActivity" />
-        <activity android:name=".ui.setup.ShowPukActivity" />
+        <activity android:name=".ui.setup.ShowPukActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".ui.recovery.RecoverVaultActivity" />
         <activity android:name=".ui.settings.SettingsActivity" />
 

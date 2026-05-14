@@ -80,6 +80,44 @@ public class SettingsFragment extends Fragment {
         setupImportExport(view);
         setupNotifications(view);
         setupSignOut(view);
+        setupSettingsTips(view);
+    }
+
+    private void setupSettingsTips(View view) {
+        FirebaseUser tipUser = FirebaseAuth.getInstance().getCurrentUser();
+        String tipUid = tipUser != null ? tipUser.getUid() : "anon";
+        SharedPreferences tipPrefs = SecurePrefs.get(requireContext(), "generator_prefs_" + tipUid);
+
+        setupSingleTip(view, tipPrefs,
+                R.id.cardSettingsSecurityTip, R.id.btnSettingsSecurityTipDismiss,
+                "tip_dismissed_settings_security");
+        setupSingleTip(view, tipPrefs,
+                R.id.cardSettingsPreferencesTip, R.id.btnSettingsPreferencesTipDismiss,
+                "tip_dismissed_settings_preferences");
+        setupSingleTip(view, tipPrefs,
+                R.id.cardSettingsNotificationsTip, R.id.btnSettingsNotificationsTipDismiss,
+                "tip_dismissed_settings_notifications");
+        setupSingleTip(view, tipPrefs,
+                R.id.cardSettingsAccountTip, R.id.btnSettingsAccountTipDismiss,
+                "tip_dismissed_settings_account");
+    }
+
+    private void setupSingleTip(View view, SharedPreferences prefs,
+                                int cardId, int btnId, String prefKey) {
+        View card = view.findViewById(cardId);
+        if (card == null) return;
+        if (prefs.getBoolean(prefKey, false)) {
+            card.setVisibility(View.GONE);
+        } else {
+            View btn = view.findViewById(btnId);
+            if (btn != null) {
+                btn.setOnClickListener(v -> {
+                    prefs.edit().putBoolean(prefKey, true).apply();
+                    card.animate().alpha(0f).setDuration(250)
+                            .withEndAction(() -> card.setVisibility(View.GONE)).start();
+                });
+            }
+        }
     }
 
     @Override
@@ -256,21 +294,16 @@ public class SettingsFragment extends Fragment {
 
         view.findViewById(R.id.rowLanguage).setOnClickListener(v -> {
             String[] labels = {
-                    getString(R.string.lang_system),
                     getString(R.string.lang_es),
                     getString(R.string.lang_en)
             };
-            String[] tags = { "", "es", "en" };
+            String[] tags = { "es", "en" };
 
             new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
                     .setTitle(getString(R.string.settings_language))
                     .setItems(labels, (d, which) -> {
-                        if (tags[which].isEmpty()) {
-                            AppCompatDelegate.setApplicationLocales(LocaleListCompat.getEmptyLocaleList());
-                        } else {
-                            AppCompatDelegate.setApplicationLocales(
-                                    LocaleListCompat.forLanguageTags(tags[which]));
-                        }
+                        AppCompatDelegate.setApplicationLocales(
+                                LocaleListCompat.forLanguageTags(tags[which]));
                         tvLanguageValue.setText(labels[which]);
                     })
                     .show();
@@ -279,11 +312,13 @@ public class SettingsFragment extends Fragment {
 
     private String currentLanguageLabel() {
         LocaleListCompat locales = AppCompatDelegate.getApplicationLocales();
-        if (locales.isEmpty()) return getString(R.string.lang_system);
-        String tag = locales.get(0).getLanguage();
+        String tag = locales.isEmpty()
+                ? androidx.core.os.ConfigurationCompat
+                        .getLocales(android.content.res.Resources.getSystem().getConfiguration())
+                        .get(0).getLanguage()
+                : locales.get(0).getLanguage();
         if ("es".equals(tag)) return getString(R.string.lang_es);
-        if ("en".equals(tag)) return getString(R.string.lang_en);
-        return getString(R.string.lang_system);
+        return getString(R.string.lang_en);
     }
 
     // ── Auto-lock ─────────────────────────────────────────────────────────────

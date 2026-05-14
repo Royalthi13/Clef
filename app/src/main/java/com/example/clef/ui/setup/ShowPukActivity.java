@@ -41,6 +41,8 @@ public class ShowPukActivity extends AppCompatActivity {
 
 
 
+        setupPukTip();
+
         MaterialButton btnCopy     = findViewById(R.id.btnCopyPuk);
         MaterialButton btnContinue = findViewById(R.id.btnContinue);
 
@@ -50,6 +52,28 @@ public class ShowPukActivity extends AppCompatActivity {
         });
 
         btnContinue.setOnClickListener(v -> goToMain());
+    }
+
+    private void setupPukTip() {
+        com.google.firebase.auth.FirebaseUser tipUser =
+                com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
+        String tipUid = tipUser != null ? tipUser.getUid() : "anon";
+        android.content.SharedPreferences tipPrefs =
+                getSharedPreferences("tip_prefs_" + tipUid, MODE_PRIVATE);
+        android.view.View cardPukTip = findViewById(R.id.cardPukTip);
+        if (cardPukTip == null) return;
+        if (tipPrefs.getBoolean("tip_dismissed_puk", false)) {
+            cardPukTip.setVisibility(android.view.View.GONE);
+        } else {
+            android.view.View btnDismiss = findViewById(R.id.btnPukTipDismiss);
+            if (btnDismiss != null) {
+                btnDismiss.setOnClickListener(v -> {
+                    tipPrefs.edit().putBoolean("tip_dismissed_puk", true).apply();
+                    cardPukTip.animate().alpha(0f).setDuration(250)
+                            .withEndAction(() -> cardPukTip.setVisibility(android.view.View.GONE)).start();
+                });
+            }
+        }
     }
 
     private void goToMain() {

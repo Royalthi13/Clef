@@ -15,7 +15,7 @@ import java.util.List;
 
 public class ExpiryHelper {
 
-    public static final long PERIOD_TEST         = 10L * 60 * 1000;            // 10 minutos
+    public static final long PERIOD_TEST         = 5L * 60 * 1000;             // 5 minutos
     public static final long PERIOD_THREE_MONTHS = 90L * 24 * 60 * 60 * 1000; // 3 meses
     public static final long PERIOD_SIX_MONTHS   = 180L * 24 * 60 * 60 * 1000;// 6 meses
     public static final long PERIOD_ONE_YEAR     = 365L * 24 * 60 * 60 * 1000;// 1 año

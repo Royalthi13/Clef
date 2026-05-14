@@ -108,6 +108,28 @@ public class GeneratorFragment extends Fragment {
         switchLowercase.setOnCheckedChangeListener((btn, checked) -> saveConfig());
         switchNumbers  .setOnCheckedChangeListener((btn, checked) -> saveConfig());
         switchSymbols  .setOnCheckedChangeListener((btn, checked) -> saveConfig());
+
+        setupGeneratorConfigTip(view);
+    }
+
+    private void setupGeneratorConfigTip(View view) {
+        String tipUid = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser() != null
+                ? com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser().getUid() : "anon";
+        SharedPreferences tipPrefs = SecurePrefs.get(requireContext(), "generator_prefs_" + tipUid);
+        View cardTip = view.findViewById(R.id.cardGeneratorConfigTip);
+        if (cardTip == null) return;
+        if (tipPrefs.getBoolean("tip_dismissed_generator_config", false)) {
+            cardTip.setVisibility(View.GONE);
+        } else {
+            View btnDismiss = view.findViewById(R.id.btnGeneratorConfigTipDismiss);
+            if (btnDismiss != null) {
+                btnDismiss.setOnClickListener(v -> {
+                    tipPrefs.edit().putBoolean("tip_dismissed_generator_config", true).apply();
+                    cardTip.animate().alpha(0f).setDuration(250)
+                            .withEndAction(() -> cardTip.setVisibility(View.GONE)).start();
+                });
+            }
+        }
     }
 
     private void regenerate() {

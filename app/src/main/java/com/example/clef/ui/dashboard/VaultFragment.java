@@ -188,6 +188,8 @@ public class VaultFragment extends Fragment {
             }
         }
 
+        setupAutofillTip(view, tipPrefs);
+
         etSearch.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int i, int c, int a) {}
             @Override public void onTextChanged(CharSequence s, int i, int b, int c) {}
@@ -625,6 +627,28 @@ public class VaultFragment extends Fragment {
         if (a == null && b == null) return true;
         if (a == null || b == null) return false;
         return a.equals(b);
+    }
+
+    private void setupAutofillTip(View view, android.content.SharedPreferences tipPrefs) {
+        View cardAutofillTip = view.findViewById(R.id.cardAutofillTip);
+        if (cardAutofillTip == null) return;
+
+        android.view.autofill.AutofillManager afm =
+                requireContext().getSystemService(android.view.autofill.AutofillManager.class);
+        boolean clefIsAutofill = afm != null && afm.hasEnabledAutofillServices();
+
+        if (clefIsAutofill || tipPrefs.getBoolean("tip_dismissed_autofill", false)) {
+            cardAutofillTip.setVisibility(android.view.View.GONE);
+        } else {
+            View btnDismiss = view.findViewById(R.id.btnAutofillTipDismiss);
+            if (btnDismiss != null) {
+                btnDismiss.setOnClickListener(v -> {
+                    tipPrefs.edit().putBoolean("tip_dismissed_autofill", true).apply();
+                    cardAutofillTip.animate().alpha(0f).setDuration(250)
+                            .withEndAction(() -> cardAutofillTip.setVisibility(android.view.View.GONE)).start();
+                });
+            }
+        }
     }
 
     // ── Filtrado ──────────────────────────────────────────────────────────
