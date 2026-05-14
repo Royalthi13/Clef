@@ -35,13 +35,15 @@ public class PasswordStrengthHelper {
         int score = 0;
         if (len >= 8)  score++;
         if (len >= 12) score++;
+        if (len >= 16) score++;
+        if (len >= 24) score++;
         if (upper)     score++;
         if (lower)     score++;
         if (digit)     score++;
         if (symbol)    score++;
 
-        if (score <= 2) return Strength.WEAK;
-        if (score <= 4) return Strength.MEDIUM;
+        if (score <= 3) return Strength.WEAK;
+        if (score <= 5) return Strength.MEDIUM;
         return Strength.STRONG;
     }
 

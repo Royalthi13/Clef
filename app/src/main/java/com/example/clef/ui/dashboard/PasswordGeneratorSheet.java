@@ -55,6 +55,17 @@ public class PasswordGeneratorSheet {
         swSymbols.setChecked(prefs.getBoolean(PasswordGenerator.KEY_SYMBOLS,   false));
         tvLength .setText(String.valueOf((int) slider.getValue()));
 
+        Runnable ensureOne = () -> {
+            if (!swUpper.isChecked() && !swLower.isChecked()
+                    && !swNumbers.isChecked() && !swSymbols.isChecked()) {
+                swLower.setChecked(true);
+            }
+        };
+        swUpper  .setOnCheckedChangeListener((btn, checked) -> ensureOne.run());
+        swLower  .setOnCheckedChangeListener((btn, checked) -> ensureOne.run());
+        swNumbers.setOnCheckedChangeListener((btn, checked) -> ensureOne.run());
+        swSymbols.setOnCheckedChangeListener((btn, checked) -> ensureOne.run());
+
         slider.addOnChangeListener((s, value, fromUser) ->
                 tvLength.setText(String.valueOf((int) value)));
 

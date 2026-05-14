@@ -102,12 +102,13 @@ public class GeneratorFragment extends Fragment {
         sliderLength.addOnChangeListener((slider, value, fromUser) -> {
             updateLengthLabel((int) value);
             saveConfig();
+            regenerate();
         });
 
-        switchUppercase.setOnCheckedChangeListener((btn, checked) -> saveConfig());
-        switchLowercase.setOnCheckedChangeListener((btn, checked) -> saveConfig());
-        switchNumbers  .setOnCheckedChangeListener((btn, checked) -> saveConfig());
-        switchSymbols  .setOnCheckedChangeListener((btn, checked) -> saveConfig());
+        switchUppercase.setOnCheckedChangeListener((btn, checked) -> { ensureAtLeastOne(); saveConfig(); regenerate(); });
+        switchLowercase.setOnCheckedChangeListener((btn, checked) -> { ensureAtLeastOne(); saveConfig(); regenerate(); });
+        switchNumbers  .setOnCheckedChangeListener((btn, checked) -> { ensureAtLeastOne(); saveConfig(); regenerate(); });
+        switchSymbols  .setOnCheckedChangeListener((btn, checked) -> { ensureAtLeastOne(); saveConfig(); regenerate(); });
 
         setupGeneratorConfigTip(view);
     }
@@ -154,6 +155,13 @@ public class GeneratorFragment extends Fragment {
                 switchNumbers.isChecked(),
                 switchSymbols.isChecked()
         );
+    }
+
+    private void ensureAtLeastOne() {
+        if (!switchUppercase.isChecked() && !switchLowercase.isChecked()
+                && !switchNumbers.isChecked() && !switchSymbols.isChecked()) {
+            switchLowercase.setChecked(true);
+        }
     }
 
     private void loadSavedConfig() {
