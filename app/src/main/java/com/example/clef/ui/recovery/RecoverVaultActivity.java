@@ -1,6 +1,9 @@
 package com.example.clef.ui.recovery;
 
+import android.content.Context;
 import android.content.Intent;
+import android.net.ConnectivityManager;
+import android.net.NetworkCapabilities;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Handler;
@@ -25,6 +28,7 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.functions.FirebaseFunctions;
 
 import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
@@ -134,6 +138,14 @@ public class RecoverVaultActivity extends AppCompatActivity {
             return;
         }
 
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        boolean hayConexion = cm.getActiveNetwork() != null &&
+                cm.getNetworkCapabilities(cm.getActiveNetwork()) != null;
+        if (!hayConexion) {
+            tilPuk.setError("Se necesita conexión a internet para cambiar la contraseña.");
+            return;
+        }
+
         setLoading(true);
 
         char[] pukChars         = pukNormalizado.toCharArray();
@@ -191,6 +203,9 @@ public class RecoverVaultActivity extends AppCompatActivity {
                         public void onSuccess(Void r) {
                             bruteForceGuard.recordSuccess();
                             SessionManager.getInstance().unlock(result.dek, result.vault);
+                            FirebaseFunctions.getInstance("us-central1")
+                                    .getHttpsCallable("notifyPasswordChange")
+                                    .call(null);
                             mainHandler.post(() -> {
                                 Toast.makeText(RecoverVaultActivity.this,
                                         "Contraseña restablecida. Guarda tu nuevo PUK.",

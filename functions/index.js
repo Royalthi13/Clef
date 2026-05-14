@@ -131,6 +131,44 @@ exports.checkLoginIp = onCall({ secrets: [gmailAppPassword] }, async (request) =
     return { isNew };
 });
 
+exports.notifyPasswordChange = onCall({ secrets: [gmailAppPassword] }, async (request) => {
+    if (!request.auth) {
+        throw new HttpsError("unauthenticated", "El usuario no está autenticado.");
+    }
+
+    const userEmail = request.auth.token.email;
+    const now = new Date().toLocaleString("es-ES", { timeZone: "Europe/Madrid" });
+
+    try {
+        const transporter = nodemailer.createTransport({
+            service: "gmail",
+            auth: {
+                user: "security.clef@gmail.com",
+                pass: gmailAppPassword.value(),
+            },
+        });
+
+        await transporter.sendMail({
+            from: `"Clef Security" <security.clef@gmail.com>`,
+            to: userEmail,
+            subject: "Contraseña maestra cambiada - Clef",
+            html: `
+                <h2>Tu contraseña maestra ha sido cambiada</h2>
+                <p>La contraseña maestra de tu cuenta de <strong>Clef</strong> ha sido restablecida correctamente.</p>
+                <ul>
+                    <li><strong>Fecha y hora:</strong> ${now}</li>
+                </ul>
+                <p>Si fuiste tú, puedes ignorar este mensaje.<br>
+                Si no reconoces este cambio, contacta con soporte inmediatamente.</p>
+            `,
+        });
+    } catch (emailError) {
+        console.error("[notifyPasswordChange] Error enviando email:", emailError);
+    }
+
+    return { sent: true };
+});
+
 exports.deleteAccount = functions.https.onCall(async (data, context) => {
     let uid;
 
