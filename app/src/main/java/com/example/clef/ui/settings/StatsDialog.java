@@ -56,7 +56,8 @@ public class StatsDialog extends BottomSheetDialogFragment {
         List<Credential> credentials = vault.getCredentials();
 
         android.content.SharedPreferences prefs = SecurePrefs.get(requireContext(), ExpiryHelper.PREFS_NAME);
-        long periodMs = prefs.getLong(ExpiryHelper.PREF_PERIOD, ExpiryHelper.PERIOD_ONE_YEAR);
+        long periodMs = ExpiryHelper.sanitizePeriod(
+                prefs.getLong(ExpiryHelper.PREF_PERIOD, ExpiryHelper.PERIOD_ONE_YEAR));
 
         int total   = credentials.size();
         int cloud   = 0;

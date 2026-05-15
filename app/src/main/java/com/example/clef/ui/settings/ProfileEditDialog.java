@@ -617,6 +617,46 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
 
     private void confirmarYCambiarEmail(String newEmail) {
         if (!isAdded()) return;
+
+        com.google.firebase.auth.FirebaseUser u =
+                com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
+        if (u == null || u.getEmail() == null) return;
+
+        boolean isGoogleUser = u.getProviderData().stream()
+                .anyMatch(p -> "google.com".equals(p.getProviderId()));
+
+        if (isGoogleUser) {
+            setLoading(true);
+            authManager.silentReauthenticate((user, error) -> {
+                if (!isAdded()) return;
+                if (error != null || user == null) {
+                    setLoading(false);
+                    android.widget.Toast.makeText(requireContext(),
+                            getString(R.string.profile_wrong_password),
+                            android.widget.Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                com.google.firebase.auth.FirebaseUser current =
+                        com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
+                if (current == null) { setLoading(false); return; }
+                current.verifyBeforeUpdateEmail(newEmail)
+                        .addOnSuccessListener(x -> {
+                            setLoading(false);
+                            android.widget.Toast.makeText(requireContext(),
+                                    getString(R.string.profile_email_sent, newEmail),
+                                    android.widget.Toast.LENGTH_LONG).show();
+                        })
+                        .addOnFailureListener(e -> {
+                            setLoading(false);
+                            android.widget.Toast.makeText(requireContext(),
+                                    "Error: " + e.getMessage(),
+                                    android.widget.Toast.LENGTH_LONG).show();
+                        });
+            });
+            return;
+        }
+
+        // Email+contraseña: pedir contraseña de Firebase
         android.view.View dialogView = android.view.LayoutInflater.from(requireContext())
                 .inflate(R.layout.dialog_verify_password, null);
         new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
@@ -629,10 +669,6 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
                     android.text.Editable editable = et.getText();
                     if (editable == null || editable.length() == 0) return;
                     String firebasePwd = editable.toString();
-
-                    com.google.firebase.auth.FirebaseUser u =
-                            com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
-                    if (u == null || u.getEmail() == null) return;
 
                     com.google.firebase.auth.AuthCredential credential =
                             com.google.firebase.auth.EmailAuthProvider

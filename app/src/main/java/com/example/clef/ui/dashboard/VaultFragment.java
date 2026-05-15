@@ -252,6 +252,7 @@ public class VaultFragment extends Fragment {
     }
 
     private void startVaultListener() {
+        if (com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser() == null) return;
         firebaseManager.addVaultListener(this::onCloudVaultChanged);
     }
 
