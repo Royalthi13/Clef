@@ -1,6 +1,6 @@
 package com.example.clef.crypto;
 
-import android.util.Base64;
+import java.util.Base64;
 
 import com.example.clef.data.model.Vault;
 import com.google.gson.Gson;
@@ -116,7 +116,7 @@ public class KeyManager {
             String cajaA         = CryptoUtils.encrypt(dek, kekMaster);
             String cajaB         = CryptoUtils.encrypt(dek, kekPuk);
             String bovedaCifrada = CryptoUtils.encrypt(gson.toJson(new Vault()), dek);
-            String saltBase64    = Base64.encodeToString(salt, Base64.NO_WRAP);
+            String saltBase64 = Base64.getEncoder().encodeToString(salt);
 
             return new RegistrationBundle(saltBase64, cajaA, cajaB, bovedaCifrada, pukFormateado, dek.clone());
 
@@ -145,7 +145,7 @@ public class KeyManager {
         byte[] dek       = null;
 
         try {
-            byte[] salt = Base64.decode(saltBase64, Base64.NO_WRAP);
+            byte[] salt = Base64.getDecoder().decode(saltBase64);
             kekMaster   = CryptoUtils.deriveKey(masterPassword, salt);
             dek         = CryptoUtils.decrypt(cajaABase64, kekMaster);
 
@@ -185,7 +185,7 @@ public class KeyManager {
         byte[] nuevaKekMaster = null;
 
         try {
-            byte[] salt = Base64.decode(saltBase64, Base64.NO_WRAP);
+            byte[] salt = Base64.getDecoder().decode(saltBase64);
 
             kekPuk = CryptoUtils.deriveKey(pukChars, salt);
             dek    = CryptoUtils.decrypt(cajaBBase64, kekPuk);
@@ -235,7 +235,7 @@ public class KeyManager {
         char[] pukChars  = null;
 
         try {
-            salt     = Base64.decode(saltBase64, Base64.NO_WRAP);
+            salt = Base64.getDecoder().decode(saltBase64);
             pukBytes = CryptoUtils.generateRandomBytes(16);
 
             String pukFormateado = formatearPuk(pukBytes);

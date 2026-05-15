@@ -1,6 +1,6 @@
 package com.example.clef.crypto;
 
-import android.util.Base64;
+import java.util.Base64;
 
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
@@ -79,7 +79,7 @@ public class CryptoUtils {
         System.arraycopy(iv,         0, combined, 0,         iv.length);
         System.arraycopy(ciphertext, 0, combined, iv.length, ciphertext.length);
 
-        return Base64.encodeToString(combined, Base64.NO_WRAP);
+        return Base64.getEncoder().encodeToString(combined);
     }
 
     /** Sobrecarga de conveniencia para cifrar un String directamente. */
@@ -95,7 +95,7 @@ public class CryptoUtils {
     public static byte[] decrypt(String encryptedBase64, byte[] keyBytes) throws Exception {
         validateKey(keyBytes);
 
-        byte[] combined = Base64.decode(encryptedBase64, Base64.NO_WRAP);
+        byte[] combined = Base64.getDecoder().decode(encryptedBase64);
 
         // Mínimo: IV (12B) + GCM tag (16B) + 1B de datos reales
         final int MIN_LENGTH = GCM_IV_BYTES + (GCM_TAG_BITS / 8) + 1;

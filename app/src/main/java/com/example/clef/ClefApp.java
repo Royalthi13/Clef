@@ -28,18 +28,7 @@ public class ClefApp extends Application {
         ThemeManager.applyStored(this);
         createNotificationChannel();
 
-        /**
-         * A-5 FIX: FLAG_SECURE debe aplicarse en onActivityPreCreated (o al menos
-         * ANTES de setContentView). Registrar el callback con
-         * ActivityLifecycleCallbacks y aplicar el flag en onActivityCreated ya es
-         * correcto para la ventana en sí, pero en algunos OEMs la miniatura del
-         * recents se captura justo durante la transición de creación.
-         *
-         * La solución más robusta es sobrescribir en CADA activity el método
-         * onCreate() antes de setContentView(), pero como medida centralizada
-         * aplicamos el flag lo antes posible aquí y además añadimos
-         * onActivityPreCreated via ActivityLifecycleCallbacks para API 29+.
-         */
+
         registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
             @Override
             public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
