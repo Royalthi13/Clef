@@ -34,8 +34,8 @@ public class ShowPukActivity extends AppCompatActivity {
             return;
         }
         TextView tvPuk = findViewById(R.id.tvPukCode);
-        tvPuk.setText(java.nio.CharBuffer.wrap(pukChars));
         String pukDisplay = new String(pukChars);
+        tvPuk.setText(pukDisplay);
         Arrays.fill(pukChars, '\0');
 
 

@@ -94,9 +94,7 @@ public class SettingsFragment extends Fragment {
         setupSingleTip(view, tipPrefs,
                 R.id.cardSettingsNotificationsTip, R.id.btnSettingsNotificationsTipDismiss,
                 "tip_dismissed_settings_notifications");
-        setupSingleTip(view, tipPrefs,
-                R.id.cardSettingsAccountTip, R.id.btnSettingsAccountTipDismiss,
-                "tip_dismissed_settings_account");
+
     }
 
     private void setupSingleTip(View view, SharedPreferences prefs,
@@ -325,6 +323,12 @@ public class SettingsFragment extends Fragment {
         SharedPreferences prefs = SecurePrefs.get(requireContext(), "settings");
         tvAutoLockValue.setText(msToLabel(prefs.getLong("auto_lock_ms", 300_000)));
 
+        view.findViewById(R.id.btnAutoLockInfo).setOnClickListener(v ->
+                new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                        .setTitle(getString(R.string.settings_auto_lock))
+                        .setMessage("El bloqueo automático cierra la sesión tras el tiempo de inactividad elegido. Necesitarás tu contraseña maestra o biometría para volver a acceder.")
+                        .setPositiveButton(getString(R.string.btn_understood), null)
+                        .show());
         view.findViewById(R.id.rowAutoLock).setOnClickListener(v -> {
             String[] opciones = {
                     getString(R.string.auto_lock_1min),

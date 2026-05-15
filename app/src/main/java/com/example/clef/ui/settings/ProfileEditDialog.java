@@ -512,8 +512,7 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
 
         if (selectedPhotoFile != null && selectedPhotoFile.exists()) {
             long newSig = System.currentTimeMillis();
-            requireContext()
-                    .getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
+            SecurePrefs.get(requireContext(), PREFS_NAME)
                     .edit()
                     .putString(photoPathKey(user.getUid()), selectedPhotoFile.getAbsolutePath())
                     .putLong(photoSigKey(user.getUid()), newSig)
@@ -569,9 +568,10 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
         FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();
         String uid = (u != null) ? u.getUid() : "anon";
         File dir = new File(requireContext().getFilesDir(), "profile");
-        //noinspection ResultOfMethodCallIgnored
+
         dir.mkdirs();
-        return new File(dir, "avatar_" + uid + ".jpg");
+        // Nombre único por timestamp para invalidar caché de Glide automáticamente
+        return new File(dir, "avatar_" + uid + "_" + System.currentTimeMillis() + ".jpg");
     }
 
     private void setLoading(boolean loading) {
