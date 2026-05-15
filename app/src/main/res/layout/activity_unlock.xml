@@ -136,6 +136,16 @@
         app:iconGravity="textStart"
         app:iconPadding="4dp" />
 
+    <!-- ProgressBar visible mientras cargan los datos -->
+    <ProgressBar
+        android:id="@+id/progressBarTop"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:indeterminate="true"
+        android:visibility="visible" />
+
     <!-- Overlay de carga durante PBKDF2 (~400ms) -->
     <FrameLayout
         android:id="@+id/loadingOverlay"

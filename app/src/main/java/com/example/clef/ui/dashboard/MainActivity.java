@@ -127,10 +127,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStop() {
         super.onStop();
-
-
+        SessionManager.getInstance().startLockTimer();
     }
-
     @Override
     public void recreate() {
         super.recreate();

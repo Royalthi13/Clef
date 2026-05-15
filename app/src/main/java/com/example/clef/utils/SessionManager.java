@@ -111,6 +111,7 @@ public class SessionManager {
             dek = null;
         }
         vault = null;
+        com.example.clef.autofill.AutofillTransientSession.clear();
         if (lockListener != null) {
             handler.post(() -> { if (lockListener != null) lockListener.onLock(); });
         }

@@ -230,12 +230,23 @@ public class VaultFragment extends Fragment {
         mainHandler.postDelayed(expiryRefreshRunnable, 60_000);
         startVaultListener();
     }
-
     @Override
     public void onPause() {
         super.onPause();
         mainHandler.removeCallbacks(expiryRefreshRunnable);
         firebaseManager.removeVaultListener();
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        SessionManager.getInstance().startLockTimer();
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        SessionManager.getInstance().cancelLockTimer();
     }
 
     @Override
@@ -743,8 +754,20 @@ public class VaultFragment extends Fragment {
     }
 
     private void showEmptyState(boolean empty) {
-        layoutEmpty      .setVisibility(empty ? View.VISIBLE : View.GONE);
-        nestedScrollVault.setVisibility(empty ? View.GONE    : View.VISIBLE);
+        if (empty) {
+            nestedScrollVault.setVisibility(View.GONE);
+            layoutEmpty.setVisibility(View.VISIBLE);
+        } else if (layoutEmpty.getVisibility() == View.VISIBLE) {
+            layoutEmpty.animate().alpha(0f).setDuration(200).withEndAction(() -> {
+                layoutEmpty.setVisibility(View.GONE);
+                layoutEmpty.setAlpha(1f);
+                nestedScrollVault.setAlpha(0f);
+                nestedScrollVault.setVisibility(View.VISIBLE);
+                nestedScrollVault.animate().alpha(1f).setDuration(200).start();
+            }).start();
+        } else {
+            nestedScrollVault.setVisibility(View.VISIBLE);
+        }
     }
 
     private void openAddDialog() {

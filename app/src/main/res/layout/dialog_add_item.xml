@@ -171,7 +171,7 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="12dp"
         android:hint="@string/add_item_hint_url"
-        app:startIconDrawable="@drawable/ic_search_24"
+        app:startIconDrawable="@drawable/ic_arrow_forward"
         app:startIconTint="?attr/colorPrimary">
 
         <com.google.android.material.textfield.TextInputEditText

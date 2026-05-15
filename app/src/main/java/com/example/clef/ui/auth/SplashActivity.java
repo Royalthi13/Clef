@@ -92,10 +92,10 @@ public class SplashActivity extends AppCompatActivity {
                                     if (hasMaster) goTo(UnlockActivity.class);
                                     else goTo(CreateMasterActivity.class);
                                 })
-                                .addOnFailureListener(e -> goTo(LoginActivity.class)))
+                                .addOnFailureListener(e -> goTo(UnlockActivity.class)))
                 .addOnFailureListener(e -> {
-                    com.google.firebase.auth.FirebaseAuth.getInstance().signOut();
-                    goTo(LoginActivity.class);
+                    // Sin red: no cerrar sesión, ir a desbloqueo con datos locales
+                    goTo(UnlockActivity.class);
                 });
     }
 

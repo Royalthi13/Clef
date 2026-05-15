@@ -47,7 +47,7 @@ public final class AutofillTransientSession {
     }
 
     /** Invalida la sesión. */
-    static void clear() {
+    public static void clear() {
         synchronized (LOCK) {
             credential = null;
             expiresAt = 0L;
