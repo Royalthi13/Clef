@@ -45,7 +45,7 @@ public class RegisterActivity extends AppCompatActivity {
 
             setLoading(true);
 
-            // C-2 FIX: Firebase Auth API solo acepta String, así que la conversión
+            // Firebase Auth API solo acepta String, así que la conversión
             // es inevitable. Construimos la String lo más tarde posible y zericamos
             // el char[] fuente inmediatamente. La propia String de Firebase queda
             // en heap hasta que el GC actúe — limitación de la API externa.

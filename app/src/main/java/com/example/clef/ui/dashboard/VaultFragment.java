@@ -255,15 +255,7 @@ public class VaultFragment extends Fragment {
         firebaseManager.addVaultListener(this::onCloudVaultChanged);
     }
 
-    // ── M-3 + C-4 FIX ─────────────────────────────────────────────────────
 
-    /**
-     * M-3 FIX: antes el catch swalloeaba cualquier excepción silenciosamente
-     * y la DEK clonada quedaba en heap sin zerizar.
-     *
-     * C-4 FIX: la DEK clonada por getDek() se zeriza SIEMPRE en el finally,
-     * tanto si la operación tuvo éxito como si lanzó excepción.
-     */
     private void onCloudVaultChanged(String encryptedCloudVault, long version) {
         SessionManager session = SessionManager.getInstance();
         byte[] dek = session.getDek(); // clon — DEBE zerisar en finally
@@ -271,7 +263,7 @@ public class VaultFragment extends Fragment {
 
         executor.execute(() -> {
             try {
-                // M-3 FIX: verificar que la sesión sigue activa antes de descifrar.
+                // verifica que la sesión sigue activa antes de descifrar.
                 // Si lock() disparó entre getDek() y este punto, no intentar descifrar.
                 if (!session.isUnlocked()) return;
 
@@ -291,7 +283,7 @@ public class VaultFragment extends Fragment {
                     session.setCloudVaultVersion(version);
 
                     Context ctx = requireContext();
-                    // C-4 FIX: nuevo getDek() para el subhilo — este también se zeriza en finally
+                    //  nuevo getDek() para el subhilo — este también se zeriza en finally
                     byte[] dekForSave = session.getDek();
                     if (dekForSave != null) {
                         executor.execute(() -> {
@@ -310,7 +302,7 @@ public class VaultFragment extends Fragment {
                     applyFilters();
                 });
             } catch (Exception e) {
-                // M-3 FIX: logear en lugar de swallowear silenciosamente
+                // logear en lugar de swallowear silenciosamente
                 Log.w(TAG, "onCloudVaultChanged: error al descifrar vault remoto", e);
             } finally {
                 // C-4 FIX: siempre zerizar el clon de la DEK
@@ -322,7 +314,7 @@ public class VaultFragment extends Fragment {
     // ── Guardado ───────────────────────────────────────────────────────────
 
     /**
-     * C-4 FIX: el clon de DEK se zeriza en finally del executor.
+     *  el clon de DEK se zeriza en finally del executor.
      */
     private void saveCredential(Credential credential) {
         SessionManager session = SessionManager.getInstance();
@@ -383,7 +375,7 @@ public class VaultFragment extends Fragment {
                             "Error al guardar", android.widget.Toast.LENGTH_SHORT).show();
                 });
             } finally {
-                // C-4 FIX: zerizar siempre el clon
+                //  zerizar siempre el clon
                 SessionManager.zeroizeDekCopy(dek);
             }
         });
@@ -455,7 +447,7 @@ public class VaultFragment extends Fragment {
                                             android.widget.Toast.LENGTH_SHORT).show();
                                 });
                             } finally {
-                                // C-4 FIX: zerizar el clon pasado a este método
+                                //  zerizar el clon pasado a este método
                                 SessionManager.zeroizeDekCopy(dek);
                             }
                         });
@@ -519,7 +511,7 @@ public class VaultFragment extends Fragment {
         });
     }
     /**
-     * C-4 FIX: el clon de DEK se zeriza en finally del Snackbar callback.
+     *  el clon de DEK se zeriza en finally del Snackbar callback.
      */
     private void deleteCredential(Credential credential) {
         SessionManager session = SessionManager.getInstance();

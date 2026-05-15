@@ -147,7 +147,7 @@ public class AutofillAuthActivity extends AppCompatActivity {
         if (anyMatches) {
             tvEmpty.setVisibility(View.GONE);
         } else {
-            // No hay matches — mostramos todas pero con aviso suave.
+            // No hay matches — mostramos todas pero con aviso.
             tvEmpty.setVisibility(View.VISIBLE);
             tvEmpty.setText("Ninguna credencial coincide con esta app.\nMuestra toda la bóveda:");
         }
@@ -185,12 +185,11 @@ public class AutofillAuthActivity extends AppCompatActivity {
             b.setValue(focusedId, AutofillValue.forText(user));
         }
 
-        // Aprender packageHint para próximas veces — fire & forget
+
         rememberPackageHintAsync(c, pkg);
 
         // Guardar en sesión transitoria para evitar pedir biometría otra vez
-        // en la siguiente pantalla del flujo (Amazon/OpenAI piden email en
-        // una pantalla y password en otra).
+        // en la siguiente pantalla del flujo
         AutofillTransientSession.store(c);
 
         Intent reply = new Intent();
@@ -263,7 +262,7 @@ public class AutofillAuthActivity extends AppCompatActivity {
     /**
      * Ordena las credenciales por relevancia. Si hay al menos un match (score>0),
      * devuelve solo esos. Si no hay ninguno, devuelve todas para que el usuario
-     * pueda elegir manualmente (evita la trampa de lista vacía).
+     * pueda elegir manualmente
      */
     private static List<RankedCredential> rankForUi(List<Credential> creds, String pkg) {
         List<RankedCredential> all = new ArrayList<>();
@@ -283,7 +282,7 @@ public class AutofillAuthActivity extends AppCompatActivity {
             }
             return filtered;
         }
-        return all; // sin matches → todas
+        return all;
     }
 
     private static int scoreFor(Credential c, String pkg) {

@@ -19,7 +19,7 @@ import com.example.clef.utils.SessionManager;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 /**
- * B-8 FIX: onResume() llamaba a startLockTimer() que programa un bloqueo
+ * onResume() llamaba a startLockTimer() que programa un bloqueo
  * en background aunque la app esté en primer plano. Esto causaba bloqueos
  * prematuros si el usuario no interactuaba durante lockTimeoutMs.
  *
@@ -121,9 +121,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // B-8 FIX: NO llamar a startLockTimer() aquí.
-        // El timer se inicia en onStop() cuando la app realmente va a background.
-        // Llamarlo en onResume() causaba bloqueos prematuros.
+
     }
 
     @Override
