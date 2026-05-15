@@ -179,6 +179,8 @@ public class UnlockActivity extends AppCompatActivity {
     }
 
     private void onDataReady() {
+        View progressTop = findViewById(R.id.progressBarTop);
+        if (progressTop != null) progressTop.setVisibility(View.GONE);
         applyLockoutIfNeeded();
         boolean bioAvailable = BiometricHelper.isAvailable(this) && BiometricHelper.isEnabled(this);
         if (bioAvailable && !isPasswordCheckDue()) {

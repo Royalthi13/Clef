@@ -236,8 +236,7 @@
     <string name="generator_tip_body">The settings you configure here also apply to the quick-generate button that appears inside each credential when you expand it.</string>
     <string name="autofill_tip_title">Did you know…?</string>
     <string name="autofill_tip_body">Clef can fill in your passwords automatically in other apps. Enable it in System Settings → Passwords → Autofill service → Clef.</string>
-    <string name="settings_tip_security_body">Sync uploads your encrypted vault to the cloud. Only you can decrypt it — not even Clef can access your passwords.</string>
-    <string name="settings_tip_preferences_body">Use Import/Export to back up your passwords or transfer them to another device with ease.</string>
+    <string name="settings_tip_security_body">Sync uploads your encrypted vault to the cloud. Only you can decrypt it — not even Clef can access your passwords.</string>    <string name="settings_tip_preferences_body">Use Import/Export to back up your passwords or transfer them to another device with ease.</string>
     <string name="settings_tip_notifications_body">Expiry alerts remind you when you should update your passwords before they expire.</string>
     <string name="settings_tip_account_body">In Help &amp; Support you\'ll find answers to common questions and can reach us if you run into any issues.</string>
     <string name="vault_expired_header">Expired</string>
