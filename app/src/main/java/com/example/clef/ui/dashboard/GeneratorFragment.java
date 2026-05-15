@@ -20,17 +20,17 @@ import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.slider.Slider;
 
 /**
- * Fragmento del generador de contraseñas.
+ * Fragmento encargado de la configuración y previsualización del generador
+ * de contraseñas.
  *
- * FIX UX: El fragment original ocultaba los botones "Generar" y "Copiar" dejando
- * una card con "TU NUEVA CONTRASEÑA" sin funcionalidad, confundiendo al usuario.
+ * Permite al usuario ajustar los parámetros de generación y visualizar en
+ * tiempo real una contraseña resultante. La configuración seleccionada se
+ * persiste para ser reutilizada posteriormente en otros flujos de la app,
+ * como el diálogo de creación de credenciales.
  *
- * Ahora el fragment tiene doble función coherente:
- *   1. Genera y muestra una contraseña de vista previa en tiempo real.
- *   2. Permite configurar los parámetros que se usarán en AddItemDialog.
- *
- * Así el usuario ve inmediatamente el efecto de sus ajustes y puede copiar
- * la contraseña generada si lo desea.
+ * También expone acciones directas para regenerar y copiar la contraseña
+ * generada, evitando que la pantalla muestre información sin funcionalidad
+ * asociada.
  */
 public class GeneratorFragment extends Fragment {
 

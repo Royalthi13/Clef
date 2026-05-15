@@ -379,6 +379,10 @@ public class SettingsFragment extends Fragment {
         TextView tvPeriodValue = view.findViewById(R.id.tvExpiryPeriodValue);
         SharedPreferences prefs = SecurePrefs.get(requireContext(), ExpiryHelper.PREFS_NAME);
 
+        if (!prefs.contains(ExpiryHelper.PREF_PERIOD)) {
+            prefs.edit().putLong(ExpiryHelper.PREF_PERIOD, ExpiryHelper.PERIOD_ONE_YEAR).apply();
+        }
+
         switchNotifications.setChecked(prefs.getBoolean(ExpiryHelper.PREF_NOTIFICATIONS, false));
         tvPeriodValue.setText(periodLabel(prefs.getLong(ExpiryHelper.PREF_PERIOD, ExpiryHelper.PERIOD_ONE_YEAR)));
 

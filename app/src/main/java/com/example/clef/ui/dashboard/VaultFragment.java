@@ -657,7 +657,8 @@ public class VaultFragment extends Fragment {
 
         android.content.SharedPreferences prefs =
                 SecurePrefs.get(requireContext(), ExpiryHelper.PREFS_NAME);
-        long periodMs = prefs.getLong(ExpiryHelper.PREF_PERIOD, ExpiryHelper.PERIOD_ONE_YEAR);
+        long periodMs = ExpiryHelper.sanitizePeriod(
+                prefs.getLong(ExpiryHelper.PREF_PERIOD, ExpiryHelper.PERIOD_ONE_YEAR));
 
         // Separar caducadas del resto
         List<Credential> mainList    = new ArrayList<>();

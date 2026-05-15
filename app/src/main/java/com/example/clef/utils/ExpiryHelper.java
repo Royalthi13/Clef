@@ -29,6 +29,13 @@ public class ExpiryHelper {
 
     public enum Status { NONE, OK, WARNING, EXPIRED }
 
+    /** Devuelve el periodo si es un valor válido conocido; si no, PERIOD_ONE_YEAR. */
+    public static long sanitizePeriod(long ms) {
+        if (ms == PERIOD_TEST || ms == PERIOD_THREE_MONTHS
+                || ms == PERIOD_SIX_MONTHS || ms == PERIOD_ONE_YEAR) return ms;
+        return PERIOD_ONE_YEAR;
+    }
+
     /** Calcula el estado de caducidad de una credencial. */
     public static Status getStatus(long updatedAt, long periodMs) {
         if (updatedAt == 0) return Status.NONE;

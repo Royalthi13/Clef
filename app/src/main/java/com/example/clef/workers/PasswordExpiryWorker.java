@@ -33,7 +33,8 @@ public class PasswordExpiryWorker extends Worker {
     public static final String CHANNEL_ID  = "password_expiry";
     private static final String WORK_NAME  = "expiry_check";
     private static final String PREF_LAST_NOTIFIED = "last_notified_ms";
-    private static final long   NOTIFY_COOLDOWN_MS = 2L * 60 * 1000;
+    private static final String PREF_LAST_COUNT    = "last_notified_count";
+    private static final long   NOTIFY_COOLDOWN_MS = 7L * 24 * 60 * 60 * 1000;
 
     public PasswordExpiryWorker(@NonNull Context ctx, @NonNull WorkerParameters params) {
         super(ctx, params);
@@ -60,18 +61,36 @@ public class PasswordExpiryWorker extends Worker {
         SharedPreferences prefs = SecurePrefs.get(ctx, ExpiryHelper.PREFS_NAME);
         if (!prefs.getBoolean(ExpiryHelper.PREF_NOTIFICATIONS, false)) return;
 
-        long now = System.currentTimeMillis();
-        long lastNotified = prefs.getLong(PREF_LAST_NOTIFIED, 0);
-        if (now - lastNotified < NOTIFY_COOLDOWN_MS) return;
-
         long periodMs = prefs.getLong(ExpiryHelper.PREF_PERIOD, ExpiryHelper.PERIOD_ONE_YEAR);
         List<ExpiryHelper.CredentialMeta> metas = ExpiryHelper.loadMetadata(ctx);
 
         String text = buildNotificationText(ctx, metas, periodMs);
         if (text == null) return;
 
-        prefs.edit().putLong(PREF_LAST_NOTIFIED, now).apply();
+        int currentCount = countAffected(metas, periodMs);
+        int lastCount    = prefs.getInt(PREF_LAST_COUNT, 0);
+        long lastNotified = prefs.getLong(PREF_LAST_NOTIFIED, 0);
+        long now          = System.currentTimeMillis();
+
+        boolean newExpiry  = currentCount > lastCount;
+        boolean cooldownOk = now - lastNotified >= NOTIFY_COOLDOWN_MS;
+
+        if (!newExpiry && !cooldownOk) return;
+
+        prefs.edit()
+                .putLong(PREF_LAST_NOTIFIED, now)
+                .putInt(PREF_LAST_COUNT, currentCount)
+                .apply();
         sendNotification(ctx, text);
+    }
+
+    private static int countAffected(List<ExpiryHelper.CredentialMeta> metas, long periodMs) {
+        int count = 0;
+        for (ExpiryHelper.CredentialMeta meta : metas) {
+            ExpiryHelper.Status s = ExpiryHelper.getStatus(meta.updatedAt, periodMs);
+            if (s == ExpiryHelper.Status.EXPIRED || s == ExpiryHelper.Status.WARNING) count++;
+        }
+        return count;
     }
 
     // B-4 FIX: lógica unificada de conteo y construcción del mensaje.
