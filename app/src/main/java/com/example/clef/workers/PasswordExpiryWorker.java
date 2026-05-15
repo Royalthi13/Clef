@@ -47,7 +47,8 @@ public class PasswordExpiryWorker extends Worker {
         SharedPreferences prefs = SecurePrefs.get(ctx, ExpiryHelper.PREFS_NAME);
         if (!prefs.getBoolean(ExpiryHelper.PREF_NOTIFICATIONS, false)) return Result.success();
 
-        long periodMs = prefs.getLong(ExpiryHelper.PREF_PERIOD, ExpiryHelper.PERIOD_ONE_YEAR);
+        long periodMs = ExpiryHelper.sanitizePeriod(
+                prefs.getLong(ExpiryHelper.PREF_PERIOD, ExpiryHelper.PERIOD_ONE_YEAR));
         List<ExpiryHelper.CredentialMeta> metas = ExpiryHelper.loadMetadata(ctx);
 
         String text = buildNotificationText(ctx, metas, periodMs);
@@ -61,7 +62,8 @@ public class PasswordExpiryWorker extends Worker {
         SharedPreferences prefs = SecurePrefs.get(ctx, ExpiryHelper.PREFS_NAME);
         if (!prefs.getBoolean(ExpiryHelper.PREF_NOTIFICATIONS, false)) return;
 
-        long periodMs = prefs.getLong(ExpiryHelper.PREF_PERIOD, ExpiryHelper.PERIOD_ONE_YEAR);
+        long periodMs = ExpiryHelper.sanitizePeriod(
+                prefs.getLong(ExpiryHelper.PREF_PERIOD, ExpiryHelper.PERIOD_ONE_YEAR));
         List<ExpiryHelper.CredentialMeta> metas = ExpiryHelper.loadMetadata(ctx);
 
         String text = buildNotificationText(ctx, metas, periodMs);
