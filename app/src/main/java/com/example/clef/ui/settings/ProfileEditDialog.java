@@ -176,14 +176,7 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
             @Override public void beforeTextChanged(CharSequence s, int i, int c, int a) {}
             @Override public void onTextChanged(CharSequence s, int i, int b, int c) {}
             @Override
-            public void afterTextChanged(Editable s) {
-                String current = user != null && user.getDisplayName() != null
-                        ? user.getDisplayName() : "";
-                boolean nameChanged  = !s.toString().trim().equals(current);
-                boolean photoChanged = selectedPhotoFile != null;
-                btnSaveProfile.setEnabled(
-                        (nameChanged || photoChanged) && s.toString().trim().length() >= 2);
-            }
+            public void afterTextChanged(Editable s) { updateSaveButtonState(); }
         });
 
         authManager = new com.example.clef.data.remote.AuthManager(
@@ -307,7 +300,7 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
                             .diskCacheStrategy(DiskCacheStrategy.NONE)
                             .transform(new CircleCrop())
                             .into(ivProfilePhoto);
-                    btnSaveProfile.setEnabled(true);
+                    updateSaveButtonState();
                 });
             } catch (Exception e) {
                 if (!isAdded()) return;
@@ -492,6 +485,17 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
 
     // ── Guardar ────────────────────────────────────────────────────────────────
 
+    private void updateSaveButtonState() {
+        if (etDisplayName == null || btnSaveProfile == null) return;
+        FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();
+        String current = u != null && u.getDisplayName() != null ? u.getDisplayName() : "";
+        String entered = etDisplayName.getText() != null
+                ? etDisplayName.getText().toString().trim() : "";
+        boolean nameChanged  = !entered.equals(current);
+        boolean photoChanged = selectedPhotoFile != null;
+        btnSaveProfile.setEnabled((nameChanged || photoChanged) && entered.length() >= 2);
+    }
+
     private void onSave() {
         if (!isAdded()) return;
 
@@ -512,8 +516,7 @@ public class ProfileEditDialog extends BottomSheetDialogFragment {
 
         if (selectedPhotoFile != null && selectedPhotoFile.exists()) {
             long newSig = System.currentTimeMillis();
-            requireContext()
-                    .getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
+            SecurePrefs.get(requireContext(), PREFS_NAME)
                     .edit()
                     .putString(photoPathKey(user.getUid()), selectedPhotoFile.getAbsolutePath())
                     .putLong(photoSigKey(user.getUid()), newSig)

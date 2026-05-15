@@ -10,7 +10,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.example.clef.R;
 import com.example.clef.ui.dashboard.MainActivity;
 import com.example.clef.utils.ClipboardHelper;
-import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
 
 import java.util.Arrays;
@@ -22,8 +21,6 @@ public class ShowPukActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_show_puk);
 
-        MaterialToolbar toolbar = findViewById(R.id.topAppBar);
-        toolbar.setNavigationOnClickListener(v -> finish());
 
         // Consumir char[] y zeriarlo inmediatamente.
         // Antes era String static que quedaba indefinidamente en heap.
@@ -74,6 +71,10 @@ public class ShowPukActivity extends AppCompatActivity {
                 });
             }
         }
+    }
+
+    @Override
+    public void onBackPressed() {
     }
 
     private void goToMain() {
