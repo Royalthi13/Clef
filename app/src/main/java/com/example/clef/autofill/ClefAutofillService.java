@@ -49,7 +49,7 @@ import java.util.List;
  * Mitiga P1/P3 del paper ACM de autofill: no revelamos valores sin biometría,
  * y el picker filtrado evita phishing por apps con packageName similar.
  */
-@RequiresApi(Build.VERSION_CODES.O)
+@RequiresApi(Build.VERSION_CODES.R)
 public class ClefAutofillService extends AutofillService {
 
     private static final String TAG = "ClefAutofillService";
@@ -148,7 +148,7 @@ public class ClefAutofillService extends AutofillService {
         // Constructor estable para todas las APIs
         Dataset.Builder b = new Dataset.Builder(dropdown);
 
-        // Inline suggestion (Android 11+)
+        // Inline suggestion (Android 13+)
         InlinePresentation inlinePresentation = null;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && inlineSpec != null) {
             inlinePresentation = buildInlinePresentation(
@@ -193,8 +193,6 @@ public class ClefAutofillService extends AutofillService {
 
         InlinePresentation inlinePresentation = null;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && inlineSpec != null) {
-            // Aquí pasamos un PendingIntent vacío: el dataset no tiene auth,
-            // pero InlineSuggestionUi.newContentBuilder requiere uno.
             PendingIntent noop = PendingIntent.getActivity(
                     this, 0,
                     new Intent(this, AutofillAuthActivity.class),
@@ -267,15 +265,12 @@ public class ClefAutofillService extends AutofillService {
                                                        InlinePresentationSpec spec) {
         try {
             Icon icon = Icon.createWithResource(this, R.drawable.ic_clef_autofill);
-
-            android.app.slice.Slice slice = InlineSuggestionUi.newContentBuilder(attributionIntent)
+            InlineSuggestionUi.Content content = InlineSuggestionUi.newContentBuilder(attributionIntent)
                     .setTitle(title)
                     .setSubtitle(subtitle)
                     .setStartIcon(icon)
-                    .setContentDescription("Abrir Clef para autofill")
-                    .build()
-                    .getSlice();
-
+                    .build();
+            android.app.slice.Slice slice = content.getSlice();
             return new InlinePresentation(slice, spec, /* pinned */ false);
         } catch (Exception e) {
             android.util.Log.w(TAG, "buildInlinePresentation failed", e);

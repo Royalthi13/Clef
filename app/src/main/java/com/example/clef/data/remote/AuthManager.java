@@ -15,16 +15,8 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GoogleAuthProvider;
 
 /**
- * Esta clase gestiona el inicio de sesión con Google y Firebase.
- *
- * El proceso de login tiene 3 pasos:
- *   1. La app abre el selector de cuentas de Google (con getGoogleSignInIntent).
- *   2. El usuario elige su cuenta de Google.
- *   3. Google le da a la app un "token" que usamos para entrar en Firebase
- *      (con handleSignInResult). Firebase nos devuelve el FirebaseUser.
- *
- * Esta clase está separada de FirebaseManager porque tiene una responsabilidad
- * diferente: FirebaseManager gestiona los DATOS, AuthManager gestiona la IDENTIDAD.
+ * Gestiona la autenticación del usuario mediante Google Sign-In y Firebase Auth.
+ * Soporta registro e inicio de sesión con Google y con correo/contraseña.
  */
 public class AuthManager {
 
@@ -32,11 +24,8 @@ public class AuthManager {
     private final GoogleSignInClient googleSignInClient;
 
     /**
-     * Crea el AuthManager y lo configura para pedir el token de Google.
-     *
-     * @param activity    La pantalla desde la que se va a abrir el selector de Google.
-     * @param webClientId El ID del cliente web que genera automáticamente el plugin
-     *                    google-services. En el código se usa como R.string.default_web_client_id.
+     * @param activity    Activity desde la que se lanzará el selector de cuentas de Google.
+     * @param webClientId ID del cliente web generado por google-services (R.string.default_web_client_id).
      */
     public AuthManager(Activity activity, String webClientId) {
         this.auth = FirebaseAuth.getInstance();
@@ -49,27 +38,16 @@ public class AuthManager {
         this.googleSignInClient = GoogleSignIn.getClient(activity, gso);
     }
 
-    /**
-     * Devuelve el Intent que abre el selector de cuentas de Google.
-     * La Activity lo lanza con ActivityResultLauncher y espera a que el
-     * usuario elija su cuenta.
-     *
-     * @return Intent listo para abrir el selector de Google.
-     */
+    /** @return Intent que abre el selector de cuentas de Google. */
     public Intent getGoogleSignInIntent() {
         return googleSignInClient.getSignInIntent();
     }
 
     /**
-     * Procesa la cuenta que eligió el usuario en el selector de Google
-     * y la usa para autenticarse en Firebase.
+     * Procesa el resultado del selector de Google y autentica al usuario en Firebase.
      *
-     * Hay que llamar a este método desde el ActivityResultLauncher de la Activity,
-     * pasándole el Intent que devuelve el selector de Google.
-     *
-     * @param data     El Intent que devuelve el selector de Google con la cuenta elegida.
-     * @param callback Se llama al terminar: con el FirebaseUser si todo fue bien,
-     *                 o con null y el error si algo falló.
+     * @param data     Intent devuelto por el selector de cuentas de Google.
+     * @param callback resultado con el FirebaseUser o el error.
      */
     public void handleSignInResult(Intent data, AuthCallback callback) {
         Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
@@ -82,12 +60,11 @@ public class AuthManager {
     }
 
     /**
-     * Cierra la sesión en Firebase y también en Google.
-     * Si no cerramos en Google, la próxima vez entraría solo sin preguntar la cuenta.
-     * Cerrando los dos, vuelve a aparecer el selector de cuentas.
+     * Cierra la sesión en Firebase y en Google para que el selector de cuentas
+     * vuelva a mostrarse en el próximo inicio de sesión.
      *
-     * @param activity   La Activity actual, necesaria para el cierre en Google.
-     * @param onComplete Código que se ejecuta cuando el cierre de sesión ha terminado.
+     * @param activity   Activity actual, requerida por el cliente de Google.
+     * @param onComplete acción ejecutada al completar el cierre de sesión.
      */
     public void signOut(Activity activity, Runnable onComplete) {
         auth.signOut();
@@ -96,11 +73,11 @@ public class AuthManager {
     }
 
     /**
-     * Inicia sesión con correo y contraseña en Firebase.
+     * Inicia sesión con correo y contraseña.
      *
-     * @param email    Correo del usuario.
-     * @param password Contraseña del usuario.
-     * @param callback Resultado con el FirebaseUser o el error.
+     * @param email    correo del usuario.
+     * @param password contraseña del usuario.
+     * @param callback resultado con el FirebaseUser o el error.
      */
     public void signInWithEmail(String email, String password, AuthCallback callback) {
         auth.signInWithEmailAndPassword(email, password)
@@ -109,11 +86,11 @@ public class AuthManager {
     }
 
     /**
-     * Registra un nuevo usuario con correo y contraseña en Firebase.
+     * Registra un nuevo usuario con correo y contraseña.
      *
-     * @param email    Correo del nuevo usuario.
-     * @param password Contraseña del nuevo usuario.
-     * @param callback Resultado con el FirebaseUser o el error.
+     * @param email    correo del nuevo usuario.
+     * @param password contraseña del nuevo usuario.
+     * @param callback resultado con el FirebaseUser o el error.
      */
     public void registerWithEmail(String email, String password, AuthCallback callback) {
         auth.createUserWithEmailAndPassword(email, password)
@@ -122,10 +99,9 @@ public class AuthManager {
     }
 
     /**
-     * Envía un email de verificación al usuario recién registrado.
-     * Hay que llamarlo justo después de crear la cuenta.
+     * Envía un correo de verificación al usuario autenticado actualmente.
      *
-     * @param callback Se llama con null si el email se envió, o con el error si falló.
+     * @param callback resultado con null si se envió correctamente, o el error si falló.
      */
     public void sendEmailVerification(AuthCallback callback) {
         FirebaseUser user = auth.getCurrentUser();
@@ -138,21 +114,17 @@ public class AuthManager {
                 .addOnFailureListener(e -> callback.onResult(null, e));
     }
 
-    /**
-     * Comprueba si el usuario actual tiene el email verificado.
-     *
-     * @return true si el email está verificado, false si no.
-     */
+    /** @return true si el usuario actual tiene el correo verificado. */
     public boolean isEmailVerified() {
         FirebaseUser user = auth.getCurrentUser();
         return user != null && user.isEmailVerified();
     }
 
     /**
-     * Envía un email de recuperación de contraseña al correo indicado.
+     * Envía un correo de recuperación de contraseña a la dirección indicada.
      *
-     * @param email    Correo del usuario que quiere recuperar su contraseña.
-     * @param callback Se llama con null si el email se envió, o con el error si falló.
+     * @param email    correo del usuario.
+     * @param callback resultado con null si se envió correctamente, o el error si falló.
      */
     public void sendPasswordReset(String email, AuthCallback callback) {
         auth.sendPasswordResetEmail(email)
@@ -160,21 +132,16 @@ public class AuthManager {
                 .addOnFailureListener(e -> callback.onResult(null, e));
     }
 
-    /**
-     * Comprueba si hay algún usuario con sesión iniciada en Firebase.
-     *
-     * @return El FirebaseUser si hay sesión activa, o null si no hay nadie logueado.
-     */
+    /** @return FirebaseUser con sesión activa, o null si no hay sesión. */
     public FirebaseUser getCurrentUser() {
         return auth.getCurrentUser();
     }
 
     /**
-     * Intercambia el token de Google por una sesión en Firebase.
-     * Firebase verifica que el token es válido y crea la sesión del usuario.
+     * Reautentica al usuario en Firebase usando la cuenta Google en caché,
+     * sin mostrar el selector de cuentas. Útil antes de operaciones sensibles.
      *
-     * @param idToken  El token que nos dio Google al elegir la cuenta.
-     * @param callback Se llama con el FirebaseUser si tuvo éxito, o con el error si falló.
+     * @param callback resultado con el FirebaseUser o el error.
      */
     public void silentReauthenticate(AuthCallback callback) {
         googleSignInClient.silentSignIn()
@@ -183,6 +150,12 @@ public class AuthManager {
                 .addOnFailureListener(e -> callback.onResult(null, e));
     }
 
+    /**
+     * Reautentica al usuario en Firebase con un idToken de Google.
+     *
+     * @param idToken  token de identidad obtenido de Google Sign-In.
+     * @param callback resultado con el FirebaseUser o el error.
+     */
     public void reauthenticateWithGoogle(String idToken, AuthCallback callback) {
         FirebaseUser user = auth.getCurrentUser();
         if (user == null) { callback.onResult(null, new Exception("no_user")); return; }
@@ -192,6 +165,12 @@ public class AuthManager {
                 .addOnFailureListener(e -> callback.onResult(null, e));
     }
 
+    /**
+     * Intercambia el idToken de Google por una credencial Firebase e inicia sesión.
+     *
+     * @param idToken  token de identidad obtenido de Google Sign-In.
+     * @param callback resultado con el FirebaseUser o el error.
+     */
     private void firebaseAuthWithGoogle(String idToken, AuthCallback callback) {
         AuthCredential credential = GoogleAuthProvider.getCredential(idToken, null);
         auth.signInWithCredential(credential)
@@ -199,16 +178,11 @@ public class AuthManager {
                 .addOnFailureListener(e -> callback.onResult(null, e));
     }
 
-    /**
-     * Interfaz que define cómo recibir el resultado del login con Google.
-     * Quien llame a handleSignInResult tiene que implementar esta interfaz.
-     */
+    /** Callback para recibir el resultado de las operaciones de autenticación. */
     public interface AuthCallback {
         /**
-         * Se llama cuando el proceso de login termina, bien o mal.
-         *
-         * @param user  El usuario de Firebase si el login fue bien, o null si falló.
-         * @param error El error que ocurrió si el login falló, o null si fue bien.
+         * @param user  FirebaseUser si la operación tuvo éxito, null si falló.
+         * @param error excepción si la operación falló, null si tuvo éxito.
          */
         void onResult(FirebaseUser user, Exception error);
     }

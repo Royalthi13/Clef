@@ -23,10 +23,11 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 
 /**
- * Eliminados todos los "throw new RuntimeException(e)" en callbacks.
- * getKeyPrefs() ahora devuelve null en lugar de lanzar, y los llamadores
- * manejan el null de forma explícita y silenciosa (con log de error).
- * Esto evita crashes no controlados y posibles fugas de DEK en RAM.
+ * Repositorio central que coordina el acceso a la bóveda cifrada del usuario.
+ *
+ * Gestiona la persistencia local (fichero cifrado vía FileManager) y la
+ * sincronización con Firestore (vía FirebaseManager), así como la caché de
+ * claves en EncryptedSharedPreferences para permitir el desbloqueo sin conexión.
  */
 public class VaultRepository {
 
@@ -53,7 +54,7 @@ public class VaultRepository {
         this.context         = context;
     }
 
-    // SharedPreferences con UID,  devuelve null en lugar de lanzar RuntimeException.
+    /** @return EncryptedSharedPreferences con sufijo de UID, o null si el TEE no está disponible. */
 
     private SharedPreferences getKeyPrefs() {
         try {
@@ -75,7 +76,7 @@ public class VaultRepository {
         }
     }
 
-    // Registro
+    // ── Registro ──────────────────────────────────────────────────────────
 
     public void registerUser(KeyManager.RegistrationBundle bundle, Callback<Void> callback) {
         firebaseManager.uploadAll(
@@ -91,7 +92,7 @@ public class VaultRepository {
                 .addOnFailureListener(callback::onError);
     }
 
-    //  Guardar bóveda
+    // ── Bóveda ────────────────────────────────────────────────────────────
 
     public void saveVault(String encryptedVaultBase64, Callback<Void> callback) {
         saveLocalVault(encryptedVaultBase64);
@@ -104,7 +105,7 @@ public class VaultRepository {
         }
     }
 
-    // Cargar datos
+    // ── Descarga ──────────────────────────────────────────────────────────
 
     public void loadUserData(Callback<UserData> callback) {
         firebaseManager.downloadUserData()
@@ -127,7 +128,7 @@ public class VaultRepository {
         return Base64.encodeToString(bytes, Base64.NO_WRAP);
     }
 
-    //  Cambio de Caja A
+    // ── Actualización de claves ────────────────────────────────────────────
 
     public void updateCajaA(String nuevaCajaABase64, Callback<Void> callback) {
         firebaseManager.uploadCajaA(nuevaCajaABase64)
@@ -157,7 +158,7 @@ public class VaultRepository {
                 .addOnFailureListener(callback::onError);
     }
 
-    //  Estado
+    // ── Estado y sincronización ───────────────────────────────────────────
 
     public void userHasMasterPassword(Callback<Boolean> callback) {
         firebaseManager.userHasMasterPassword()
@@ -179,7 +180,7 @@ public class VaultRepository {
         String cajaB = prefs.getString(KEY_CAJA_B, null);
         String vault = loadLocalVault();
         if (salt == null || cajaA == null || vault == null) return null;
-        return new UserData(salt, cajaA, cajaB, vault, 0L, null);
+        return new UserData(salt, cajaA, cajaB, vault, 0L);
     }
 
     public void exportToFirebase(Callback<Void> callback) {
@@ -244,9 +245,9 @@ public class VaultRepository {
     }
 
     /**
-     * Sube solo las credenciales synced=true.
-     * El dek recibido NO se zeriza aquí porque el llamador lo sigue
-     * necesitando para la sesión. El llamador es responsable del ciclo de vida.
+     * Filtra las credenciales marcadas como sincronizables y sube solo esas a Firestore.
+     * Si expectedVersion >= 0 usa control optimista de concurrencia; si no, sube sin versión.
+     * La DEK no se zeriza aquí porque el llamador la sigue necesitando durante la sesión.
      */
     public void uploadSyncedOnly(Vault fullVault, byte[] dek, long expectedVersion,
                                  Callback<Void> callback) {
@@ -280,28 +281,7 @@ public class VaultRepository {
         }
     }
 
-    //  Borrado de cuenta
-
-    public void deleteAccount(Callback<Void> callback) {
-        firebaseManager.deleteUserData()
-                .addOnSuccessListener(unused ->
-                        firebaseManager.deleteAuthAccount()
-                                .addOnSuccessListener(v -> {
-                                    clearLocalVault();
-                                    clearKeyCache();
-                                    callback.onSuccess(null);
-                                })
-                                .addOnFailureListener(e -> {
-                                    Log.e(TAG, "deleteAuthAccount failed", e);
-                                    callback.onError(e);
-                                }))
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "deleteUserData failed", e);
-                    callback.onError(e);
-                });
-    }
-
-    // Privado
+    // ── Privado ───────────────────────────────────────────────────────────
 
     private void saveLocalVault(String encryptedVaultBase64) {
         try {
@@ -321,10 +301,7 @@ public class VaultRepository {
         }
     }
 
-    /**
-     * Ya no lanza excepciones. Si getKeyPrefs() falla, logea y continúa.
-     * El usuario tendrá que descargar de Firebase en el próximo desbloqueo.
-     */
+    /** Persiste salt, cajaA y cajaB en EncryptedSharedPreferences para el acceso sin conexión. */
     private void cacheKeys(String salt, String cajaA, String cajaB) {
         SharedPreferences prefs = getKeyPrefs();
         if (prefs == null) {

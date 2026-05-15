@@ -3,20 +3,12 @@ package com.example.clef.data.model;
 import com.example.clef.R;
 
 /**
- * Esta clase representa UNA contraseña guardada por el usuario.
+ * DTO que representa una credencial almacenada en la bóveda del usuario.
  *
- * Piénsala como una ficha con 5 campos:
- *   - title:    el nombre del sitio, por ejemplo "Gmail" o "Instagram"
- *   - username: el nombre de usuario o email con el que entras
- *   - password: la contraseña de ese sitio
- *   - url:      la dirección web (opcional)
- *   - notes:    cualquier nota extra que quieras guardar (opcional)
- *
- * IMPORTANTE: Esta clase no hace nada con los datos, solo los guarda.
- * GSON la convierte a texto JSON para que CryptoUtils pueda cifrarla.
- *
- * Ejemplo de cómo se ve por dentro antes de cifrarse:
- *   { "title": "Gmail", "username": "pepe@gmail.com", "password": "abc123" }
+ * Agrupa los campos de acceso a un servicio (título, usuario, contraseña,
+ * URL y notas) junto con metadatos de gestión: categoría, historial de
+ * contraseñas, marca de favorito, marcas de tiempo y sugerencias de paquete
+ * para el servicio Autofill de Android.
  */
 public class Credential {
     public enum Category {

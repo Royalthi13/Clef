@@ -1,7 +1,6 @@
 package com.example.clef.data.local;
 
 import android.content.Context;
-
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
@@ -92,7 +91,10 @@ public class FileManager {
         if (!file.exists()) return null;
 
         try (FileInputStream fis = new FileInputStream(file)) {
-            return fis.readAllBytes();
+            byte[] buffer = new byte[(int) file.length()];
+            //noinspection ResultOfMethodCallIgnored
+            fis.read(buffer);
+            return buffer;
         }
     }
 
