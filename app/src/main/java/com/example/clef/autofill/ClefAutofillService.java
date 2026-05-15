@@ -46,8 +46,7 @@ import java.util.List;
  *   3. Header con branding "Clef • <app>" en el dropdown.
  *   4. SaveInfo permite a Android ofrecer "Guardar en Clef" al rellenar.
  *
- * Mitiga P1/P3 del paper ACM de autofill: no revelamos valores sin biometría,
- * y el picker filtrado evita phishing por apps con packageName similar.
+
  */
 @RequiresApi(Build.VERSION_CODES.R)
 public class ClefAutofillService extends AutofillService {
