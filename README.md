@@ -178,6 +178,14 @@ com.example.clef/
 │   │
 │   └── repository/
 │       └── VaultRepository.java        # Orquesta local + remoto. updateCajaAyB() atómico.
+├── autofill/
+│   ├── ClefAutofillService.java        # Servicio Core de autocompletado en el S.O.
+│   ├── AutofillAuthActivity.java       # Interfaz de validación biométrica para rellenar
+│   └── AutofillSaveActivity.java       # Prompt para guardar credenciales nuevas
+│
+├── workers/
+│   └── PasswordExpiryWorker.java       # Tarea en segundo plano para notificar caducidad
+│
 │
 └── utils/
     ├── SessionManager.java             # DEK en memoria, timer auto-lock, thread-safe
@@ -185,6 +193,7 @@ com.example.clef/
     ├── PasswordGenerator.java          # Generador criptográfico con SecureRandom
     ├── ClipboardHelper.java            # Copia sensible con auto-borrado a 45s
     └── ThemeManager.java               # Claro / Oscuro / Sistema, persiste en SharedPrefs
+
 ```
 
 ---
